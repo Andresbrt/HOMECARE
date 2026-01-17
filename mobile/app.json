@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "HOMECARE",
+    "slug": "homecare",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#001B38"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.homecare.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para mostrarte servicios cercanos",
+        "NSLocationAlwaysUsageDescription": "Necesitamos tu ubicación para conectarte con proveedores cercanos",
+        "NSCameraUsageDescription": "Necesitamos acceso a la cámara para tomar fotos del servicio",
+        "NSPhotoLibraryUsageDescription": "Necesitamos acceso a tus fotos para subir evidencias"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#001B38"
+      },
+      "package": "com.homecare.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-camera",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#49C0BC"
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:8080/api",
+      "wsUrl": "http://localhost:8080/ws",
+      "googleClientId": "YOUR_GOOGLE_CLIENT_ID"
+    }
+  }
+}

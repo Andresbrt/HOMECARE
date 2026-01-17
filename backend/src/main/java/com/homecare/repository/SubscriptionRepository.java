@@ -1,0 +1,89 @@
+package com.homecare.repository;
+
+import com.homecare.model.Subscription;
+import com.homecare.model.Subscription.Estado;
+import com.homecare.model.Subscription.PlanType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repositorio para gestión de suscripciones
+ */
+@Repository
+public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
+
+    /**
+     * Busca la suscripción activa de un usuario
+     */
+    Optional<Subscription> findByUsuarioIdAndEstado(Long usuarioId, Estado estado);
+
+    /**
+     * Busca todas las suscripciones de un usuario ordenadas por fecha
+     */
+    List<Subscription> findByUsuarioIdOrderByFechaInicioDesc(Long usuarioId);
+
+    /**
+     * Busca suscripciones que vencen en una fecha específica y tienen auto-renovación
+     */
+    List<Subscription> findByEstadoAndFechaFinAndAutoRenovar(Estado estado, LocalDate fechaFin, Boolean autoRenovar);
+
+    /**
+     * Busca suscripciones que vencen pronto para enviar recordatorios
+     */
+    @Query("SELECT s FROM Subscription s WHERE s.estado = :estado " +
+           "AND s.fechaFin BETWEEN :fechaInicio AND :fechaFin " +
+           "AND s.autoRenovar = false")
+    List<Subscription> findSuscripcionesPorVencer(
+            @Param("estado") Estado estado,
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin);
+
+    /**
+     * Cuenta suscripciones activas por plan
+     */
+    @Query("SELECT s.plan, COUNT(s) FROM Subscription s " +
+           "WHERE s.estado = 'ACTIVA' GROUP BY s.plan")
+    List<Object[]> countSuscripcionesActivasPorPlan();
+
+    /**
+     * Busca suscripciones por plan
+     */
+    List<Subscription> findByPlanAndEstado(PlanType plan, Estado estado);
+
+    /**
+     * Verifica si un usuario tiene una suscripción activa
+     */
+    boolean existsByUsuarioIdAndEstado(Long usuarioId, Estado estado);
+
+    /**
+     * Obtiene el total de ingresos por suscripciones en un rango de fechas
+     */
+    @Query("SELECT SUM(s.precioMensual) FROM Subscription s " +
+           "WHERE s.estado = 'ACTIVA' " +
+           "AND s.fechaInicio BETWEEN :fechaInicio AND :fechaFin")
+    Double calcularIngresosPorPeriodo(
+            @Param("fechaInicio") LocalDate fechaInicio,
+            @Param("fechaFin") LocalDate fechaFin);
+
+    /**
+     * Busca suscripciones que necesitan procesamiento de pago
+     */
+    @Query("SELECT s FROM Subscription s WHERE s.estado = 'PENDIENTE_PAGO' " +
+           "AND s.fechaFin <= :fecha")
+    List<Subscription> findSuscripcionesPendientesPago(@Param("fecha") LocalDate fecha);
+
+    /**
+     * Obtiene estadísticas de retención por plan
+     */
+    @Query("SELECT s.plan, " +
+           "COUNT(CASE WHEN s.estado = 'ACTIVA' THEN 1 END) as activas, " +
+           "COUNT(CASE WHEN s.estado = 'CANCELADA' THEN 1 END) as canceladas " +
+           "FROM Subscription s GROUP BY s.plan")
+    List<Object[]> getEstadisticasRetencionPorPlan();
+}

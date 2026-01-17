@@ -1,0 +1,115 @@
+spring:
+  application:
+    name: homecare-api
+  
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/homecare_db}
+    username: ${DATABASE_USERNAME:homecare_user}
+    password: ${DATABASE_PASSWORD:homecare_pass}
+    driver-class-name: org.postgresql.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:true}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${FILE_MAX_SIZE:10MB}
+      max-request-size: ${FILE_MAX_REQUEST_SIZE:10MB}
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# JWT Configuration - CRÍTICO: Variable obligatoria
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+
+# Wompi Payment Configuration - CRÍTICO: Variables obligatorias
+wompi:
+  api-url: ${WOMPI_API_URL:https://production.wompi.co}
+  public-key: ${WOMPI_PUBLIC_KEY}
+  private-key: ${WOMPI_PRIVATE_KEY}
+  event-secret: ${WOMPI_EVENT_SECRET}
+  production: ${WOMPI_PRODUCTION:false}
+
+# Google Maps Configuration - CRÍTICO: Variable obligatoria
+google:
+  maps:
+    api-key: ${GOOGLE_MAPS_API_KEY}
+    
+# Firebase Configuration - CRÍTICO: Variable obligatoria  
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials.json}
+  server-key: ${FIREBASE_SERVER_KEY}
+
+# AWS Configuration - CRÍTICO: Variables obligatorias para producción
+aws:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  s3:
+    bucket: ${AWS_S3_BUCKET:homecare-files}
+    region: ${AWS_S3_REGION:us-east-1}
+
+# Tracking Configuration
+tracking:
+  update-interval-seconds: ${TRACKING_UPDATE_INTERVAL:30}
+  distance-threshold-meters: ${TRACKING_DISTANCE_THRESHOLD:50}
+  eta-calculation: ${TRACKING_ETA_CALCULATION:google}
+
+# File Configuration
+file:
+  max-size: ${FILE_MAX_SIZE:10485760}
+  allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/jpg,application/pdf}
+  storage-type: ${FILE_STORAGE_TYPE:s3} # s3, local
+
+# Payment Configuration
+payment:
+  commission-rate: ${PAYMENT_COMMISSION_RATE:0.10}
+  callback-url: ${PAYMENT_CALLBACK_URL}
+
+# API Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# Logging
+logging:
+  level:
+    com.homecare: ${LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}
+    
+# Environment Configuration
+app:
+  environment: ${APP_ENVIRONMENT:development}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+  security:
+    rate-limit:
+      enabled: ${RATE_LIMIT_ENABLED:true}
+      requests-per-minute: ${RATE_LIMIT_RPM:100}
