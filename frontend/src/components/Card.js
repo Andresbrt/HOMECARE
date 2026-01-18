@@ -506,4 +506,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { Card as default, ServiceCard, ProviderCard, RequestCard };
+export { Card as default };

@@ -62,6 +62,10 @@ web-build/
 # Metro
 .metro-health-check*
 
+# Expo
+.expo/
+**/.expo/
+
 # Gradle
 .gradle
 **/build/

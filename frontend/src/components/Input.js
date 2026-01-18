@@ -87,7 +87,7 @@ export const Input = ({
     return base;
   };
 
-  const labelStyle = {
+  const animatedLabelStyle = {
     position: 'absolute',
     left: leftIcon ? 44 : SPACING.MD,
     top: labelPosition.interpolate({
@@ -119,7 +119,7 @@ export const Input = ({
 
         {/* Label flotante */}
         {label && (
-          <Animated.Text style={labelStyle}>
+          <Animated.Text style={animatedLabelStyle}>
             {label}
           </Animated.Text>
         )}

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 /**
  * CONFIGURACIÓN API HOMECARE BACKEND
@@ -6,9 +7,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  */
 
 // Configuración base de la API
+const DEV_BASE_URL = Platform.OS === 'android'
+  ? 'http://10.0.2.2:8080/api' // Android emulator
+  : 'http://localhost:8080/api'; // iOS simulator / web
+
 export const API_CONFIG = {
   BASE_URL: __DEV__ 
-    ? 'http://10.0.2.2:8080/api'  // Android emulator
+    ? DEV_BASE_URL
     : 'https://api.homecare.com/api',  // Production
   
   TIMEOUT: 30000, // 30 segundos

@@ -294,4 +294,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { Header as default, MainHeader, NavHeader };
+export { Header as default };

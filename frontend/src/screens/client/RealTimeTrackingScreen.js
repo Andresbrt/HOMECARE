@@ -30,7 +30,7 @@ const RealTimeTrackingScreen = ({ navigation, route }) => {
   const [estimatedArrival, setEstimatedArrival] = useState(null);
   const [socket, setSocket] = useState(null);
   const [isLiveTracking, setIsLiveTracking] = useState(true);
-  const [route, setRoute] = useState(null);
+  const [routeCoordinates, setRouteCoordinates] = useState(null);
 
   // Configuración inicial del mapa
   const [mapRegion, setMapRegion] = useState({
@@ -125,7 +125,7 @@ const RealTimeTrackingScreen = ({ navigation, route }) => {
 
     wsSocket.on('route-update', (data) => {
       if (data.requestId === requestId && data.route) {
-        setRoute(data.route);
+        setRouteCoordinates(data.route);
       }
     });
 
@@ -295,9 +295,9 @@ const RealTimeTrackingScreen = ({ navigation, route }) => {
           )}
           
           {/* Ruta entre ubicaciones */}
-          {route && (
+          {routeCoordinates && (
             <Polyline
-              coordinates={route}
+              coordinates={routeCoordinates}
               strokeColor={COLORS.PRIMARY}
               strokeWidth={3}
               geodesic={true}
