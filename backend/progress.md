@@ -81,6 +81,10 @@
 **Build Result**: SUCCESS  
 **Commit**: 65c0623
 
+### Step 6: Upgrade to Spring Boot 3.5.0 (Target)
+**Status**: ⏳ In Progress  
+**Started**: 2026-03-02
+
 ---
 
 ## Session Log
