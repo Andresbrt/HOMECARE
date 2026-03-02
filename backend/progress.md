@@ -62,8 +62,12 @@
 **Build Result**: SUCCESS  
 **Commit**: cac4042fae062c5c3c18c2f4c632e65f3b123456
 
-### Step 5: Final Verification
-**Status**: ⏳ Pending
+### Step 5: Upgrade to Spring Boot 3.4.x (Intermediate)
+**Status**: 🔄 In Progress  
+**Started**: 2026-03-02
+
+**Target Changes**:
+- Spring Boot: 3.2.5 → 3.4.5
 
 ---
 
