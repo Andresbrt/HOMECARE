@@ -3,26 +3,107 @@
     "name": "HomeCare",
     "slug": "homecare-app",
     "version": "1.0.0",
+    "owner": "homecare-team",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
-    "sdkVersion": "54.0.0",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#49C0BC"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/YOUR_PROJECT_ID"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.homecare.app",
+      "buildNumber": "1",
+      "deploymentTarget": "15.1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "HomeCare necesita acceso a tu ubicación para encontrar proveedores cercanos.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "HomeCare necesita acceso a tu ubicación para rastrear el servicio.",
+        "NSCameraUsageDescription": "HomeCare necesita acceso a tu cámara para tomar fotos de perfil.",
+        "NSPhotoLibraryUsageDescription": "HomeCare necesita acceso a tu galería para seleccionar fotos."
+      },
+      "newArchEnabled": true
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.homecare.app",
+      "versionCode": 1,
+      "compileSdkVersion": 36,
+      "targetSdkVersion": 36,
+      "minSdkVersion": 24,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      },
+      "newArchEnabled": true
     },
     "web": {
+      "favicon": "./assets/favicon.png"
     },
     "scheme": "homecare",
-    "platforms": [
-      "android",
-      "ios"
-    ]
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": true,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24,
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          },
+          "ios": {
+            "newArchEnabled": true,
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow HomeCare to use your location."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite a HomeCare acceder a tus fotos.",
+          "cameraPermission": "Permite a HomeCare usar tu cámara."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
   }
 }

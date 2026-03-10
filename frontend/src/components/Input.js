@@ -148,10 +148,13 @@ export const Input = ({
           numberOfLines={numberOfLines}
           editable={!disabled}
           maxLength={maxLength}
+          accessible={true}
+          accessibilityLabel={label || placeholder}
+          accessibilityHint={error ? `Error: ${error}` : undefined}
+          accessibilityState={{ disabled }}
           {...props}
         />
 
-        {/* Icono derecho */}
         {rightIcon && (
           <TouchableOpacity
             style={styles.rightIcon}

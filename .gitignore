@@ -107,6 +107,10 @@ build/
 .env.test.local
 .env.production.local
 
+# Firebase credentials
+**/firebase-credentials.json
+firebase-credentials*.json
+
 # AWS
 .aws/
 

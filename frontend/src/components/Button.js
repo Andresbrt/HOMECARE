@@ -70,6 +70,11 @@ export const Button = ({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading }}
+      accessibilityHint={loading ? 'Cargando...' : undefined}
       {...props}
     >
       {loading ? (

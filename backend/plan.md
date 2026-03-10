@@ -253,7 +253,129 @@ SAMPLE FORMAT:
 
 ---
 
-## 5. Risk Assessment
+## 5. Available Tools
+
+### 5.1 Java Development Kits (JDKs)
+
+The following JDKs are available for this upgrade:
+
+1. **JDK 11.0.22** (Installed)
+   - Location: `C:/Users/PC/.jdks/corretto-11.0.22/bin`
+   - Usage: Reference only - not used in this upgrade
+
+2. **JDK 17.0.17** (Current)
+   - Location: `C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot/bin`
+   - Usage: Current baseline, used in Steps 2-3
+
+3. **JDK 20.0.2** (Installed)
+   - Location: `C:/Program Files/Java/jdk-20/bin`
+   - Usage: Not used in this upgrade (interim release)
+
+4. **JDK 23** **<TO_BE_INSTALLED>**
+   - Location: TBD (to be installed in Step 1)
+   - Usage: Target JDK, used in Steps 4-7
+   - Download: https://jdk.java.net/23/ or use IDE JDK installer
+
+### 5.2 Build Tools
+
+#### Maven
+- **Status**: Not found in PATH; no Maven wrapper (mvnw.cmd) in project
+- **Required Version**: Maven 3.6.3+ (recommended 3.9.x for Java 23)
+- **Action Required**: Install Maven 3.9.x in Step 1 or use IDE embedded Maven
+- **Alternative**: Download from https://maven.apache.org/download.cgi
+
+#### Build Commands
+All Maven commands in this plan assume Maven is available. Adjust paths as needed:
+- If Maven in PATH: `mvn <goals>`
+- If Maven installed elsewhere: Use full path to `mvn.cmd`
+- If using IDE Maven: Use IDE's Maven runner
+
+---
+
+## 6. Key Challenges
+
+This upgrade presents several key challenges that require careful handling:
+
+### 6.1 AWS SDK Major Version Jump (2.20.26 → 2.29.20)
+**Challenge**: AWS SDK 2.20.x has known compatibility issues with Java 21+ and includes several breaking changes in exception handling, credential providers, and async client APIs.
+
+**Impact**: 
+- File upload/download functionality (avatars, service photos, attachments)
+- S3 exception handling may break existing error recovery logic
+- Async S3 operations may require handler updates
+
+**Mitigation Strategy**:
+- Update AWS SDK early in Step 3 (before Java 23 switch)
+- Test S3 operations thoroughly with JDK 17 first
+- Review all `S3Client` and `S3AsyncClient` usage
+- Update exception handling to use new exception structures
+- Validate presigned URL generation
+
+### 6.2 Spring Boot 3.5.0 Framework Changes
+**Challenge**: Spring Boot 3.5.0 includes Spring Framework 6.2.x with significant changes:
+- Enhanced `RestTemplate` deprecation (migration to `RestClient` recommended)
+- Spring Security configuration updates
+- Actuator endpoint format changes
+- Spring Data JPA query derivation rule tightening
+
+**Impact**:
+- Any external API calls using `RestTemplate` may need refactoring
+- Security filter chain configuration may require updates
+- Monitoring/health check integrations may break
+- Custom repository query methods may need renaming
+
+**Mitigation Strategy**:
+- Use intermediate Spring Boot 3.4.x (Step 5) before 3.5.0
+- Search codebase for `RestTemplate` usage and plan migration
+- Review security configuration for deprecated patterns
+- Test all custom JPA queries after upgrade
+- Validate actuator endpoints if exposed
+
+### 6.3 Java 23 Virtual Threads and Concurrency
+**Challenge**: Java 23 includes virtual threads (JEP 444) which Spring Boot 3.5.0 can leverage. WebSocket and async operations may exhibit different concurrency behavior.
+
+**Impact**:
+- WebSocket connection handling may use different thread pools
+- Async `@Async` methods may behave differently
+- Performance characteristics may change (usually improved)
+
+**Mitigation Strategy**:
+- Monitor thread pool sizes and behavior after Java 23 switch
+- Test WebSocket real-time messaging under load
+- Review `@Async` method configurations
+- Consider enabling virtual threads explicitly if benefits observed
+
+### 6.4 JWT Token Validation (JJWT 0.12.3 → 0.12.6)
+**Challenge**: JJWT library updates include security enhancements that may affect token generation and validation.
+
+**Impact**:
+- Existing JWT tokens may need regeneration
+- Token signing/verification algorithms may have stricter validation
+- User authentication flows could break
+
+**Mitigation Strategy**:
+- Update JJWT early in Step 3 (with JDK 17 for isolation)
+- Test login, token refresh, and logout flows thoroughly
+- Validate token expiration handling
+- Check role-based access control after upgrade
+
+### 6.5 Firebase Admin SDK Google Auth Library Updates
+**Challenge**: Firebase Admin SDK 9.4.2 includes updated Google Auth libraries that may affect token validation and FCM message sending.
+
+**Impact**:
+- Push notification delivery may fail
+- Firebase token validation may change
+- FCM message format compatibility
+
+**Mitigation Strategy**:
+- Update Firebase in Step 3 along with other dependencies
+- Test push notification registration and delivery
+- Validate FCM message payload format
+- Monitor notification delivery rates after deployment
+
+---
+
+## 7. Risk Assessment
 
 ### 5.1 High Risk Areas
 
@@ -402,81 +524,274 @@ SAMPLE FORMAT:
 
 ---
 
-## 6. Upgrade Execution Plan
+## 8. Upgrade Steps
 
-### 6.1 Phase 1: Environment Preparation
-1. Backup current codebase
-2. Install Java 23 JDK
-3. Update Maven configuration
-4. Create feature branch for upgrade
+This section provides the detailed, step-by-step execution plan for the Java and Spring Boot upgrade. Each step must be completed in sequence, with verification before proceeding to the next step.
 
-### 6.2 Phase 2: POM Updates
-1. Update java.version property to 23
-2. Update spring-boot-starter-parent to 3.5.x
-3. Update direct dependencies per Derived Upgrades section
-4. Update Maven plugins if needed
+### Step 1: Environment Setup and Tooling Verification
 
-### 6.3 Phase 3: Code Migration
-1. Address deprecated API usage
-2. Update import statements
-3. Resolve compiler errors
-4. Fix breaking changes
+**Rationale**: Before making any code changes, we must ensure all required tools are installed and accessible. This includes installing JDK 23 (the target Java version) and verifying Maven availability for building the project.
 
-### 6.4 Phase 4: Testing & Validation
-1. Run Maven clean compile
-2. Execute unit tests
-3. Execute integration tests
-4. Manual smoke testing
-5. Performance validation
+**Prerequisites**: 
+- Git working branch `appmod/java-upgrade-20260302195225` checked out
+- Admin/install privileges for JDK installation
 
-### 6.5 Phase 5: Documentation
-1. Update README.md
-2. Update deployment documentation
-3. Document breaking changes
-4. Update API documentation
+**Changes to Make**:
+1. Install JDK 23 from https://jdk.java.net/23/ or use IDE's JDK manager
+2. Verify JDK 23 installation: `"<JDK23_PATH>/bin/java" -version`
+3. Install Maven 3.9.12+ if not available (download from https://maven.apache.org/download.cgi)
+4. Set `JAVA_HOME` environment variable to JDK 23 path temporarily (for verification only)
+5. Verify Maven can detect JDK 23: `mvn -version`
+
+**Verification**:
+- **Command**: `"C:/Users/PC/.jdks/jdk-23/bin/java" -version` (adjust path based on installation)
+- **Expected Output**: `openjdk version "23"` or `java version "23"`
+- **JDK Used**: JDK 23 (newly installed)
+- **Success Criteria**: JDK 23 installed, Maven 3.9+ available, both accessible from command line
 
 ---
 
-## 7. Success Criteria
+### Step 2: Baseline Validation with Current Configuration
+
+**Rationale**: Establish a baseline by compiling and testing the project with the current JDK 17 and Spring Boot 3.2.5. This documents the starting state and ensures the current configuration is stable before making changes. Any failures here must be resolved before proceeding.
+
+**Prerequisites**:
+- Step 1 completed (though we'll use JDK 17 for this step)
+- Current branch has no uncommitted changes
+
+**Changes to Make**:
+1. Verify pom.xml still has `<java.version>17</java.version>`
+2. Set `JAVA_HOME` to JDK 17: `C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot`
+3. Clean build directory: `mvn clean`
+4. Compile project: `mvn compile -q`
+5. Run test suite: `mvn test -q` (document results - failures may exist)
+
+**Verification**:
+- **Command**: `mvn clean compile test -q`
+- **Expected Output**: BUILD SUCCESS, compilation passes (test failures documented but not blocking)
+- **JDK Used**: JDK 17.0.17 at `C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot/bin`
+- **Success Criteria**: Project compiles successfully with Java 17; test results documented as baseline
+
+---
+
+### Step 3: Update Critical Dependencies (AWS SDK, JWT, Firebase, POI, SpringDoc)
+
+**Rationale**: Update critical dependencies to versions compatible with Java 23 and Spring Boot 3.5.x BEFORE switching Java versions. This isolates dependency issues from Java version issues. AWS SDK 2.20.26 has known Java 21+ compatibility issues, making this upgrade essential.
+
+**Prerequisites**:
+- Step 2 completed with successful compilation
+- Still using JDK 17 for this step
+
+**Changes to Make**:
+1. In `pom.xml`, update `<properties>`:
+   - `<jwt.version>0.12.3</jwt.version>` → `<jwt.version>0.12.6</jwt.version>`
+   - `<springdoc.version>2.3.0</springdoc.version>` → `<springdoc.version>2.6.0</springdoc.version>`
+2. In `<dependencies>`, update AWS SDK version:
+   - `<version>2.20.26</version>` → `<version>2.29.20</version>` (for `software.amazon.awssdk:s3`)
+3. In `<dependencies>`, update Firebase version:
+   - `<version>9.2.0</version>` → `<version>9.4.2</version>` (for `firebase-admin`)
+4. In `<dependencies>`, update Apache POI version:
+   - `<version>5.2.5</version>` → `<version>5.3.0</version>` (for `poi-ooxml`)
+5. Run `mvn clean compile -q` to download new dependencies and compile
+
+**Verification**:
+- **Command**: `mvn clean compile -q`
+- **Expected Output**: BUILD SUCCESS, no compilation errors
+- **JDK Used**: JDK 17.0.17 at `C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot/bin`
+- **Success Criteria**: Project compiles successfully with updated dependencies; AWS S3, JWT, Firebase code compiles without errors
+
+---
+
+### Step 4: Switch to Java 23 (Keep Spring Boot 3.2.5)
+
+**Rationale**: Migrate to Java 23 while keeping Spring Boot at 3.2.5. This isolates Java version compatibility issues from Spring Boot upgrade issues. At this stage, we verify that all code and dependencies compile with Java 23.
+
+**Prerequisites**:
+- Step 3 completed with successful compilation
+- JDK 23 installed and verified in Step 1
+
+**Changes to Make**:
+1. In `pom.xml`, update `<java.version>17</java.version>` → `<java.version>23</java.version>`
+2. Add explicit Maven Compiler Plugin configuration in `<build><plugins>`:
+   ```xml
+   <plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-compiler-plugin</artifactId>
+       <version>3.13.0</version>
+       <configuration>
+           <release>23</release>
+       </configuration>
+   </plugin>
+   ```
+3. Set `JAVA_HOME` to JDK 23 path (identified in Step 1)
+4. Run `mvn clean compile -q` with JDK 23
+
+**Verification**:
+- **Command**: `mvn clean compile -q`
+- **Expected Output**: BUILD SUCCESS, compilation passes with Java 23
+- **JDK Used**: JDK 23 at `<installation_path_from_step1>/bin` (e.g., `C:/Users/PC/.jdks/jdk-23/bin`)
+- **Success Criteria**: Project compiles successfully with Java 23; no Java 23-specific compilation errors; Lombok, annotations, and code generation work correctly
+
+---
+
+### Step 5: Upgrade Spring Boot to 3.4.x (Intermediate Version)
+
+**Rationale**: Upgrade to Spring Boot 3.4.x as an intermediate step before 3.5.0. Spring Boot 3.4.x is more mature and provides a safer migration path. This step helps identify Spring Boot upgrade issues separately from the very recent 3.5.0 changes.
+
+**Prerequisites**:
+- Step 4 completed with successful Java 23 compilation
+- Using JDK 23
+
+**Changes to Make**:
+1. In `pom.xml`, update Spring Boot parent version:
+   - `<version>3.2.5</version>` → `<version>3.4.5</version>` (in `<parent>` section)
+2. Review and update any deprecated Spring Boot 3.4.x properties in `application.yml` if warnings appear
+3. Run `mvn clean compile -q` to download Spring Boot 3.4.x dependencies
+4. Check for compilation warnings related to deprecated Spring APIs
+
+**Verification**:
+- **Command**: `mvn clean compile -q`
+- **Expected Output**: BUILD SUCCESS, compilation passes
+- **JDK Used**: JDK 23 at `<installation_path>/bin`
+- **Success Criteria**: Project compiles with Spring Boot 3.4.x + Java 23; Spring Security, WebSocket, and JPA configurations remain compatible
+
+---
+
+### Step 6: Upgrade Spring Boot to 3.5.0 (Target Version)
+
+**Rationale**: Complete the Spring Boot upgrade to the target version 3.5.0. This brings in Spring Framework 6.2.x with latest features, security patches, and full Java 23 optimization. This is the final configuration change before validation.
+
+**Prerequisites**:
+- Step 5 completed with successful Spring Boot 3.4.x compilation
+- Using JDK 23
+
+**Changes to Make**:
+1. In `pom.xml`, update Spring Boot parent version:
+   - `<version>3.4.5</version>` → `<version>3.5.0</version>` (in `<parent>` section)
+2. Review application logs for any Spring Framework 6.2.x deprecation warnings
+3. If `RestTemplate` is used in codebase, assess migration to `RestClient` (can be deferred post-upgrade)
+4. Run `mvn clean compile -q`
+
+**Verification**:
+- **Command**: `mvn clean compile -q`
+- **Expected Output**: BUILD SUCCESS, compilation passes
+- **JDK Used**: JDK 23 at `<installation_path>/bin`
+- **Success Criteria**: Project compiles with Spring Boot 3.5.0 + Java 23; all Spring Boot starters compatible; no critical deprecation errors
+
+---
+
+### Step 7: Final Validation and Full Test Suite Execution
+
+**Rationale**: Execute complete validation with the final configuration (Java 23 + Spring Boot 3.5.0 + updated dependencies). All tests must pass to confirm the upgrade is successful and the application functions correctly.
+
+**Prerequisites**:
+- Step 6 completed successfully
+- All compilation passes with final configuration
+- Using JDK 23
+
+**Changes to Make**:
+1. Run full clean build: `mvn clean install -q`
+2. Execute complete test suite: `mvn test`
+3. Verify test results - target is 100% pass rate
+4. If test failures exist:
+   - Analyze failure root causes (JWT, AWS S3, Firebase, Spring Security, etc.)
+   - Fix issues related to dependency upgrades or Java 23 changes
+   - Re-run tests until 100% pass rate achieved
+5. Run application smoke tests: Start application and verify key endpoints
+
+**Verification**:
+- **Command**: `mvn clean test`
+- **Expected Output**: BUILD SUCCESS, Tests run: X, Failures: 0, Errors: 0
+- **JDK Used**: JDK 23 at `<installation_path>/bin`
+- **Success Criteria**: 
+  - 100% test pass rate (all unit and integration tests pass)
+  - Application starts successfully
+  - Key features validated: Authentication (JWT), File Upload (S3), WebSocket, Firebase notifications
+  - No runtime errors in core functionality
+
+---
+
+## 10. Post-Upgrade Success Criteria
+
+The upgrade will be considered successful when all of the following criteria are met:
 
 - [ ] Project compiles successfully with Java 23
-- [ ] All unit tests pass
-- [ ] All integration tests pass
-- [ ] No security vulnerabilities in dependencies
-- [ ] API functionality preserved
-- [ ] Performance metrics within acceptable range
-- [ ] Documentation updated
+- [ ] Spring Boot 3.5.0 application starts without errors
+- [ ] 100% of unit tests pass
+- [ ] 100% of integration tests pass
+- [ ] No HIGH or CRITICAL security vulnerabilities in dependencies
+- [ ] JWT authentication and authorization working correctly
+- [ ] AWS S3 file upload/download operations functional
+- [ ] Firebase push notifications delivered successfully
+- [ ] WebSocket real-time messaging operational
+- [ ] Excel report generation working correctly
+- [ ] API documentation (Swagger UI) accessible and accurate
+- [ ] Performance metrics within 10% of pre-upgrade baseline
 
 ---
 
-## 8. Rollback Plan
+## 11. Rollback Plan
 
-1. Revert to backup branch
-2. Restore Java 17 environment
-3. Restore original pom.xml
-4. Rebuild and redeploy
+In the event of critical issues during or after the upgrade, follow this rollback procedure:
+
+1. **Immediate Rollback**:
+   - Run: `git checkout main` (or previous stable branch)
+   - Set `JAVA_HOME` back to JDK 17: `C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot`
+   - Run: `mvn clean package -DskipTests -q`
+   - Redeploy previous version
+
+2. **Preserve Upgrade Work**:
+   - Before checkout: `git stash` or `git commit -m "WIP: Upgrade in progress"`
+   - Create backup branch: `git branch appmod/java-upgrade-20260302195225-backup`
+
+3. **Post-Rollback Validation**:
+   - Verify application starts with Java 17 + Spring Boot 3.2.5
+   - Run smoke tests on key features
+   - Monitor error logs for 1 hour
+
+4. **Rollback Documentation**:
+   - Document reason for rollback
+   - Note which step failed
+   - Capture error logs and stack traces for analysis
 
 ---
 
-## 9. Timeline
+## 12. Timeline Estimate
 
-- **Phase 1**: 1 hour
-- **Phase 2**: 2 hours
-- **Phase 3**: 4-8 hours
-- **Phase 4**: 4 hours
-- **Phase 5**: 2 hours
+Based on the 7-step upgrade plan:
 
-**Total Estimated Time**: 13-17 hours
+- **Step 1** (Environment Setup): 30 minutes
+- **Step 2** (Baseline Validation): 15 minutes  
+- **Step 3** (Dependency Updates): 30 minutes
+- **Step 4** (Java 23 Switch): 30 minutes
+- **Step 5** (Spring Boot 3.4.x): 30 minutes
+- **Step 6** (Spring Boot 3.5.0): 30 minutes
+- **Step 7** (Final Validation): 1-3 hours (depends on test fixes needed)
+
+**Total Estimated Time**: 3-5 hours (assuming minimal test failures)
+
+**Contingency Buffer**: +2-4 hours (for unexpected issues, test fixes, code adjustments)
+
+**Total with Buffer**: 5-9 hours
 
 ---
 
-## 10. Sign-off
+## 13. Sign-off
 
-- [ ] Plan reviewed by Development Team
-- [ ] Plan approved by Technical Lead
-- [ ] Stakeholders notified
+- [ ] Upgrade plan reviewed and approved
+- [ ] All tools and JDKs verified available
+- [ ] Backup/rollback procedures understood
 - [ ] Ready for execution
 
 ---
 
-*Document generated for Java Upgrade Session 20260302195225*
+**Upgrade Strategy Summary**:
+- **Approach**: Incremental with intermediate Spring Boot 3.4.x version
+- **Total Steps**: 7 (Setup → Baseline → Dependencies → Java 23 → SB 3.4.x → SB 3.5.0 → Validation)
+- **Risk Level**: Medium (mitigated by intermediate steps)
+- **Critical Dependencies**: AWS SDK 2.29.20 (required for Java 23)
+
+---
+
+*Document generated for Java Upgrade Session 20260302195225*  
+*Upgrade Path Designed: March 2, 2026*

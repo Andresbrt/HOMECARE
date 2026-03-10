@@ -47,7 +47,7 @@ public class GoogleMapsService {
         try {
             String modo = convertirModoTransporte(modoTransporte);
             
-            URI uri = UriComponentsBuilder.fromHttpUrl(DIRECTIONS_API_URL)
+            URI uri = UriComponentsBuilder.fromUriString(DIRECTIONS_API_URL)
                     .queryParam("origin", latOrigen + "," + lonOrigen)
                     .queryParam("destination", latDestino + "," + lonDestino)
                     .queryParam("mode", modo)
@@ -80,7 +80,7 @@ public class GoogleMapsService {
         try {
             String modo = convertirModoTransporte(modoTransporte);
             
-            URI uri = UriComponentsBuilder.fromHttpUrl(DISTANCE_MATRIX_API_URL)
+            URI uri = UriComponentsBuilder.fromUriString(DISTANCE_MATRIX_API_URL)
                     .queryParam("origins", latOrigen + "," + lonOrigen)
                     .queryParam("destinations", latDestino + "," + lonDestino)
                     .queryParam("mode", modo)
@@ -107,7 +107,7 @@ public class GoogleMapsService {
      */
     public Coordenadas geocodificarDireccion(String direccion) {
         try {
-            URI uri = UriComponentsBuilder.fromHttpUrl(GEOCODING_API_URL)
+            URI uri = UriComponentsBuilder.fromUriString(GEOCODING_API_URL)
                     .queryParam("address", direccion)
                     .queryParam("key", apiKey)
                     .queryParam("language", "es")
