@@ -51,11 +51,8 @@ spring:
           in_clause_parameter_padding: true
           warn_on_collection_fetch: true
         generate_statistics: false
-        cache:
-          use_second_level_cache: true
-          use_query_cache: true
-          region:
-            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        # JCache/Hibernate L2 cache eliminado — requeriría dependencia hibernate-jcache
+        # que no está en pom.xml. Spring Cache (Redis) cubre el mismo caso de uso.
 
   # Redis para cache y rate limiting
   # Railway Redis plugin expone: REDISHOST, REDISPORT, REDISPASSWORD
