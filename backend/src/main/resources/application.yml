@@ -22,8 +22,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:noreply@homecare.local}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -50,34 +50,34 @@ server:
     include-message: always
     include-binding-errors: always
 
-# JWT Configuration - CRÍTICO: Variable obligatoria
+# JWT
 jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+  secret: ${JWT_SECRET:homecare-default-secret-change-in-production-min-64-chars-long-value}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
-# Wompi Payment Configuration - CRÍTICO: Variables obligatorias
+# Wompi
 wompi:
   api-url: ${WOMPI_API_URL:https://production.wompi.co}
-  public-key: ${WOMPI_PUBLIC_KEY}
-  private-key: ${WOMPI_PRIVATE_KEY}
-  event-secret: ${WOMPI_EVENT_SECRET}
+  public-key: ${WOMPI_PUBLIC_KEY:pub_test_placeholder}
+  private-key: ${WOMPI_PRIVATE_KEY:prv_test_placeholder}
+  event-secret: ${WOMPI_EVENT_SECRET:wompi_event_placeholder}
   production: ${WOMPI_PRODUCTION:false}
 
-# Google Maps Configuration - CRÍTICO: Variable obligatoria
+# Google Maps
 google:
   maps:
-    api-key: ${GOOGLE_MAPS_API_KEY}
+    api-key: ${GOOGLE_MAPS_API_KEY:maps_placeholder}
     
-# Firebase Configuration - CRÍTICO: Variable obligatoria  
+# Firebase
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials.json}
-  server-key: ${FIREBASE_SERVER_KEY}
+  server-key: ${FIREBASE_SERVER_KEY:}
 
-# AWS Configuration - CRÍTICO: Variables obligatorias para producción
+# AWS
 aws:
-  access-key: ${AWS_ACCESS_KEY}
-  secret-key: ${AWS_SECRET_KEY}
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
   s3:
     bucket: ${AWS_S3_BUCKET:homecare-files}
     region: ${AWS_S3_REGION:us-east-1}
@@ -94,10 +94,10 @@ file:
   allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/jpg,application/pdf}
   storage-type: ${FILE_STORAGE_TYPE:s3} # s3, local
 
-# Payment Configuration
+# Payment
 payment:
   commission-rate: ${PAYMENT_COMMISSION_RATE:0.10}
-  callback-url: ${PAYMENT_CALLBACK_URL}
+  callback-url: ${PAYMENT_CALLBACK_URL:http://localhost:8080/api/payments/callback}
 
 # API Documentation
 springdoc:

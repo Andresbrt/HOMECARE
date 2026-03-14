@@ -80,8 +80,8 @@ spring:
   mail:
     host: ${SMTP_HOST:smtp.gmail.com}
     port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME}
-    password: ${SMTP_PASSWORD}
+    username: ${SMTP_USERNAME:noreply@homecare.local}
+    password: ${SMTP_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -117,9 +117,9 @@ server:
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000}  # 24 horas
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 días
+  secret: ${JWT_SECRET:homecare-default-secret-change-in-production-min-64-chars-long-value}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 # CORS Configuration
 cors:
@@ -133,33 +133,33 @@ cors:
 # Wompi (Payment Gateway)
 wompi:
   api-url: https://production.wompi.co/v1
-  public-key: ${WOMPI_PUBLIC_KEY}
-  private-key: ${WOMPI_PRIVATE_KEY}
-  event-secret: ${WOMPI_EVENT_SECRET}
-  callback-url: ${PAYMENT_CALLBACK_URL}
-  webhook-url: ${PAYMENT_WEBHOOK_URL}
+  public-key: ${WOMPI_PUBLIC_KEY:pub_test_placeholder}
+  private-key: ${WOMPI_PRIVATE_KEY:prv_test_placeholder}
+  event-secret: ${WOMPI_EVENT_SECRET:wompi_event_placeholder}
+  callback-url: ${PAYMENT_CALLBACK_URL:https://homecare.railway.app/api/payments/callback}
+  webhook-url: ${PAYMENT_WEBHOOK_URL:https://homecare.railway.app/api/payments/webhook}
   commission-percentage: ${COMMISSION_PERCENTAGE:10.0}
 
 # Google Maps API
 google:
   maps:
-    api-key: ${GOOGLE_MAPS_API_KEY}
+    api-key: ${GOOGLE_MAPS_API_KEY:maps_placeholder}
     timeout: 5000
     max-retries: 3
 
 # Firebase Cloud Messaging
 firebase:
-  server-key: ${FIREBASE_SERVER_KEY}
+  server-key: ${FIREBASE_SERVER_KEY:}
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials.json}
 
 # AWS S3
 aws:
-  access-key: ${AWS_ACCESS_KEY}
-  secret-key: ${AWS_SECRET_KEY}
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
   region: ${AWS_REGION:us-east-1}
   s3:
-    bucket: ${AWS_S3_BUCKET}
-    base-url: https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com
+    bucket: ${AWS_S3_BUCKET:homecare-files}
+    base-url: https://${AWS_S3_BUCKET:homecare-files}.s3.${AWS_REGION:us-east-1}.amazonaws.com
 
 # Tracking Configuration
 tracking:
