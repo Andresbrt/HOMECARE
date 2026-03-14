@@ -40,8 +40,9 @@ USER homecare
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
-    CMD curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"' || exit 1
+# PORT es la variable que Railway inyecta con el puerto dinámico (default 8080)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -sf http://localhost:${PORT:-8080}/actuator/health | grep -q '"status":"UP"' || exit 1
 
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
