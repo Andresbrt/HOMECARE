@@ -181,7 +181,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: health,info,prometheus,liveness,readiness
       base-path: /actuator
   
   endpoint:
