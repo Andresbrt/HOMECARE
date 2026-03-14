@@ -107,22 +107,13 @@ public class EnvironmentValidator implements ApplicationListener<ApplicationRead
             warnings.add("⚠️ Base de datos usando password por defecto en producción - CAMBIAR URGENTE");
         }
 
-        // ❌ FALLAR si hay variables críticas faltantes
+        // ⚠️ ADVERTIR sobre variables faltantes pero NO detener la app
+        // Cada servicio (pagos, maps, firebase) falla en su propio endpoint, no en el arranque
         if (!missingVariables.isEmpty()) {
-            log.error("❌ ERROR CRÍTICO: Variables de entorno obligatorias faltantes:");
-            missingVariables.forEach(var -> log.error("   - {}", var));
-            log.error("");
-            log.error("🚨 La aplicación NO puede arrancar sin estas variables");
-            log.error("📋 Ejemplo de configuración:");
-            log.error("   export JWT_SECRET=\"your_super_secret_key_min_32_chars\"");
-            log.error("   export GOOGLE_MAPS_API_KEY=\"AIzaSy...\"");
-            log.error("   export FIREBASE_SERVER_KEY=\"AAAA...\"");
-            log.error("   export WOMPI_PUBLIC_KEY=\"pub_test_...\"");
-            log.error("   export WOMPI_PRIVATE_KEY=\"prv_test_...\"");
-            log.error("   export WOMPI_EVENT_SECRET=\"test_...\"");
-            log.error("   export PAYMENT_CALLBACK_URL=\"https://your-domain.com\"");
-            
-            throw new IllegalStateException("❌ Variables críticas faltantes. Ver logs para detalles.");
+            log.warn("⚠️ ADVERTENCIA: Variables de entorno recomendadas no configuradas:");
+            missingVariables.forEach(var -> log.warn("   - {}", var));
+            log.warn("La app arrancó pero los endpoints que dependen de estas variables fallarán.");
+            log.warn("Configura estas variables en Railway → Variables para activar todas las funciones.");
         }
 
         // ⚠️ Mostrar warnings pero continuar
