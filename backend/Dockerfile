@@ -7,6 +7,10 @@
 FROM maven:3.9-eclipse-temurin-23 AS builder
 WORKDIR /build
 
+# BUILD_DATE invalida el cache de Railway en cada deploy forzado
+ARG BUILD_DATE=unknown
+RUN echo "Build date: $BUILD_DATE"
+
 # Copy POM first — dependency layer cached separately
 # Build context = repo root (set by root-level railway.json)
 COPY backend/pom.xml .
@@ -48,4 +52,7 @@ ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
     "-XX:MaxRAMPercentage=75.0", \
     "-Djava.security.egd=file:/dev/./urandom", \
+    "-Dlogging.level.org.springframework=INFO", \
+    "-Dlogging.level.com.homecare=DEBUG", \
+    "-Dspring.jpa.show-sql=false", \
     "-jar", "homecare.jar"]

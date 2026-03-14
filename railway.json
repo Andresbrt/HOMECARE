@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "backend/Dockerfile",
     "dockerBuildArgs": {
-      "BUILD_DATE": "20260313"
+      "BUILD_DATE": "20260313-2340"
     }
   },
   "deploy": {
