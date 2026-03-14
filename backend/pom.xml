@@ -19,7 +19,7 @@
     <description>Plataforma de servicios de limpieza - Modelo inDriver</description>
     
     <properties>
-        <java.version>23</java.version>
+        <java.version>21</java.version>
         <jwt.version>0.12.6</jwt.version>
         <springdoc.version>2.6.0</springdoc.version>
     </properties>
@@ -163,11 +163,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 for integration tests -->
+        <!-- H2 for integration tests and local development -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
     
@@ -178,9 +178,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>23</source>
-                    <target>23</target>
-                    <release>23</release>
+                    <source>21</source>
+                    <target>21</target>
+                    <release>21</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
