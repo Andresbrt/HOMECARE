@@ -5,9 +5,11 @@ spring:
     import: optional:file:.env[.properties]
   
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/homecare_db}
-    username: ${DATABASE_USERNAME:homecare_user}
-    password: ${DATABASE_PASSWORD:homecare_pass}
+    # Railway injects PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD.
+    # SPRING_DATASOURCE_URL overrides everything (set it as a full jdbc: URL if needed).
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:${DATABASE_HOST:localhost}}:${PGPORT:${DATABASE_PORT:5432}}/${PGDATABASE:${DATABASE_NAME:homecare_db}}}
+    username: ${PGUSER:${DATABASE_USERNAME:homecare_user}}
+    password: ${PGPASSWORD:${DATABASE_PASSWORD:homecare_pass}}
     driver-class-name: org.postgresql.Driver
     
   jpa:
@@ -39,9 +41,10 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      # Railway injects REDISHOST/REDISPORT/REDISPASSWORD
+      host: ${REDISHOST:${REDIS_HOST:localhost}}
+      port: ${REDISPORT:${REDIS_PORT:6379}}
+      password: ${REDISPASSWORD:${REDIS_PASSWORD:}}
       timeout: ${REDIS_TIMEOUT:2s}
 
 server:

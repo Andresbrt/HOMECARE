@@ -20,6 +20,10 @@ RUN mvn package -DskipTests -B -q
 FROM eclipse-temurin:23-jre-noble AS runtime
 WORKDIR /app
 
+# Force production profile — Railway sets PORT and PG* env vars that only
+# application-production.yml knows how to read.
+ENV SPRING_PROFILES_ACTIVE=production
+
 # curl needed for HEALTHCHECK; clean apt cache after
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \

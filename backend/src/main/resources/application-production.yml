@@ -209,7 +209,8 @@ management:
     db:
       enabled: true
     redis:
-      enabled: true
+      # Redis DOWN no bloquea el healthcheck de Railway (liveness)
+      enabled: false
     diskspace:
       enabled: true
       threshold: 10GB
