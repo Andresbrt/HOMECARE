@@ -118,6 +118,32 @@ server:
 jwt:
   secret: ${JWT_SECRET:homecare-default-secret-change-in-production-min-64-chars-long-value}
   expiration: ${JWT_EXPIRATION:86400000}
+
+# ============================================================
+# Spring Boot Actuator - Healthcheck para Railway
+# ============================================================
+management:
+  server:
+    port: ${PORT:${SERVER_PORT:8080}}
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: false   # no falla si la DB no está lista en el healthcheck inicial
+    redis:
+      enabled: false   # igual para Redis
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 # CORS Configuration

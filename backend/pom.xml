@@ -100,6 +100,12 @@
             <version>${springdoc.version}</version>
         </dependency>
         
+        <!-- Spring Boot Actuator - expone /actuator/health para Railway healthcheck -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- AWS SDK S3 -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>

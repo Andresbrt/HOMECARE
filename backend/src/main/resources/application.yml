@@ -48,7 +48,7 @@ spring:
       timeout: ${REDIS_TIMEOUT:2s}
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:${SERVER_PORT:8080}}
   error:
     include-message: always
     include-binding-errors: always
