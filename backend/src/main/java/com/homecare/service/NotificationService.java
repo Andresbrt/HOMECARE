@@ -20,8 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +40,8 @@ public class NotificationService {
     @Value("${firebase.credentials-path}")
     private String firebaseCredentialsPath;
 
+    private volatile boolean firebaseDisponible = false;
+
     public NotificationService(DispositivoFCMRepository dispositivoRepository,
                                NotificacionRepository notificacionRepository,
                                UsuarioRepository usuarioRepository) {
@@ -48,19 +53,49 @@ public class NotificationService {
     @PostConstruct
     public void initialize() {
         try {
-            if (FirebaseApp.getApps().isEmpty()) {
-                FileInputStream serviceAccount = new FileInputStream(firebaseCredentialsPath);
+            if (!FirebaseApp.getApps().isEmpty()) {
+                firebaseDisponible = true;
+                return;
+            }
 
+            try (InputStream serviceAccount = obtenerCredencialesFirebase()) {
                 FirebaseOptions options = FirebaseOptions.builder()
                         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                         .build();
 
                 FirebaseApp.initializeApp(options);
+                firebaseDisponible = true;
                 log.info("Firebase inicializado correctamente");
             }
-        } catch (IOException e) {
-            log.error("Error al inicializar Firebase: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            firebaseDisponible = false;
+            log.warn("Firebase deshabilitado para este entorno: {}", e.getMessage());
         }
+    }
+
+    private InputStream obtenerCredencialesFirebase() throws IOException {
+        // Priority 1: JSON content directly from environment variable
+        String jsonContent = System.getenv("FIREBASE_CREDENTIALS_JSON");
+        if (jsonContent != null && !jsonContent.isBlank()) {
+            log.info("Firebase credentials loaded from FIREBASE_CREDENTIALS_JSON env var");
+            return new ByteArrayInputStream(jsonContent.getBytes(StandardCharsets.UTF_8));
+        }
+
+        // Priority 2: File path from config (filesystem or classpath)
+        if (firebaseCredentialsPath == null || firebaseCredentialsPath.isBlank()) {
+            throw new IOException("No Firebase credentials: set FIREBASE_CREDENTIALS_JSON or firebase.credentials-path");
+        }
+
+        if (firebaseCredentialsPath.startsWith("classpath:")) {
+            String recurso = firebaseCredentialsPath.substring("classpath:".length());
+            InputStream in = NotificationService.class.getClassLoader().getResourceAsStream(recurso);
+            if (in == null) {
+                throw new IOException("No se encontro recurso en classpath: " + recurso);
+            }
+            return in;
+        }
+
+        return new FileInputStream(firebaseCredentialsPath);
     }
 
     @Transactional
@@ -104,6 +139,11 @@ public class NotificationService {
     public void enviarNotificacion(Long usuarioId, String titulo, String cuerpo,
                                     Map<String, String> data, String imageUrl) {
         try {
+            if (!firebaseDisponible) {
+                log.warn("Firebase no disponible; se omite envio push para usuario {}", usuarioId);
+                guardarNotificacionBD(usuarioId, titulo, cuerpo, data);
+                return;
+            }
             List<DispositivoFCM> dispositivos = dispositivoRepository.findByUsuarioIdAndActivoTrue(usuarioId);
 
             if (dispositivos.isEmpty()) {
@@ -137,6 +177,10 @@ public class NotificationService {
                                                                  Map<String, String> data,
                                                                  String imageUrl, String rol) {
         try {
+            if (!firebaseDisponible) {
+                log.warn("Firebase no disponible; se omite envio broadcast push");
+                return new NotificationDTO.Response(false, "Firebase no disponible", 0, 0);
+            }
             List<DispositivoFCM> dispositivos;
 
             if ("ALL".equals(rol)) {

@@ -98,6 +98,18 @@ build/
 
 # Database
 *.db
+
+# Environment files — NUNCA commitear secretos
+.env
+.env.local
+.env.production
+
+# Firebase credentials — CRÍTICO: nunca en el repo
+firebase-credentials.json
+firebase-adminsdk*.json
+*-adminsdk-*.json
+google-services.json
+GoogleService-Info.plist
 *.sqlite
 
 # Environment variables

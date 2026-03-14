@@ -180,7 +180,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics
+        include: health,prometheus
       base-path: /actuator
   
   endpoint:
@@ -198,6 +198,12 @@ management:
         http.server.requests: true
     tags:
       application: ${spring.application.name}
+
+# Async thread pool (producción: más threads)
+async:
+  core-pool-size: ${ASYNC_CORE_POOL:8}
+  max-pool-size: ${ASYNC_MAX_POOL:16}
+  queue-capacity: ${ASYNC_QUEUE_CAPACITY:200}
       environment: production
   
   health:

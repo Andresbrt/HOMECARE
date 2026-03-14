@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +33,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     @SuppressWarnings("unused")
     private final NotificationService notificationService;
+    private final FirebaseTokenService firebaseTokenService;
 
     @Transactional
     public AuthDTO.LoginResponse registro(AuthDTO.Registro request) {
@@ -234,6 +236,90 @@ public class AuthService {
                 usuario.getActivo(),
                 usuario.getVerificado(),
                 usuario.getDisponible()
+        );
+    }
+
+    /**
+     * Login o registro usando un Firebase ID Token.
+     *
+     * <p>Si el usuario no existe en PostgreSQL lo crea automáticamente con los datos
+     * del token de Firebase y los datos adicionales enviados desde el cliente.</p>
+     */
+    @Transactional
+    public AuthDTO.LoginResponse loginWithFirebase(AuthDTO.FirebaseLogin request) {
+        // 1. Verificar el Firebase ID Token
+        var firebaseToken = firebaseTokenService.verifyIdToken(request.getFirebaseToken());
+        String email = firebaseToken.getEmail();
+        String firebaseUid = firebaseToken.getUid();
+
+        // 2. Buscar o crear el usuario en PostgreSQL
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
+        Usuario usuario;
+
+        if (usuarioOpt.isPresent()) {
+            usuario = usuarioOpt.get();
+            if (!usuario.getActivo()) {
+                throw new AuthException("La cuenta está inactiva. Contacta a soporte.");
+            }
+            usuario.setUltimoAcceso(LocalDateTime.now());
+            usuario = usuarioRepository.save(usuario);
+            log.info("Firebase login existente: {} (uid={})", email, firebaseUid);
+        } else {
+            // Primera vez: crear usuario con datos del token + datos enviados por el cliente
+            usuario = new Usuario();
+            usuario.setEmail(email);
+            // Contraseña aleatoria — el usuario se autentica vía Firebase, no contraseña directa
+            usuario.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+
+            // Nombre: primero del request, luego del displayName de Firebase
+            String displayName = firebaseToken.getName();
+            String nombre = (request.getNombre() != null && !request.getNombre().isBlank())
+                    ? request.getNombre()
+                    : (displayName != null ? displayName.split(" ")[0] : "Usuario");
+            String apellido = (request.getApellido() != null && !request.getApellido().isBlank())
+                    ? request.getApellido()
+                    : (displayName != null && displayName.contains(" ")
+                        ? displayName.substring(displayName.indexOf(' ') + 1) : "");
+
+            usuario.setNombre(nombre);
+            usuario.setApellido(apellido);
+            usuario.setTelefono(request.getTelefono());
+            usuario.setActivo(true);
+
+            String rolNombre = "ROLE_" + (request.getRol() != null && !request.getRol().isBlank()
+                    ? request.getRol().toUpperCase() : "CUSTOMER");
+            Rol rol = rolRepository.findByNombre(rolNombre)
+                    .orElseThrow(() -> new AuthException("Rol no encontrado: " + rolNombre));
+
+            Set<Rol> roles = new HashSet<>();
+            roles.add(rol);
+            usuario.setRoles(roles);
+
+            if ("ROLE_SERVICE_PROVIDER".equals(rolNombre)) {
+                usuario.setDisponible(false);
+                usuario.setCalificacionPromedio(BigDecimal.ZERO);
+            }
+
+            usuario = usuarioRepository.save(usuario);
+            log.info("Usuario creado vía Firebase Auth: {} (uid={}, rol={})", email, firebaseUid, rolNombre);
+        }
+
+        // 3. Generar JWT del sistema
+        CustomUserDetails userDetails = new CustomUserDetails(usuario);
+        String accessToken = jwtTokenProvider.generateToken(userDetails);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+        return new AuthDTO.LoginResponse(
+                accessToken,
+                refreshToken,
+                "Bearer",
+                usuario.getId(),
+                usuario.getEmail(),
+                usuario.getNombre(),
+                usuario.getApellido(),
+                usuario.getFotoPerfil(),
+                usuario.getRoles().iterator().next().getNombre(),
+                jwtTokenProvider.getJwtExpirationMs() / 1000
         );
     }
 }

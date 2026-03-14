@@ -60,7 +60,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/prometheus").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         
                         // Endpoints de cliente
                         .requestMatchers(HttpMethod.POST, "/api/solicitudes").hasRole("CUSTOMER")
@@ -89,7 +91,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:19006", "*"));
+        // Note: allowCredentials(true) is incompatible with the wildcard "*" origin.
+        // List explicit allowed origins instead.
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://localhost:19006",
+                "http://localhost:19000",
+                "http://localhost:8081"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));

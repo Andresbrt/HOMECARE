@@ -1,435 +1,235 @@
-# Chat en Tiempo Real - Documentación
+# Real-Time Contract (WebSocket) - Chat + Tracking
 
-## 📱 Funcionalidades Implementadas
+This document is the source of truth for frontend integration over STOMP/WebSocket.
+It is based on the current backend implementation in:
 
-### ✅ Chat en Tiempo Real entre Proveedor y Usuario
-- Mensajes instantáneos bidireccionales
-- Soporte para texto, imágenes y archivos
-- Indicadores de "escribiendo..."
-- Notificaciones push de nuevos mensajes
-- Estado de leído/no leído
-- Historial completo de conversaciones
+- `backend/src/main/java/com/homecare/config/WebSocketConfig.java`
+- `backend/src/main/java/com/homecare/controller/MensajeController.java`
+- `backend/src/main/java/com/homecare/controller/UbicacionController.java`
+- `backend/src/main/java/com/homecare/controller/TrackingWebSocketController.java`
+- `backend/src/main/java/com/homecare/service/MensajeService.java`
+- `backend/src/main/java/com/homecare/service/UbicacionService.java`
 
----
+## 1) Connection and auth
 
-## 🔌 Endpoints REST API
+- STOMP endpoint (native WS): `ws://<host>:<port>/ws`
+- STOMP endpoint (SockJS): `http://<host>:<port>/ws`
+- App destination prefix: `/app`
+- Broker prefixes: `/topic`, `/queue`
+- User prefix: `/user`
 
-### 1. **Enviar Mensaje**
-```http
-POST /api/mensajes
-Authorization: Bearer {token}
-Content-Type: application/json
+Required CONNECT header:
 
+```text
+Authorization: Bearer <jwt>
+```
+
+## 2) Canonical events for frontend
+
+Use this set as the default contract for mobile/web clients.
+
+### Inbound events (client -> server)
+
+| Destination | Purpose | Payload type |
+|---|---|---|
+| `/app/chat/send` | Send chat message | `MensajeDTO.WebSocketMessage` |
+| `/app/chat/{solicitudId}/typing` | Typing indicator | Empty body |
+| `/app/chat/{solicitudId}/read` | Mark conversation as read | Empty body |
+| `/app/tracking/actualizar` | Send provider location update | `UbicacionDTO.ActualizarUbicacion` |
+
+### Outbound events (server -> client)
+
+| Destination | Purpose | Payload type |
+|---|---|---|
+| `/topic/typing/{solicitudId}` | Typing indicator stream | `MensajeDTO.TypingIndicator` |
+| `/topic/tracking/{solicitudId}` | Live location stream | `UbicacionDTO.UbicacionWebSocket` |
+| `/topic/tracking/{solicitudId}/alertas` | Proximity alerts | `UbicacionDTO.AlertaProximidad` |
+| `/user/queue/tracking` | Direct location updates for customer | `UbicacionDTO.UbicacionWebSocket` |
+| `/user/topic/chat/{solicitudId}` | Direct chat delivery (current service behavior) | `MensajeDTO.Response` |
+
+Important note for chat reception:
+
+- Chat messages are emitted with `convertAndSendToUser(..., "/topic/chat/{solicitudId}", ...)`.
+- Because of user destinations, frontend should subscribe to `/user/topic/chat/{solicitudId}`.
+- If your STOMP client library auto-resolves user prefixes differently, keep a fallback subscription strategy during migration.
+
+## 3) Legacy compatibility events (still present)
+
+There is a secondary/legacy controller with additional routes. Keep them only if your current frontend depends on them.
+
+### Inbound legacy
+
+| Destination | Purpose | Payload type |
+|---|---|---|
+| `/app/tracking/update/{solicitudId}` | Legacy tracking update | `TrackingDTO.UbicacionUpdate` |
+| `/app/chat/send/{servicioId}` | Legacy chat send | `TrackingDTO.ChatMessage` |
+| `/app/service/status/{servicioId}` | Service status update | `TrackingDTO.EstadoUpdate` |
+| `/app/tracking/subscribe/{solicitudId}` | Subscription ack message | Empty body |
+| `/app/tracking/unsubscribe/{solicitudId}` | Unsubscribe marker | Empty body |
+
+### Outbound legacy
+
+| Destination | Purpose | Payload type |
+|---|---|---|
+| `/topic/tracking/{solicitudId}/location` | Legacy tracking stream | `TrackingDTO.UbicacionResponse` |
+| `/topic/tracking/{solicitudId}/error` | Tracking errors | `String` |
+| `/user/queue/tracking/location` | User direct tracking | `TrackingDTO.UbicacionResponse` |
+| `/topic/chat/{servicioId}` | Legacy chat stream | `TrackingDTO.ChatMessage` |
+| `/user/queue/chat/error` | Chat send error | `String` |
+| `/topic/service/{servicioId}/status` | Service status stream | `TrackingDTO.ServicioStatus` |
+| `/topic/service/{servicioId}/error` | Service status errors | `String` |
+| `/user/queue/service/status` | Direct service status | `TrackingDTO.ServicioStatus` |
+| `/topic/tracking/{solicitudId}/subscribed` | Subscription acknowledgement | `String` |
+
+## 4) Payload contracts
+
+### 4.1 Send chat (`/app/chat/send`)
+
+```json
 {
-  "solicitudId": 1,
-  "destinatarioId": 2,
-  "contenido": "Hola, ¿a qué hora puedes venir?",
+  "solicitudId": 101,
+  "destinatarioId": 22,
+  "contenido": "Voy en camino",
   "tipo": "TEXTO",
   "archivoUrl": null
 }
 ```
 
-**Response:**
+`tipo` allowed values (business level): `TEXTO`, `IMAGEN`, `ARCHIVO`.
+
+### 4.2 Typing (`/app/chat/{solicitudId}/typing`)
+
+Body is optional/empty.
+
+Typing stream payload (`/topic/typing/{solicitudId}`):
+
 ```json
 {
-  "id": 1,
-  "solicitudId": 1,
-  "remitenteId": 1,
-  "remitenteNombre": "Juan Pérez",
-  "remitenteFoto": "https://...",
-  "destinatarioId": 2,
-  "destinatarioNombre": "María García",
-  "destinatarioFoto": "https://...",
-  "contenido": "Hola, ¿a qué hora puedes venir?",
-  "tipo": "TEXTO",
-  "archivoUrl": null,
-  "leido": false,
-  "leidoAt": null,
-  "createdAt": "2026-01-16T10:30:00"
-}
-```
-
-### 2. **Obtener Mensajes de una Solicitud**
-```http
-GET /api/mensajes/solicitud/{solicitudId}
-Authorization: Bearer {token}
-```
-
-### 3. **Obtener Lista de Conversaciones**
-```http
-GET /api/mensajes/conversaciones
-Authorization: Bearer {token}
-```
-
-**Response:**
-```json
-[
-  {
-    "solicitudId": 1,
-    "tituloSolicitud": "Limpieza profunda",
-    "interlocutorId": 2,
-    "interlocutorNombre": "María García",
-    "interlocutorFoto": "https://...",
-    "ultimoMensaje": "Perfecto, nos vemos mañana",
-    "ultimoMensajeFecha": "2026-01-16T14:20:00",
-    "mensajesNoLeidos": 2,
-    "usuarioEscribiendo": false
-  }
-]
-```
-
-### 4. **Marcar Mensaje como Leído**
-```http
-PUT /api/mensajes/{mensajeId}/leer
-Authorization: Bearer {token}
-```
-
-### 5. **Marcar Todos como Leídos**
-```http
-PUT /api/mensajes/solicitud/{solicitudId}/leer-todos
-Authorization: Bearer {token}
-```
-
-### 6. **Contar Mensajes No Leídos**
-```http
-GET /api/mensajes/no-leidos
-Authorization: Bearer {token}
-```
-
-**Response:**
-```json
-5
-```
-
-### 7. **Contar No Leídos por Solicitud**
-```http
-GET /api/mensajes/solicitud/{solicitudId}/no-leidos
-Authorization: Bearer {token}
-```
-
----
-
-## 🔌 WebSocket API
-
-### Conexión WebSocket
-
-**Endpoint:** `ws://localhost:8080/ws`
-
-**Con SockJS:** `http://localhost:8080/ws`
-
-### Autenticación
-
-Incluir token JWT en el header de conexión:
-```javascript
-const headers = {
-  Authorization: `Bearer ${token}`
-};
-```
-
-### Canales de Comunicación
-
-#### 1. **Enviar Mensaje**
-```javascript
-// Cliente envía a:
-/app/chat/send
-
-// Payload:
-{
-  "solicitudId": 1,
-  "destinatarioId": 2,
-  "contenido": "Hola",
-  "tipo": "TEXTO",
-  "archivoUrl": null
-}
-```
-
-#### 2. **Recibir Mensajes**
-```javascript
-// Cliente se suscribe a:
-/topic/chat/{solicitudId}
-
-// Servidor envía:
-{
-  "id": 1,
-  "solicitudId": 1,
-  "remitenteId": 2,
-  "remitenteNombre": "María García",
-  "contenido": "Hola, ¿cómo estás?",
-  "tipo": "TEXTO",
-  "leido": false,
-  "createdAt": "2026-01-16T10:30:00"
-}
-```
-
-#### 3. **Indicador de Escribiendo**
-```javascript
-// Cliente envía a:
-/app/chat/{solicitudId}/typing
-
-// Cliente se suscribe a:
-/topic/typing/{solicitudId}
-
-// Servidor envía:
-{
-  "solicitudId": 1,
-  "usuarioId": 2,
-  "usuarioNombre": "María García",
+  "solicitudId": 101,
+  "usuarioId": 22,
+  "usuarioNombre": "Carlos",
   "escribiendo": true
 }
 ```
 
-#### 4. **Marcar como Leído por WebSocket**
-```javascript
-// Cliente envía a:
-/app/chat/{solicitudId}/read
+### 4.3 Mark read (`/app/chat/{solicitudId}/read`)
+
+Body is optional/empty.
+
+### 4.4 Tracking update (`/app/tracking/actualizar`)
+
+```json
+{
+  "solicitudId": 101,
+  "latitud": 4.6097,
+  "longitud": -74.0817,
+  "precisionMetros": 8.5,
+  "velocidadKmh": 22.4,
+  "rumboGrados": 130.0,
+  "tipoTransporte": "moto",
+  "bateriaDispositivo": 86,
+  "enSegundoPlano": false
+}
 ```
 
----
+Tracking stream payload (`/topic/tracking/{solicitudId}`):
 
-## 📱 Implementación en el Cliente
+```json
+{
+  "solicitudId": 101,
+  "proveedorId": 22,
+  "proveedorNombre": "Carlos Perez",
+  "latitud": 4.6097,
+  "longitud": -74.0817,
+  "velocidadKmh": 22.4,
+  "rumboGrados": 130.0,
+  "distanciaRestanteMetros": 780.0,
+  "etaMinutos": 4,
+  "estado": "EN_RUTA",
+  "timestamp": "2026-03-11T14:05:12",
+  "alertaCerca": false
+}
+```
 
-### JavaScript/TypeScript (React Native / Web)
+Alert stream payload (`/topic/tracking/{solicitudId}/alertas`):
 
-```typescript
+```json
+{
+  "solicitudId": 101,
+  "proveedorId": 22,
+  "proveedorNombre": "Carlos Perez",
+  "proveedorTelefono": "+57...",
+  "distanciaMetros": 420.0,
+  "etaMinutos": 2,
+  "mensaje": "Carlos Perez esta a menos de 500 metros",
+  "tipoAlerta": "CERCA_500M",
+  "timestamp": "2026-03-11T14:06:10"
+}
+```
+
+## 5) Subscribe strategy recommended for frontend
+
+Subscribe immediately after successful STOMP CONNECT:
+
+- `/topic/typing/{solicitudId}`
+- `/topic/tracking/{solicitudId}`
+- `/topic/tracking/{solicitudId}/alertas`
+- `/user/queue/tracking`
+- `/user/topic/chat/{solicitudId}`
+
+Optional compatibility subscriptions (only if needed):
+
+- `/topic/chat/{servicioId}`
+- `/topic/tracking/{solicitudId}/location`
+- `/user/queue/tracking/location`
+- `/topic/service/{servicioId}/status`
+
+## 6) Operational rules to avoid frontend breakage
+
+- Always send `Authorization: Bearer <jwt>` in STOMP CONNECT headers.
+- Reconnect with backoff (1s, 2s, 5s, 10s).
+- Re-subscribe after reconnect; subscriptions are not persisted.
+- Keep `solicitudId` and `servicioId` explicit in client state; do not mix them.
+- For chat, prefer the canonical route `/app/chat/send` + `/user/topic/chat/{solicitudId}`.
+- Use REST fallback for initial hydration:
+  - `GET /api/mensajes/solicitud/{solicitudId}`
+  - `GET /api/tracking/solicitud/{solicitudId}/ultima` (requires `proveedorId`)
+
+## 7) Minimal STOMP example
+
+```javascript
 import SockJS from 'sockjs-client';
-import { Stomp } from '@stomp/stompjs';
+import { Client } from '@stomp/stompjs';
 
-class ChatService {
-  private stompClient: any;
-  private token: string;
+const socketFactory = () => new SockJS('http://localhost:8082/ws');
 
-  connect(token: string) {
-    this.token = token;
-    const socket = new SockJS('http://localhost:8080/ws');
-    this.stompClient = Stomp.over(socket);
+const client = new Client({
+  webSocketFactory: socketFactory,
+  connectHeaders: { Authorization: `Bearer ${token}` },
+  reconnectDelay: 2000,
+});
 
-    const headers = {
-      Authorization: `Bearer ${token}`
-    };
+client.onConnect = () => {
+  client.subscribe(`/user/topic/chat/${solicitudId}`, onChatMessage);
+  client.subscribe(`/topic/typing/${solicitudId}`, onTyping);
+  client.subscribe(`/topic/tracking/${solicitudId}`, onTracking);
+  client.subscribe(`/topic/tracking/${solicitudId}/alertas`, onAlert);
 
-    this.stompClient.connect(headers, () => {
-      console.log('WebSocket conectado');
-    });
-  }
-
-  subscribeToChatMessages(solicitudId: number, callback: (message: any) => void) {
-    return this.stompClient.subscribe(
-      `/topic/chat/${solicitudId}`,
-      (message: any) => {
-        callback(JSON.parse(message.body));
-      }
-    );
-  }
-
-  subscribeToTypingIndicator(solicitudId: number, callback: (data: any) => void) {
-    return this.stompClient.subscribe(
-      `/topic/typing/${solicitudId}`,
-      (message: any) => {
-        callback(JSON.parse(message.body));
-      }
-    );
-  }
-
-  sendMessage(solicitudId: number, destinatarioId: number, contenido: string) {
-    const message = {
+  client.publish({
+    destination: '/app/chat/send',
+    body: JSON.stringify({
       solicitudId,
       destinatarioId,
-      contenido,
+      contenido: 'Hola',
       tipo: 'TEXTO',
-      archivoUrl: null
-    };
+    }),
+  });
+};
 
-    this.stompClient.send('/app/chat/send', {}, JSON.stringify(message));
-  }
-
-  sendTypingIndicator(solicitudId: number) {
-    this.stompClient.send(`/app/chat/${solicitudId}/typing`, {}, '');
-  }
-
-  markAsRead(solicitudId: number) {
-    this.stompClient.send(`/app/chat/${solicitudId}/read`, {}, '');
-  }
-
-  disconnect() {
-    if (this.stompClient) {
-      this.stompClient.disconnect();
-    }
-  }
-}
-
-export default new ChatService();
+client.activate();
 ```
 
-### Uso en Componente React
+## 8) Versioning note
 
-```typescript
-import React, { useEffect, useState } from 'react';
-import ChatService from './ChatService';
-
-function ChatComponent({ solicitudId, token }) {
-  const [mensajes, setMensajes] = useState([]);
-  const [escribiendo, setEscribiendo] = useState(false);
-
-  useEffect(() => {
-    // Conectar WebSocket
-    ChatService.connect(token);
-
-    // Suscribirse a mensajes
-    const subscription = ChatService.subscribeToChatMessages(
-      solicitudId,
-      (mensaje) => {
-        setMensajes(prev => [...prev, mensaje]);
-      }
-    );
-
-    // Suscribirse a indicador de escribiendo
-    const typingSubscription = ChatService.subscribeToTypingIndicator(
-      solicitudId,
-      (data) => {
-        setEscribiendo(data.escribiendo);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-      typingSubscription.unsubscribe();
-      ChatService.disconnect();
-    };
-  }, [solicitudId, token]);
-
-  const enviarMensaje = (contenido: string) => {
-    ChatService.sendMessage(solicitudId, destinatarioId, contenido);
-  };
-
-  const handleTyping = () => {
-    ChatService.sendTypingIndicator(solicitudId);
-  };
-
-  return (
-    <div>
-      {/* UI del chat */}
-      {escribiendo && <p>El usuario está escribiendo...</p>}
-      <input onChange={handleTyping} />
-      <button onClick={() => enviarMensaje('Hola')}>Enviar</button>
-    </div>
-  );
-}
-```
-
----
-
-## 🔐 Seguridad
-
-- ✅ Autenticación JWT en WebSocket
-- ✅ Validación de permisos por solicitud
-- ✅ Solo participantes pueden ver mensajes
-- ✅ Headers CORS configurados
-
----
-
-## 📊 Base de Datos
-
-### Tabla `mensajes`
-
-```sql
-CREATE TABLE mensajes (
-    id BIGSERIAL PRIMARY KEY,
-    solicitud_id BIGINT NOT NULL,
-    remitente_id BIGINT NOT NULL,
-    destinatario_id BIGINT NOT NULL,
-    contenido TEXT NOT NULL,
-    tipo VARCHAR(20) DEFAULT 'TEXTO',
-    archivo_url VARCHAR(500),
-    leido BOOLEAN DEFAULT FALSE,
-    leido_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id),
-    FOREIGN KEY (remitente_id) REFERENCES usuarios(id),
-    FOREIGN KEY (destinatario_id) REFERENCES usuarios(id)
-);
-
-CREATE INDEX idx_mensajes_solicitud ON mensajes(solicitud_id);
-CREATE INDEX idx_mensajes_destinatario ON mensajes(destinatario_id, leido);
-```
-
----
-
-## 🚀 Características Destacadas
-
-✅ **Mensajes en Tiempo Real** - Entrega instantánea vía WebSocket  
-✅ **Indicadores de Escritura** - Saber cuando el otro usuario está escribiendo  
-✅ **Estado de Lectura** - Confirmación de mensajes leídos  
-✅ **Lista de Conversaciones** - Vista general de todos los chats  
-✅ **Notificaciones Push** - Alertas con Firebase cuando llega un mensaje  
-✅ **Soporte Multimedia** - Texto, imágenes y archivos  
-✅ **Historial Persistente** - Todos los mensajes se guardan en BD  
-✅ **Autenticación Segura** - JWT en REST y WebSocket  
-
----
-
-## 🧪 Testing
-
-### Probar con Postman
-
-1. **Conectar WebSocket:**
-   - Usar extensión WebSocket de Postman
-   - URL: `ws://localhost:8080/ws`
-   - Agregar header: `Authorization: Bearer {token}`
-
-2. **Enviar Mensaje:**
-   ```json
-   {
-     "destination": "/app/chat/send",
-     "body": {
-       "solicitudId": 1,
-       "destinatarioId": 2,
-       "contenido": "Test",
-       "tipo": "TEXTO"
-     }
-   }
-   ```
-
-3. **Suscribirse:**
-   ```json
-   {
-     "destination": "/topic/chat/1"
-   }
-   ```
-
----
-
-## 📱 Flujo de Uso Típico
-
-1. **Cliente abre el chat**
-   - GET `/api/mensajes/solicitud/1` - Carga historial
-   - Conecta WebSocket
-   - Suscribe a `/topic/chat/1`
-
-2. **Cliente escribe mensaje**
-   - Envía evento typing: `/app/chat/1/typing`
-   - Envía mensaje: POST `/api/mensajes` o `/app/chat/send`
-
-3. **Servidor procesa**
-   - Guarda mensaje en BD
-   - Envía a destinatario vía WebSocket: `/topic/chat/1`
-   - Envía notificación push con Firebase
-
-4. **Destinatario recibe**
-   - Mensaje llega por WebSocket
-   - Muestra notificación si app en background
-   - Marca como leído: PUT `/api/mensajes/1/leer`
-
----
-
-## 🎯 Próximas Mejoras
-
-- [ ] Mensajes de voz
-- [ ] Videollamadas
-- [ ] Compartir ubicación en tiempo real
-- [ ] Reacciones a mensajes
-- [ ] Mensajes temporales (que se autodestruyen)
-- [ ] Cifrado end-to-end
-
----
-
-Documentación generada el 16 de Enero de 2026
+When changing any destination or payload field, update this file in the same PR.
+This avoids silent regressions between backend and frontend.

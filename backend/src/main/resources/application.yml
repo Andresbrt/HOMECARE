@@ -37,6 +37,13 @@ spring:
       max-file-size: ${FILE_MAX_SIZE:10MB}
       max-request-size: ${FILE_MAX_REQUEST_SIZE:10MB}
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+
 server:
   port: ${SERVER_PORT:8080}
   error:
@@ -105,13 +112,37 @@ logging:
   level:
     com.homecare: ${LOG_LEVEL:INFO}
     org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}
-    
+    AUDIT: INFO
+
+# Security hardening
+security:
+  # Set to true when the app runs behind a trusted reverse proxy (nginx, AWS ALB, etc.)
+  # that sets X-Forwarded-For. Set to false for direct internet-facing deployment.
+  trusted-proxy: ${SECURITY_TRUSTED_PROXY:true}
+
+  # Comma-separated list of IPs to block at startup (e.g. known malicious IPs).
+  # IPs can also be blocked at runtime via the IpBlockingFilter.blockIp() API.
+  blocked-ips: ${BLOCKED_IPS:}
+
+  rate-limit:
+    # Max login/registration attempts per minute per IP (brute-force protection)
+    auth-requests-per-minute: ${RATE_LIMIT_AUTH:5}
+    # Max general API requests per minute per IP
+    general-requests-per-minute: ${RATE_LIMIT_GENERAL:100}
 # Environment Configuration
 app:
   environment: ${APP_ENVIRONMENT:development}
+  cache:
+    redis-enabled: ${REDIS_ENABLED:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
   security:
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
       requests-per-minute: ${RATE_LIMIT_RPM:100}
+
+# Async thread pool
+async:
+  core-pool-size: ${ASYNC_CORE_POOL:4}
+  max-pool-size: ${ASYNC_MAX_POOL:8}
+  queue-capacity: ${ASYNC_QUEUE_CAPACITY:100}

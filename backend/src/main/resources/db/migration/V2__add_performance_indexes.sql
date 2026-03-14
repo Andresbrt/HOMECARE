@@ -1,24 +1,20 @@
 -- ============================================
 -- ÍNDICES PARA PERFORMANCE
 -- HomeCare API - Migration V2
+-- Corregido: columnas alineadas con schema.sql
 -- ============================================
 
--- Índice para búsqueda de usuarios por email (login)
-CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+-- ============================================
+-- ÍNDICES PARA USUARIOS
+-- ============================================
 
 -- Índice para búsqueda por teléfono
 CREATE INDEX IF NOT EXISTS idx_usuarios_telefono ON usuarios(telefono);
 
--- Índice para usuarios activos
-CREATE INDEX IF NOT EXISTS idx_usuarios_activo ON usuarios(activo);
-
 -- Índice compuesto para proveedores disponibles
-CREATE INDEX IF NOT EXISTS idx_usuarios_rol_disponible 
+CREATE INDEX IF NOT EXISTS idx_usuarios_activo_disponible 
 ON usuarios(activo, disponible) 
 WHERE activo = true AND disponible = true;
-
--- Índice para rol (para queries filtradas por rol)
-CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
 
 -- ============================================
 -- ÍNDICES PARA SOLICITUDES
@@ -27,42 +23,23 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
 -- Índice para solicitudes por cliente
 CREATE INDEX IF NOT EXISTS idx_solicitudes_cliente_id ON solicitudes(cliente_id);
 
--- Índice para solicitudes por estado
-CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes(estado);
+-- Índice compuesto para solicitudes por estado + fecha de creación
+CREATE INDEX IF NOT EXISTS idx_solicitudes_estado_created 
+ON solicitudes(estado, created_at DESC);
 
--- Índice compuesto para solicitudes pendientes con fecha
-CREATE INDEX IF NOT EXISTS idx_solicitudes_estado_fecha 
-ON solicitudes(estado, fecha_creacion DESC);
-
--- Índice espacial para búsqueda geográfica (PostGIS)
--- Asumiendo que las columnas se llaman latitud y longitud
-CREATE INDEX IF NOT EXISTS idx_solicitudes_ubicacion 
-ON solicitudes USING GIST(
-    ST_SetSRID(ST_MakePoint(longitud, latitud), 4326)
-);
-
--- Índice para búsqueda por categoría de servicio
-CREATE INDEX IF NOT EXISTS idx_solicitudes_categoria ON solicitudes(categoria_servicio);
+-- Índice para tipo de limpieza (filtro frecuente)
+CREATE INDEX IF NOT EXISTS idx_solicitudes_tipo_limpieza ON solicitudes(tipo_limpieza);
 
 -- ============================================
 -- ÍNDICES PARA OFERTAS
 -- ============================================
 
--- Índice para ofertas por solicitud
-CREATE INDEX IF NOT EXISTS idx_ofertas_solicitud_id ON ofertas(solicitud_id);
+-- Índice compuesto para ofertas por estado + fecha
+CREATE INDEX IF NOT EXISTS idx_ofertas_estado_created 
+ON ofertas(estado, created_at DESC);
 
--- Índice para ofertas por proveedor
-CREATE INDEX IF NOT EXISTS idx_ofertas_proveedor_id ON ofertas(proveedor_id);
-
--- Índice para ofertas por estado
-CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas(estado);
-
--- Índice compuesto para ofertas pendientes con fecha
-CREATE INDEX IF NOT EXISTS idx_ofertas_estado_fecha 
-ON ofertas(estado, fecha_creacion DESC);
-
--- Índice compuesto para encontrar ofertas pendientes de una solicitud
-CREATE INDEX IF NOT EXISTS idx_ofertas_solicitud_estado 
+-- Índice parcial para ofertas pendientes de una solicitud
+CREATE INDEX IF NOT EXISTS idx_ofertas_solicitud_pendiente 
 ON ofertas(solicitud_id, estado)
 WHERE estado = 'PENDIENTE';
 
@@ -76,15 +53,12 @@ CREATE INDEX IF NOT EXISTS idx_servicios_cliente_id ON servicios_aceptados(clien
 -- Índice para servicios por proveedor
 CREATE INDEX IF NOT EXISTS idx_servicios_proveedor_id ON servicios_aceptados(proveedor_id);
 
--- Índice para servicios por estado
-CREATE INDEX IF NOT EXISTS idx_servicios_estado ON servicios_aceptados(estado);
-
--- Índice compuesto para servicios activos
+-- Índice compuesto para servicios activos por proveedor
 CREATE INDEX IF NOT EXISTS idx_servicios_estado_proveedor 
 ON servicios_aceptados(proveedor_id, estado)
 WHERE estado IN ('EN_PROGRESO', 'EN_CAMINO');
 
--- Índice para fecha de inicio (para reportes)
+-- Índice para fecha de inicio (reportes)
 CREATE INDEX IF NOT EXISTS idx_servicios_fecha_inicio 
 ON servicios_aceptados(fecha_inicio DESC);
 
@@ -97,6 +71,18 @@ CREATE INDEX IF NOT EXISTS idx_pagos_servicio_id ON pagos(servicio_id);
 
 -- Índice para pagos por estado
 CREATE INDEX IF NOT EXISTS idx_pagos_estado ON pagos(estado);
+
+-- Índice para referencia (búsqueda desde webhooks)
+CREATE INDEX IF NOT EXISTS idx_pagos_referencia ON pagos(referencia);
+
+-- ============================================
+-- ÍNDICES PARA MENSAJES
+-- ============================================
+
+-- Índice parcial para mensajes no leídos por receptor
+CREATE INDEX IF NOT EXISTS idx_mensajes_receptor_no_leido 
+ON mensajes(receptor_id, leido)
+WHERE leido = false;
 
 -- Índice para referencia de pago (único para webhooks de Wompi)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pagos_referencia ON pagos(referencia);

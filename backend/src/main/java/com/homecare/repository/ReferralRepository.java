@@ -40,7 +40,7 @@ public interface ReferralRepository extends JpaRepository<Referral, Long> {
      * Cuenta referidos exitosos por usuario
      */
     @Query("SELECT COUNT(r) FROM Referral r WHERE r.referrer.id = :referrerId " +
-           "AND r.referred IS NOT NULL")
+           "AND r.referee IS NOT NULL")
     Long countReferidosExitosos(@Param("referrerId") Long referrerId);
 
     /**

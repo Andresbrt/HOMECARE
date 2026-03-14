@@ -12,6 +12,9 @@ import com.homecare.repository.SolicitudRepository;
 import com.homecare.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,12 @@ public class MensajeService {
     private final NotificationService notificationService;
 
     @Transactional
+        @Caching(evict = {
+            @CacheEvict(cacheNames = "unreadMessages", key = "#request.destinatarioId"),
+            @CacheEvict(cacheNames = "unreadMessagesByRequest", key = "#request.solicitudId + ':' + #request.destinatarioId"),
+            @CacheEvict(cacheNames = "conversationList", key = "#remitenteId"),
+            @CacheEvict(cacheNames = "conversationList", key = "#request.destinatarioId")
+        })
     public MensajeDTO.Response enviarMensaje(Long remitenteId, MensajeDTO.Enviar request) {
         Usuario remitente = usuarioRepository.findById(remitenteId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
@@ -106,6 +115,11 @@ public class MensajeService {
     }
 
     @Transactional
+        @Caching(evict = {
+            @CacheEvict(cacheNames = "unreadMessages", key = "#usuarioId"),
+            @CacheEvict(cacheNames = "unreadMessagesByRequest", allEntries = true),
+            @CacheEvict(cacheNames = "conversationList", key = "#usuarioId")
+        })
     public void marcarComoLeido(Long mensajeId, Long usuarioId) {
         Mensaje mensaje = mensajeRepository.findById(mensajeId)
                 .orElseThrow(() -> new NotFoundException("Mensaje no encontrado"));
@@ -120,11 +134,17 @@ public class MensajeService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "unreadMessages", key = "#usuarioId"),
+            @CacheEvict(cacheNames = "unreadMessagesByRequest", key = "#solicitudId + ':' + #usuarioId"),
+            @CacheEvict(cacheNames = "conversationList", key = "#usuarioId")
+    })
     public void marcarTodosComoLeidos(Long solicitudId, Long usuarioId) {
         mensajeRepository.marcarTodosLeidosPorDestinatario(solicitudId, usuarioId);
         log.info("Mensajes marcados como leídos para usuario {} en solicitud {}", usuarioId, solicitudId);
     }
 
+    @Cacheable(cacheNames = "unreadMessages", key = "#usuarioId")
     public Long contarNoLeidos(Long usuarioId) {
         return mensajeRepository.countByDestinatarioIdAndLeido(usuarioId, false);
     }
@@ -145,6 +165,7 @@ public class MensajeService {
     /**
      * Obtener lista de conversaciones del usuario
      */
+    @Cacheable(cacheNames = "conversationList", key = "#usuarioId")
     public List<MensajeDTO.Conversacion> obtenerConversaciones(Long usuarioId) {
         // Obtener todas las solicitudes donde el usuario ha enviado o recibido mensajes
         List<Solicitud> solicitudesConMensajes = mensajeRepository.findSolicitudesConMensajes(usuarioId);
@@ -180,6 +201,7 @@ public class MensajeService {
     /**
      * Contar mensajes no leídos por solicitud
      */
+    @Cacheable(cacheNames = "unreadMessagesByRequest", key = "#solicitudId + ':' + #usuarioId")
     public Long contarNoLeidosPorSolicitud(Long solicitudId, Long usuarioId) {
         return mensajeRepository.countBySolicitudIdAndDestinatarioIdAndLeido(solicitudId, usuarioId, false);
     }

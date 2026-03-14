@@ -281,6 +281,12 @@ http://localhost:8080/swagger-ui.html
 http://localhost:8080/api-docs
 ```
 
+### WebSocket Contract (Chat + Tracking)
+
+```
+CHAT_REAL_TIME_DOCUMENTATION.md
+```
+
 ### Endpoints Principales
 
 | Método | Endpoint | Descripción | Auth |

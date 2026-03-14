@@ -1,5 +1,6 @@
 package com.homecare.security;
 
+import com.homecare.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,7 +18,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Filtro JWT para validar tokens en cada request
+ * Filtro JWT para validar tokens en cada request.
+ * Verifica tanto la validez criptográfica como la blacklist Redis.
  */
 @Component
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -35,6 +38,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+                // Verificar si el token fue revocado (logout)
+                if (tokenBlacklistService.isBlacklisted(jwt)) {
+                    log.debug("Token rechazado: está en blacklist");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
 
                 UserDetails userDetails = customUserDetailsService.loadUserById(userId);

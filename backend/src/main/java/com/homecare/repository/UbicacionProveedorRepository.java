@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -84,9 +85,22 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
     /**
      * Obtiene duración total del tracking (diferencia entre primera y última ubicación)
      */
-    @Query("SELECT EXTRACT(EPOCH FROM (MAX(u.timestamp) - MIN(u.timestamp)))/60 " +
-           "FROM UbicacionProveedor u WHERE u.solicitud.id = :solicitudId")
-    Double calcularDuracionMinutos(@Param("solicitudId") Long solicitudId);
+    @Query("SELECT MIN(u.timestamp) FROM UbicacionProveedor u WHERE u.solicitud.id = :solicitudId")
+    LocalDateTime findPrimerTimestamp(@Param("solicitudId") Long solicitudId);
+
+    @Query("SELECT MAX(u.timestamp) FROM UbicacionProveedor u WHERE u.solicitud.id = :solicitudId")
+    LocalDateTime findUltimoTimestamp(@Param("solicitudId") Long solicitudId);
+
+    default Double calcularDuracionMinutos(Long solicitudId) {
+        LocalDateTime inicio = findPrimerTimestamp(solicitudId);
+        LocalDateTime fin = findUltimoTimestamp(solicitudId);
+
+        if (inicio == null || fin == null) {
+            return 0.0;
+        }
+
+        return Duration.between(inicio, fin).toMinutes() * 1.0;
+    }
 
     /**
      * Cuenta tiempo detenido (velocidad = 0 o muy baja)

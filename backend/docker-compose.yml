@@ -81,6 +81,9 @@ services:
       
       # Firebase
       FIREBASE_SERVER_KEY: ${FIREBASE_SERVER_KEY}
+      # FIREBASE_CREDENTIALS_JSON: pega el JSON completo del service account (preferido en Railway/Cloud)
+      FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON:-}
+      # FIREBASE_CREDENTIALS_PATH: ruta al archivo montado (preferido en local con Docker)
       FIREBASE_CREDENTIALS_PATH: /app/config/firebase-credentials.json
       
       # AWS S3

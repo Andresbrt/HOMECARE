@@ -1,0 +1,129 @@
+name: CI/CD — Test, Build & Deploy to Railway
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # JOB 1: Backend unit tests (pure JUnit + Mockito, no DB needed)
+  # ──────────────────────────────────────────────────────────────
+  test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 23 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '23'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run backend tests
+        working-directory: backend
+        run: mvn test -B -Dspring.profiles.active=test
+        env:
+          # Minimal vars needed so Spring context doesn't fail on startup mocks
+          JWT_SECRET: "ci-test-secret-key-at-least-64-characters-long-for-homecare-testing"
+          JWT_EXPIRATION: "86400000"
+          JWT_REFRESH_EXPIRATION: "604800000"
+          WOMPI_PUBLIC_KEY: "pub_test_ci"
+          WOMPI_PRIVATE_KEY: "prv_test_ci"
+          WOMPI_EVENT_SECRET: "ci_event_secret"
+          PAYMENT_CALLBACK_URL: "http://localhost:8080/callback"
+          PAYMENT_WEBHOOK_URL: "http://localhost:8080/webhook"
+          GOOGLE_MAPS_API_KEY: "ci_maps_key"
+          FIREBASE_SERVER_KEY: "ci_firebase_key"
+          MAIL_USERNAME: "ci@example.com"
+          MAIL_PASSWORD: "ci_mail_pass"
+          AWS_ACCESS_KEY: "ci_aws_access"
+          AWS_SECRET_KEY: "ci_aws_secret"
+          AWS_S3_BUCKET: "ci-bucket"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.sha }}
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 2: Build Docker image (validates Dockerfile is correct)
+  # Only runs on pushes to main (not PRs)
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: Docker Build Verification
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: homecare-backend:${{ github.sha }}
+          # Layer caching via GitHub Actions cache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 3: Deploy to Railway
+  # Only runs after test + build pass on main branch
+  # ──────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: [ test, build ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ vars.RAILWAY_PUBLIC_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@3 --silent
+
+      # Railway deploys the `backend/` directory using the Dockerfile.
+      # Secrets are managed entirely in the Railway dashboard — no secrets
+      # are passed here to avoid leaking them via CLI flags.
+      - name: Deploy to Railway
+        working-directory: backend
+        run: railway up --service homecare-backend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Wait for deployment & verify health
+        run: |
+          echo "Esperando 90s para que el servicio arranque..."
+          sleep 90
+          HEALTH_URL="${{ vars.RAILWAY_PUBLIC_URL }}/actuator/health"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+          echo "Health endpoint HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "⚠ Deploy verification failed — HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "✓ Deploy successful — service is healthy"

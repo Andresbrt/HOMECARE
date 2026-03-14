@@ -214,4 +214,24 @@ public class AuthDTO {
 
         private String direccion;
     }
+
+    /**
+     * Login/registro usando Firebase ID Token
+     * El token se obtiene en el cliente después de autenticarse con Firebase Auth
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FirebaseLogin {
+        @NotBlank(message = "El firebaseToken es obligatorio")
+        private String firebaseToken;
+
+        // Campos requeridos sólo al crear el usuario (primer login)
+        private String nombre;
+        private String apellido;
+        private String telefono;
+
+        /** CUSTOMER o SERVICE_PROVIDER */
+        private String rol;
+    }
 }

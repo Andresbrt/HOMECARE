@@ -54,9 +54,17 @@
       ]
     ],
     "extra": {
-      "apiUrl": "http://localhost:8080/api",
-      "wsUrl": "http://localhost:8080/ws",
-      "googleClientId": "YOUR_GOOGLE_CLIENT_ID"
+      "apiUrl": "http://192.168.1.20:8080/api",
+      "wsUrl": "http://192.168.1.20:8080/ws",
+      "googleClientId": "YOUR_GOOGLE_CLIENT_ID",
+
+      "firebaseApiKey": "AIzaSyB9Y_zPsAYj50i1XOSJ6PsB_psX4uGk7K0",
+      "firebaseAuthDomain": "homecare-1582c.firebaseapp.com",
+      "firebaseProjectId": "homecare-1582c",
+      "firebaseStorageBucket": "homecare-1582c.firebasestorage.app",
+      "firebaseMessagingSenderId": "630129948671",
+      "firebaseAppId": "1:630129948671:web:aae37fc9a3843b83b1d9ca",
+      "firebaseMeasurementId": "G-H0HT14ELYP"
     }
   }
 }

@@ -30,7 +30,7 @@ public interface DispositivoFCMRepository extends JpaRepository<DispositivoFCM, 
     @Query("SELECT d FROM DispositivoFCM d WHERE d.activo = true AND d.ultimoUso < :fecha")
     List<DispositivoFCM> findDispositivosInactivos(@Param("fecha") LocalDateTime fecha);
 
-    @Query("SELECT d FROM DispositivoFCM d JOIN d.usuario u WHERE u.rol.nombre = :rol AND d.activo = true")
+    @Query("SELECT d FROM DispositivoFCM d JOIN d.usuario u JOIN u.roles r WHERE r.nombre = :rol AND d.activo = true")
     List<DispositivoFCM> findByRol(@Param("rol") String rol);
 
     List<DispositivoFCM> findByPlataformaAndActivoTrue(Plataforma plataforma);

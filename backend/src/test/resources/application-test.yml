@@ -1,0 +1,52 @@
+# Test profile — H2 in‑memory, no Redis, no external services
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1ob21lY2FyZS1hcHBsaWNhdGlvbi10ZXN0aW5nLW9ubHk=
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+security:
+  rate-limit:
+    auth-requests-per-minute: 5
+    general-requests-per-minute: 100
+  trusted-proxy: false
+
+firebase:
+  credentials-path: ""
+  server-key: ""
+
+aws:
+  s3:
+    access-key: test
+    secret-key: test
+    region: us-east-1
+    bucket-name: test-bucket
+
+wompi:
+  event-secret: test-wompi-secret
+
+async:
+  core-pool-size: 2
+  max-pool-size: 4
+  queue-capacity: 10
+
+logging:
+  level:
+    com.homecare: WARN

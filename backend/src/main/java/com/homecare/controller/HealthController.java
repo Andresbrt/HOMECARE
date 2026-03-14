@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Controlador para health checks y métricas de la aplicación
@@ -30,7 +31,7 @@ public class HealthController {
     private final DatabaseHealthService databaseHealthService;
     private final ExternalServicesHealthService externalServicesHealthService;
     private final Environment environment;
-    private final BuildProperties buildProperties;
+    private final Optional<BuildProperties> buildProperties;
 
     /**
      * Health check básico
@@ -44,7 +45,7 @@ public class HealthController {
             response.put("status", "UP");
             response.put("timestamp", LocalDateTime.now());
             response.put("service", "HomeCaré API");
-            response.put("version", buildProperties.getVersion());
+            response.put("version", buildProperties.map(BuildProperties::getVersion).orElse("dev"));
             response.put("environment", environment.getProperty("spring.profiles.active", "default"));
             
             return ResponseEntity.ok(response);
@@ -155,8 +156,8 @@ public class HealthController {
             metrics.put("availableProcessors", runtime.availableProcessors());
             
             // Application info
-            metrics.put("applicationVersion", buildProperties.getVersion());
-            metrics.put("buildTime", buildProperties.getTime());
+            metrics.put("applicationVersion", buildProperties.map(BuildProperties::getVersion).orElse("dev"));
+            metrics.put("buildTime", buildProperties.map(bp -> String.valueOf(bp.getTime())).orElse("N/A"));
             metrics.put("profile", environment.getProperty("spring.profiles.active", "default"));
             
             return ResponseEntity.ok(metrics);

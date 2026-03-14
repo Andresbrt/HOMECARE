@@ -1,5 +1,8 @@
 package com.homecare.controller;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.homecare.dto.PagoDTO;
 import com.homecare.model.Pago.EstadoPago;
 import com.homecare.security.CustomUserDetails;
@@ -8,7 +11,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Payments", description = "Gestión de pagos con Wompi")
 @SecurityRequirement(name = "bearerAuth")
 public class PaymentController {
@@ -40,12 +46,31 @@ public class PaymentController {
 
     @PostMapping("/webhook/wompi")
     @Operation(summary = "Webhook de Wompi para actualización de estado de pagos")
-    public ResponseEntity<String> wompiWebhook(@RequestBody PagoDTO.WompiWebhookEvent webhook) {
+    public ResponseEntity<String> wompiWebhook(
+            @RequestBody String rawBody,
+            @RequestHeader(value = "X-Event-Checksum", required = false) String checksum,
+            @RequestHeader(value = "X-Event-Timestamp", required = false) String timestamp) {
+
+        if (checksum == null || timestamp == null) {
+            log.warn("Webhook Wompi recibido sin checksum o timestamp");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing signature headers");
+        }
+
+        if (!paymentService.validarWebhookSignature(rawBody, checksum, timestamp)) {
+            log.warn("Webhook Wompi con firma inválida");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signature");
+        }
+
         try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            PagoDTO.WompiWebhookEvent webhook = objectMapper.readValue(rawBody, PagoDTO.WompiWebhookEvent.class);
             paymentService.procesarWebhookWompi(webhook);
             return ResponseEntity.ok("Webhook procesado");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            log.error("Error procesando webhook Wompi: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Error procesando evento");
         }
     }
 

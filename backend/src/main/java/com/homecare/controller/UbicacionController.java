@@ -4,6 +4,9 @@ import com.homecare.dto.UbicacionDTO;
 import com.homecare.security.CustomUserDetails;
 import com.homecare.service.GoogleMapsService;
 import com.homecare.service.UbicacionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +27,8 @@ import java.security.Principal;
 @RequestMapping("/api/tracking")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Tracking Geoespacial", description = "Endpoints REST y WebSocket para tracking del proveedor en tiempo real")
+@SecurityRequirement(name = "bearerAuth")
 public class UbicacionController {
 
     private final UbicacionService ubicacionService;
@@ -36,6 +41,7 @@ public class UbicacionController {
      * Actualiza la ubicación del proveedor (también puede usarse vía REST)
      */
     @PostMapping("/actualizar")
+    @Operation(summary = "Actualizar ubicación del proveedor", description = "Guarda ubicación actual y notifica a suscriptores de tracking")
     public ResponseEntity<UbicacionDTO.UbicacionResponse> actualizarUbicacion(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody UbicacionDTO.ActualizarUbicacion dto) {
@@ -54,6 +60,7 @@ public class UbicacionController {
      * Obtiene la última ubicación conocida del proveedor para una solicitud
      */
     @GetMapping("/solicitud/{solicitudId}/ultima")
+    @Operation(summary = "Obtener última ubicación", description = "Retorna el último punto reportado por el proveedor para la solicitud")
     public ResponseEntity<UbicacionDTO.UbicacionResponse> obtenerUltimaUbicacion(
             @PathVariable Long solicitudId,
             @RequestParam Long proveedorId) {
@@ -72,6 +79,7 @@ public class UbicacionController {
      * Obtiene la trayectoria completa (ruta histórica) del proveedor
      */
     @GetMapping("/solicitud/{solicitudId}/trayectoria")
+    @Operation(summary = "Obtener trayectoria completa", description = "Devuelve historial de puntos del recorrido del proveedor")
     public ResponseEntity<UbicacionDTO.Trayectoria> obtenerTrayectoria(
             @PathVariable Long solicitudId) {
         
@@ -87,6 +95,7 @@ public class UbicacionController {
      * Obtiene estadísticas del tracking (velocidad promedio, distancia recorrida, etc.)
      */
     @GetMapping("/solicitud/{solicitudId}/estadisticas")
+    @Operation(summary = "Obtener estadísticas de tracking", description = "Calcula métricas de ruta, velocidad y tiempos del servicio")
     public ResponseEntity<UbicacionDTO.EstadisticasTracking> obtenerEstadisticas(
             @PathVariable Long solicitudId) {
         
@@ -102,6 +111,7 @@ public class UbicacionController {
      * Inicia el tracking para una solicitud (el proveedor comienza el viaje)
      */
     @PostMapping("/solicitud/{solicitudId}/iniciar")
+    @Operation(summary = "Iniciar tracking", description = "Marca inicio del trayecto y genera alertas iniciales al cliente")
     public ResponseEntity<Void> iniciarTracking(
             @PathVariable Long solicitudId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -119,6 +129,7 @@ public class UbicacionController {
      * Finaliza el tracking (el proveedor ha llegado)
      */
     @PostMapping("/solicitud/{solicitudId}/finalizar")
+    @Operation(summary = "Finalizar tracking", description = "Marca llegada del proveedor y detiene alertas de proximidad")
     public ResponseEntity<Void> finalizarTracking(
             @PathVariable Long solicitudId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -137,6 +148,7 @@ public class UbicacionController {
      * Incluye ETA con tráfico en tiempo real y pasos de navegación
      */
     @GetMapping("/ruta")
+    @Operation(summary = "Calcular ruta óptima", description = "Usa Google Maps para devolver distancia, tiempo estimado y pasos de ruta")
     public ResponseEntity<GoogleMapsService.RutaInfo> obtenerRuta(
             @RequestParam Double latOrigen,
             @RequestParam Double lonOrigen,
@@ -158,6 +170,7 @@ public class UbicacionController {
      * Convierte una dirección de texto a coordenadas GPS
      */
     @GetMapping("/geocode")
+    @Operation(summary = "Geocodificar dirección", description = "Convierte una dirección textual en coordenadas geográficas")
     public ResponseEntity<GoogleMapsService.Coordenadas> geocodificar(
             @RequestParam String direccion) {
         
@@ -249,6 +262,7 @@ public class UbicacionController {
      * Health check para el sistema de tracking
      */
     @GetMapping("/health")
+    @Operation(summary = "Health check de tracking", description = "Verifica estado operativo de los componentes de tracking")
     public ResponseEntity<String> healthCheck() {
         return ResponseEntity.ok("Tracking system is running");
     }

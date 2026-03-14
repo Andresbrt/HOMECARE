@@ -1,6 +1,8 @@
 package com.homecare.service;
 
 import com.homecare.dto.AIDTO;
+import com.homecare.model.Oferta;
+import com.homecare.repository.OfertaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,26 +17,46 @@ import java.util.Map;
 @Slf4j
 public class AIService {
 
-    // Placeholder para integración futura con modelos ML
+    private final PriceSuggestionEngine priceSuggestionEngine;
+    private final OfertaRepository ofertaRepository;
 
     public AIDTO.PrecioRecomendado recomendarPrecioProveedor(Long proveedorId, String tipoLimpieza,
                                                              Integer metrosCuadrados, String zona) {
-        // Mock de recomendación de precio basada en ML
-        BigDecimal precioBase = new BigDecimal("50.00");
-        BigDecimal ajusteZona = calcularAjusteZona(zona);
-        BigDecimal ajusteMetros = BigDecimal.valueOf(metrosCuadrados * 0.5);
+    BigDecimal promedioHistorico = ofertaRepository.getPromedioPreciosAceptadosByProveedor(proveedorId);
 
-        BigDecimal precioRecomendado = precioBase.add(ajusteZona).add(ajusteMetros);
+    AIDTO.PrecioRecomendado recomendacion = priceSuggestionEngine.suggestPrice(
+        proveedorId,
+        tipoLimpieza,
+        metrosCuadrados,
+        zona,
+        promedioHistorico
+    );
 
         log.info("Precio recomendado para proveedor {}: {} (zona: {}, m2: {})",
-                proveedorId, precioRecomendado, zona, metrosCuadrados);
+        proveedorId, recomendacion.getPrecioSugerido(), zona, metrosCuadrados);
 
-        return new AIDTO.PrecioRecomendado(
-                precioRecomendado,
-                precioRecomendado.multiply(new BigDecimal("0.9")), // -10%
-                precioRecomendado.multiply(new BigDecimal("1.1")), // +10%
-                "Basado en servicios similares en tu zona"
-        );
+    return recomendacion;
+    }
+
+    public void registrarFeedbackPrecio(Oferta ofertaAceptada) {
+    if (ofertaAceptada == null || ofertaAceptada.getSolicitud() == null) {
+        return;
+    }
+
+    String zonaInferida = inferirZona(ofertaAceptada.getSolicitud().getDireccion());
+    Integer metros = ofertaAceptada.getSolicitud().getMetrosCuadrados() != null
+        ? ofertaAceptada.getSolicitud().getMetrosCuadrados().intValue()
+        : 50;
+
+    priceSuggestionEngine.registerFeedback(
+        ofertaAceptada.getProveedor().getId(),
+        ofertaAceptada.getSolicitud().getTipoLimpieza().name(),
+        metros,
+        zonaInferida,
+        ofertaAceptada.getPrecioOfrecido()
+    );
+
+    log.info("Feedback de precio registrado para oferta {}", ofertaAceptada.getId());
     }
 
     public AIDTO.PrediccionDemanda predecirDemanda(String zona, LocalDate fecha) {
@@ -71,13 +93,17 @@ public class AIService {
         );
     }
 
-    private BigDecimal calcularAjusteZona(String zona) {
-        return switch (zona.toUpperCase()) {
-            case "NORTE" -> new BigDecimal("10.00");
-            case "SUR" -> new BigDecimal("5.00");
-            case "ESTE" -> new BigDecimal("7.50");
-            case "OESTE" -> new BigDecimal("8.00");
-            default -> BigDecimal.ZERO;
-        };
+    private String inferirZona(String direccion) {
+        if (direccion == null || direccion.isBlank()) {
+            return "GENERAL";
+        }
+
+        String text = direccion.toUpperCase();
+        if (text.contains("NORTE")) return "NORTE";
+        if (text.contains("SUR")) return "SUR";
+        if (text.contains("ESTE") || text.contains("ORIENTE")) return "ESTE";
+        if (text.contains("OESTE") || text.contains("OCCIDENTE")) return "OESTE";
+        if (text.contains("CENTRO")) return "CENTRO";
+        return "GENERAL";
     }
 }

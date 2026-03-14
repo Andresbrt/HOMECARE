@@ -1,0 +1,117 @@
+package com.homecare.exception;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<Map<String, Object>> handleAuth(AuthException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(PaymentException.class)
+    public ResponseEntity<Map<String, Object>> handlePayment(PaymentException ex) {
+        log.error("Error de pago: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(FileStorageException.class)
+    public ResponseEntity<Map<String, Object>> handleFileStorage(FileStorageException ex) {
+        log.error("Error de almacenamiento: {}", ex.getMessage());
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
+
+    @ExceptionHandler(NotificationException.class)
+    public ResponseEntity<Map<String, Object>> handleNotification(NotificationException ex) {
+        log.error("Error de notificación: {}", ex.getMessage());
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Valor inválido",
+                        (a, b) -> a
+                ));
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Errores de validación");
+        body.put("fieldErrors", fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST,
+                "Parámetro requerido '" + ex.getParameterName() + "' no proporcionado");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST,
+                "Parámetro '" + ex.getName() + "' tiene un formato inválido");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUpload(MaxUploadSizeExceededException ex) {
+        return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE,
+                "El archivo excede el tamaño máximo permitido");
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+        log.error("Error no controlado: {}", ex.getMessage(), ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error interno del servidor. Contacte al administrador.");
+    }
+
+    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+        return ResponseEntity.status(status).body(body);
+    }
+}

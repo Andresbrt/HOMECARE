@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -167,7 +168,11 @@ export default function AppNavigator() {
   const { isAuthenticated, loading, isCustomer } = useAuth();
 
   if (loading) {
-    return null; // O un splash screen
+    return (
+      <View style={loadingStyles.container}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+      </View>
+    );
   }
 
   return (
@@ -240,3 +245,12 @@ export default function AppNavigator() {
     </Stack.Navigator>
   );
 }
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+});

@@ -1,11 +1,30 @@
 /**
- * AuthContext - Manejo de autenticación y estado del usuario
+ * AuthContext — Firebase Auth + Firestore + JWT backend
+ *
+ * Flujo:
+ *   1. Login/Registro → Firebase Auth (identidad)
+ *   2. Perfil guardado en Firestore /users/{uid}
+ *   3. Firebase ID Token → backend /auth/firebase-login → JWT para APIs
  */
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { API_URL } from '../config/api';
+import * as SecureStore from 'expo-secure-store';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import apiClient from '../services/apiClient';
+import {
+  firebaseSignIn,
+  firebaseSignUp,
+  firebaseSignOut,
+  getFirebaseIdToken,
+} from '../services/firebaseAuthService';
+import {
+  createUserProfile,
+  createProviderProfile,
+  getUserProfile,
+  updateUserProfile,
+  saveProviderProfile,
+} from '../services/firestoreService';
 
 const AuthContext = createContext();
 
@@ -23,117 +42,232 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Escucha cambios en Firebase Auth (restaura sesión automáticamente)
   useEffect(() => {
-    loadUserFromStorage();
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        await _restoreSessionFromFirebase(firebaseUser);
+      } else {
+        await _clearSession();
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
-  // Configurar interceptor de Axios
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
-
-  const loadUserFromStorage = async () => {
+  /**
+   * Restaura la sesión: carga perfil de Firestore y obtiene/refresca JWT del backend
+   */
+  const _restoreSessionFromFirebase = async (firebaseUser) => {
     try {
-      const storedToken = await AsyncStorage.getItem('token');
-      const storedUser = await AsyncStorage.getItem('user');
+      // 1. Cargar perfil desde Firestore
+      const profile = await getUserProfile(firebaseUser.uid);
 
-      if (storedToken && storedUser) {
+      // 2. Intentar JWT desde SecureStore primero
+      let storedToken = await SecureStore.getItemAsync('token');
+
+      // 3. Si no hay JWT o el usuario no tiene perfil, pedir uno nuevo al backend
+      if (!storedToken || !profile) {
+        storedToken = await _exchangeFirebaseTokenForJwt(firebaseUser, profile);
+      }
+
+      if (storedToken && profile) {
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(profile);
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Error al cargar usuario:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error restaurando sesión Firebase:', error);
+      await _clearSession();
     }
   };
 
+  /**
+   * Llama al backend con el Firebase ID Token y obtiene un JWT de la app
+   */
+  const _exchangeFirebaseTokenForJwt = async (firebaseUser, profile) => {
+    try {
+      const idToken = await firebaseUser.getIdToken(true);
+      const payload = {
+        firebaseToken: idToken,
+        nombre: profile?.nombre || firebaseUser.displayName?.split(' ')[0] || 'Usuario',
+        apellido: profile?.apellido || firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+        telefono: profile?.telefono || '',
+        rol: profile?.rol || 'CUSTOMER',
+      };
+      const response = await apiClient.post('/auth/firebase-login', payload);
+      const { token: accessToken, refreshToken } = response.data;
+
+      await SecureStore.setItemAsync('token', accessToken);
+      await SecureStore.setItemAsync('refreshToken', refreshToken);
+      return accessToken;
+    } catch (error) {
+      console.warn('No se pudo intercambiar token Firebase por JWT:', error.message);
+      return null;
+    }
+  };
+
+  const _clearSession = async () => {
+    await SecureStore.deleteItemAsync('token').catch(() => {});
+    await SecureStore.deleteItemAsync('refreshToken').catch(() => {});
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  /**
+   * Login con email y contraseña (Firebase Auth)
+   * El JWT del backend es opcional — si no está disponible, se usa Firebase token directamente.
+   */
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
+      const firebaseUser = await firebaseSignIn(email, password);
 
-      const { token, refreshToken, ...userData } = response.data;
+      // Cargar perfil de Firestore
+      const profile = await getUserProfile(firebaseUser.uid);
 
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('refreshToken', refreshToken);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      // Intentar obtener JWT del backend (best-effort)
+      try {
+        const idToken = await getFirebaseIdToken();
+        const payload = {
+          firebaseToken: idToken,
+          nombre: profile?.nombre || '',
+          apellido: profile?.apellido || '',
+          telefono: profile?.telefono || '',
+          rol: profile?.rol || 'CUSTOMER',
+        };
+        const response = await apiClient.post('/auth/firebase-login', payload);
+        const { token: accessToken, refreshToken } = response.data;
+        await SecureStore.setItemAsync('token', accessToken);
+        await SecureStore.setItemAsync('refreshToken', refreshToken);
+        setToken(accessToken);
+      } catch (backendErr) {
+        console.warn('Backend no disponible, usando Firebase token:', backendErr.message);
+        // Usar Firebase ID token como token temporal
+        const idToken = await getFirebaseIdToken();
+        setToken(idToken);
+      }
 
-      setToken(token);
-      setUser(userData);
+      const fullUser = { uid: firebaseUser.uid, email, ...profile };
+      setUser(fullUser);
       setIsAuthenticated(true);
 
       return { success: true };
     } catch (error) {
-      console.error('Error en login:', error);
-      return {
-        success: false,
-        message: error.response?.data?.mensaje || 'Error al iniciar sesión',
-      };
+      const msg = _mapFirebaseError(error);
+      return { success: false, message: msg };
     }
   };
 
-  const register = async (userData) => {
+  /**
+   * Registro de nuevo usuario (Firebase Auth + Firestore + backend)
+   */
+  const register = async (formData) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/registro`, userData);
+      const { email, password, nombre, apellido, telefono, rol } = formData;
+      const displayName = `${nombre} ${apellido}`.trim();
 
-      const { token, refreshToken, ...user } = response.data;
+      // 1. Crear usuario en Firebase Auth
+      const firebaseUser = await firebaseSignUp(email, password, displayName);
 
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('refreshToken', refreshToken);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
+      // 2. Guardar perfil en Firestore
+      const profileData = { email, nombre, apellido, telefono, rol };
+      await createUserProfile(firebaseUser.uid, profileData);
 
-      setToken(token);
-      setUser(user);
+      // 3. Si es proveedor, crear también en colección /providers
+      if (rol === 'SERVICE_PROVIDER') {
+        await createProviderProfile(firebaseUser.uid, {
+          email,
+          nombre,
+          apellido,
+          telefono,
+          documentoIdentidad: formData.documentoIdentidad || '',
+          descripcion: formData.descripcion || '',
+          experienciaAnos: formData.experienciaAnos || 0,
+        });
+      }
+
+      // 4. Intentar obtener JWT del backend (best-effort)
+      try {
+        const idToken = await getFirebaseIdToken();
+        const response = await apiClient.post('/auth/firebase-login', {
+          firebaseToken: idToken,
+          nombre,
+          apellido,
+          telefono,
+          rol,
+        });
+        const { token: accessToken, refreshToken } = response.data;
+        await SecureStore.setItemAsync('token', accessToken);
+        await SecureStore.setItemAsync('refreshToken', refreshToken);
+        setToken(accessToken);
+      } catch (backendErr) {
+        console.warn('Backend no disponible, usando Firebase token:', backendErr.message);
+        const idToken = await getFirebaseIdToken();
+        setToken(idToken);
+      }
+
+      const fullUser = { uid: firebaseUser.uid, ...profileData };
+      setUser(fullUser);
       setIsAuthenticated(true);
 
       return { success: true };
     } catch (error) {
-      console.error('Error en registro:', error);
-      return {
-        success: false,
-        message: error.response?.data?.mensaje || 'Error al registrarse',
-      };
+      const msg = _mapFirebaseError(error);
+      return { success: false, message: msg };
     }
   };
 
+  /**
+   * Cerrar sesión (Firebase + backend + SecureStore)
+   */
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('refreshToken');
-      await AsyncStorage.removeItem('user');
-
-      setToken(null);
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Error en logout:', error);
+      await apiClient.post('/auth/logout').catch(() => {});
+    } finally {
+      await firebaseSignOut().catch(() => {});
+      await _clearSession();
     }
   };
 
+  /**
+   * Actualizar perfil del usuario en Firestore y en el estado local
+   */
   const updateUser = async (updatedData) => {
-    try {
-      const newUser = { ...user, ...updatedData };
-      await AsyncStorage.setItem('user', JSON.stringify(newUser));
-      setUser(newUser);
-    } catch (error) {
-      console.error('Error al actualizar usuario:', error);
+    const uid = user?.uid || auth.currentUser?.uid;
+    if (uid) {
+      await updateUserProfile(uid, updatedData);
+      if (user?.rol === 'SERVICE_PROVIDER') {
+        await saveProviderProfile(uid, updatedData).catch(() => {});
+      }
     }
+    setUser((prev) => ({ ...prev, ...updatedData }));
   };
 
-  const isCustomer = () => {
-    return user?.rol === 'CUSTOMER';
-  };
+  const isCustomer = () => user?.rol === 'CUSTOMER';
+  const isProvider = () => user?.rol === 'SERVICE_PROVIDER';
 
-  const isProvider = () => {
-    return user?.rol === 'SERVICE_PROVIDER';
+  /**
+   * Mapear errores de Firebase a mensajes en español
+   */
+  const _mapFirebaseError = (error) => {
+    const code = error?.code || '';
+    const map = {
+      'auth/invalid-credential': 'Email o contraseña incorrectos',
+      'auth/user-not-found': 'No existe una cuenta con ese email',
+      'auth/wrong-password': 'Contraseña incorrecta',
+      'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada',
+      'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+      'auth/invalid-email': 'El email no es válido',
+      'auth/network-request-failed': 'Error de conexión. Verifica tu internet',
+      'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos',
+    };
+    return (
+      map[code] ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Error de autenticación'
+    );
   };
 
   const value = {

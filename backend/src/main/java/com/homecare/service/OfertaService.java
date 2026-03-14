@@ -33,6 +33,7 @@ public class OfertaService {
     private final UsuarioRepository usuarioRepository;
     private final SolicitudService solicitudService;
     private final NotificationService notificationService;
+    private final AIService aiService;
 
     @Transactional
     public OfertaDTO.Response enviarOferta(Long proveedorId, OfertaDTO.Crear request) {
@@ -194,6 +195,8 @@ public class OfertaService {
                 oferta.getProveedor().getId(),
                 solicitud.getCliente().getNombre()
         );
+
+        aiService.registrarFeedbackPrecio(oferta);
 
         log.info("Oferta {} aceptada por cliente {}. Servicio {} creado",
                 ofertaId, clienteId, servicio.getId());

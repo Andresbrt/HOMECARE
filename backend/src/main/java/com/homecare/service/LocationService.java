@@ -6,6 +6,9 @@ import com.homecare.model.Usuario;
 import com.homecare.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,10 @@ public class LocationService {
     private static final double AVG_SPEED_KMH = 30.0; // Velocidad promedio en ciudad
 
     @Transactional
+        @Caching(evict = {
+            @CacheEvict(cacheNames = "userLocation", key = "#usuarioId"),
+            @CacheEvict(cacheNames = "nearbyProviders", allEntries = true)
+        })
     public void actualizarUbicacionUsuario(Long usuarioId, LocationDTO.UpdateLocation request) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
@@ -39,6 +46,7 @@ public class LocationService {
                 usuarioId, request.getLatitud(), request.getLongitud());
     }
 
+        @Cacheable(cacheNames = "userLocation", key = "#usuarioId")
     public LocationDTO.LocationResponse obtenerUbicacionUsuario(Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
@@ -58,6 +66,7 @@ public class LocationService {
         );
     }
 
+        @Cacheable(cacheNames = "nearbyProviders", key = "#latitud + ':' + #longitud + ':' + #radioKm")
     public LocationDTO.NearbyProviders obtenerProveedoresCercanos(
             BigDecimal latitud, BigDecimal longitud, Double radioKm) {
 

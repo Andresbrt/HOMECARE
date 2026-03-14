@@ -2,14 +2,18 @@ package com.homecare.controller;
 
 import com.homecare.dto.AuthDTO;
 import com.homecare.security.CustomUserDetails;
+import com.homecare.security.JwtTokenProvider;
 import com.homecare.service.AuthService;
+import com.homecare.service.TokenBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("/registro")
     @Operation(summary = "Registrar nuevo usuario")
@@ -72,5 +78,33 @@ public class AuthController {
     public ResponseEntity<AuthDTO.UsuarioInfo> getMe(@AuthenticationPrincipal CustomUserDetails userDetails) {
         AuthDTO.UsuarioInfo info = authService.obtenerInfoUsuario(userDetails.getId());
         return ResponseEntity.ok(info);
+    }
+
+    @PostMapping("/logout")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Cerrar sesión e invalidar token")
+    public ResponseEntity<String> logout(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            String token = bearerToken.substring(7);
+            try {
+                java.util.Date expiration = jwtTokenProvider.getExpirationDateFromToken(token);
+                long remainingMs = expiration.getTime() - System.currentTimeMillis();
+                tokenBlacklistService.blacklist(token, remainingMs);
+            } catch (Exception e) {
+                // Token ya expirado o inválido, no necesita blacklist
+            }
+        }
+        return ResponseEntity.ok("Sesión cerrada exitosamente");
+    }
+
+    @PostMapping("/firebase-login")
+    @Operation(summary = "Login o registro con Firebase ID Token",
+               description = "Verifica el token de Firebase Authentication y retorna un JWT de la app. "
+                           + "Si el usuario no existe lo crea automáticamente.")
+    public ResponseEntity<AuthDTO.LoginResponse> firebaseLogin(
+            @Valid @RequestBody AuthDTO.FirebaseLogin request) {
+        AuthDTO.LoginResponse response = authService.loginWithFirebase(request);
+        return ResponseEntity.ok(response);
     }
 }

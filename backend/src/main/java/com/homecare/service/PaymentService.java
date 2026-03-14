@@ -431,6 +431,42 @@ public class PaymentService {
         }
     }
 
+    /**
+     * Valida la firma oficial del webhook de Wompi usando SHA-256.
+     * Wompi envía: X-Event-Checksum = SHA256(timestamp + "." + eventSecret + "." + rawBody)
+     * Usa MessageDigest.isEqual() para comparación time-constant (previene timing attacks).
+     */
+    public boolean validarWebhookSignature(String rawBody, String checksum, String timestamp) {
+        try {
+            String concatenated = timestamp + "." + wompiEventSecret + "." + rawBody;
+
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(concatenated.getBytes(StandardCharsets.UTF_8));
+
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+
+            String calculatedChecksum = hexString.toString();
+            boolean valid = java.security.MessageDigest.isEqual(
+                    calculatedChecksum.getBytes(StandardCharsets.UTF_8),
+                    checksum.getBytes(StandardCharsets.UTF_8)
+            );
+
+            if (!valid) {
+                log.warn("Wompi webhook checksum mismatch");
+            }
+            return valid;
+
+        } catch (java.security.NoSuchAlgorithmException e) {
+            log.error("Error al calcular SHA-256 para validación Wompi: {}", e.getMessage());
+            return false;
+        }
+    }
+
     private boolean validarSignatureWompi(PagoDTO.WompiWebhookEvent webhook) {
         try {
             String payload = webhook.getEvent() + webhook.getData().getId() +
