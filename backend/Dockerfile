@@ -17,7 +17,7 @@ COPY backend/src/ src/
 RUN mvn package -DskipTests -B -q
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────
-FROM eclipse-temurin:23-jre-jammy AS runtime
+FROM eclipse-temurin:23-jre-noble AS runtime
 WORKDIR /app
 
 # curl needed for HEALTHCHECK; clean apt cache after
