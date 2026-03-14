@@ -8,11 +8,12 @@ FROM maven:3.9-eclipse-temurin-23 AS builder
 WORKDIR /build
 
 # Copy POM first — dependency layer cached separately
-COPY pom.xml .
+# Build context = repo root (set by root-level railway.json)
+COPY backend/pom.xml .
 RUN mvn dependency:go-offline -B -q
 
 # Copy source and build the fat JAR (tests run in CI, skipped here)
-COPY src/ src/
+COPY backend/src/ src/
 RUN mvn package -DskipTests -B -q
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────
