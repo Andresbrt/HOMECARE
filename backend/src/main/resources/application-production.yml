@@ -16,25 +16,25 @@ spring:
     password: ${PGPASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     
-    # HikariCP - Optimizado para producción
+    # HikariCP
     hikari:
-      maximum-pool-size: ${DB_POOL_SIZE:20}
-      minimum-idle: ${DB_POOL_MIN:5}
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN:2}
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-      leak-detection-threshold: 60000
       pool-name: HomeCareHikariPool
-      connection-test-query: SELECT 1
-      validation-timeout: 5000
-      register-mbeans: true
-      auto-commit: true
+      # initialization-fail-timeout=0: no falla el startup si DB no está lista aún.
+      # La primera query fallida loguea el error pero la app sigue corriendo.
+      initialization-fail-timeout: 0
 
   # JPA / Hibernate
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update  # Railway: update en primer deploy; cambiar a validate cuando el schema esté estable
+      # none: no intenta crear/validar tablas al arrancar.
+      # Hibernate conecta DB solo cuando llega la primera query real.
+      ddl-auto: none
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
@@ -207,9 +207,9 @@ management:
     readinessstate:
       enabled: true
     db:
-      enabled: true
+      # DB DOWN no bloquea el healthcheck — la app sigue siendo “viva”
+      enabled: false
     redis:
-      # Redis DOWN no bloquea el healthcheck de Railway (liveness)
       enabled: false
     diskspace:
       enabled: true
