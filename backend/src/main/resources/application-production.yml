@@ -1,4 +1,4 @@
-# ===========================================
+﻿# ===========================================
 # HOMECARE API - PRODUCTION CONFIGURATION
 # ===========================================
 
@@ -118,6 +118,7 @@ server:
 jwt:
   secret: ${JWT_SECRET:homecare-default-secret-change-in-production-min-64-chars-long-value}
   expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 # ============================================================
 # Spring Boot Actuator - Healthcheck para Railway
@@ -128,7 +129,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,liveness,readiness
       base-path: /actuator
   endpoint:
     health:
@@ -137,14 +138,26 @@ management:
         enabled: true
   health:
     db:
-      enabled: false   # no falla si la DB no está lista en el healthcheck inicial
+      enabled: false
     redis:
-      enabled: false   # igual para Redis
+      enabled: false
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+    diskspace:
+      enabled: true
+      threshold: 10GB
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: ${spring.application.name}
+      environment: production
 
 # CORS Configuration
 cors:
@@ -199,44 +212,6 @@ rate-limit:
   registration-attempts: 3  # 3 registros por hora
   api-requests: 100      # 100 requests por minuto por IP
 
-# Actuator + Monitoring
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,liveness,readiness
-      base-path: /actuator
-  
-  endpoint:
-    health:
-      show-details: always
-      probes:
-        enabled: true
-  
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true
-    tags:
-      application: ${spring.application.name}
-      environment: production
-  
-  health:
-    livenessstate:
-      enabled: true
-    readinessstate:
-      enabled: true
-    db:
-      # DB DOWN no bloquea el healthcheck — la app sigue siendo “viva”
-      enabled: false
-    redis:
-      enabled: false
-    diskspace:
-      enabled: true
-      threshold: 10GB
 
 # Application info
 info:
