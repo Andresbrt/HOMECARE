@@ -10,7 +10,8 @@ spring:
   # Railway PostgreSQL plugin expone: PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
   # Variables propias: DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USERNAME, DATABASE_PASSWORD
   datasource:
-    url: jdbc:postgresql://${PGHOST:${DATABASE_HOST:localhost}}:${PGPORT:${DATABASE_PORT:5432}}/${PGDATABASE:${DATABASE_NAME:homecare_db}}?ssl=true&sslmode=require
+    # Soporte para DATABASE_URL directo (Railway) o variables por partes
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:${DATABASE_HOST:localhost}}:${PGPORT:${DATABASE_PORT:5432}}/${PGDATABASE:${DATABASE_NAME:homecare_db}}}
     username: ${PGUSER:${DATABASE_USERNAME:homecare_user}}
     password: ${PGPASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
@@ -102,7 +103,8 @@ spring:
 
 # Server configuration
 server:
-  port: ${SERVER_PORT:8080}
+  # Railway inyecta PORT; SERVER_PORT es el fallback estándar de Spring Boot
+  port: ${PORT:${SERVER_PORT:8080}}
   compression:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/javascript,text/css
@@ -184,7 +186,7 @@ management:
   
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
       probes:
         enabled: true
   
@@ -197,12 +199,6 @@ management:
         http.server.requests: true
     tags:
       application: ${spring.application.name}
-
-# Async thread pool (producción: más threads)
-async:
-  core-pool-size: ${ASYNC_CORE_POOL:8}
-  max-pool-size: ${ASYNC_MAX_POOL:16}
-  queue-capacity: ${ASYNC_QUEUE_CAPACITY:200}
       environment: production
   
   health:
