@@ -2,6 +2,7 @@
   "expo": {
     "name": "HOMECARE",
     "slug": "homecare",
+    "scheme": "homecare",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -51,13 +52,13 @@
           "icon": "./assets/notification-icon.png",
           "color": "#49C0BC"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "apiUrl": "http://192.168.1.20:8080/api",
       "wsUrl": "http://192.168.1.20:8080/ws",
       "googleClientId": "YOUR_GOOGLE_CLIENT_ID",
-
       "firebaseApiKey": "AIzaSyB9Y_zPsAYj50i1XOSJ6PsB_psX4uGk7K0",
       "firebaseAuthDomain": "homecare-1582c.firebaseapp.com",
       "firebaseProjectId": "homecare-1582c",

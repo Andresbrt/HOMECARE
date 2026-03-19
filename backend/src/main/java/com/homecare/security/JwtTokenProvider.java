@@ -184,4 +184,15 @@ public class JwtTokenProvider {
                 .signWith(getSigningKey())
                 .compact();
     }
+
+    /**
+     * Extraer token del header Authorization
+     */
+    public String resolveToken(jakarta.servlet.http.HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (org.springframework.util.StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
 }

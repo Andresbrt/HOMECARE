@@ -1,35 +1,45 @@
 /**
- * AppNavigator - Navegación principal de la app
- * Stack Navigator para cliente y proveedor
+ * AppNavigator — Navegación principal Homecare 2026
+ * Modo Profesional : Drawer oscuro → Tabs (ProfDashboard / ProfMap / ProfWallet / ProfPerformance)
+ * Modo Usuario     : Stack oscuro premium → UserMap como raíz (MapScreen.js)
  */
 
-import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../constants/theme';
+import useModeStore from '../store/modeStore';
+import { COLORS, PROF } from '../constants/theme';
+
+// Professional Screens
+import ProfDashboardScreen from '../screens/profesional/DashboardScreen';
+import ProfMapScreen from '../screens/profesional/MapScreen';
+import ProfWalletScreen from '../screens/profesional/WalletScreen';
+import ProfPerformanceScreen from '../screens/profesional/PerformanceScreen';
+import DrawerContent from '../components/profesional/DrawerContent';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
 
-// Customer Screens
-import CustomerHomeScreen from '../screens/customer/HomeScreen';
+// ─── Usuario premium (dark map UX) ──────────────────────────────────────────
+import UserMapScreen from '../screens/usuario/MapScreen';
+
+// Screens usadas en el stack de usuario
 import CreateRequestScreen from '../screens/customer/CreateRequestScreen';
 import ViewOffersScreen from '../screens/customer/ViewOffersScreen';
 import ServiceTrackingScreen from '../screens/customer/ServiceTrackingScreen';
 
-// Provider Screens
-import ProviderHomeScreen from '../screens/provider/HomeScreen';
+// Screens exclusivas del modo profesional
 import AvailableRequestsScreen from '../screens/provider/AvailableRequestsScreen';
 import SendOfferScreen from '../screens/provider/SendOfferScreen';
-import MyOffersScreen from '../screens/provider/MyOffersScreen';
 
-// Shared Screens
+// Screens compartidas
 import ChatScreen from '../screens/shared/ChatScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import HistoryScreen from '../screens/shared/HistoryScreen';
@@ -37,135 +47,172 @@ import NotificationsScreen from '../screens/shared/NotificationsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 
-// Opciones de estilo minimalista
+// ─── Opciones de tab para modo PROFESIONAL (dark) ────────────────────────────
+const profTabOptions = {
+  tabBarActiveTintColor: PROF.accent,
+  tabBarInactiveTintColor: PROF.textMuted,
+  tabBarStyle: {
+    backgroundColor: PROF.bgElevated,
+    borderTopColor: PROF.border,
+    borderTopWidth: 1,
+    height: 62,
+    paddingBottom: 8,
+    paddingTop: 6,
+  },
+  tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+  headerShown: false,
+};
+
+// ─── Opciones compartidas de Stack ───────────────────────────────────────────
 const screenOptions = {
+  headerStyle: { backgroundColor: COLORS.primary, elevation: 0, shadowOpacity: 0 },
+  headerTintColor: COLORS.white,
+  headerTitleStyle: { fontWeight: '600', fontSize: 18 },
+};
+
+// ─── Opciones de Stack oscuro premium (modo usuario) ─────────────────────────
+const darkStackOptions = {
   headerStyle: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: PROF.bgElevated,
     elevation: 0,
     shadowOpacity: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: PROF.border,
   },
-  headerTintColor: COLORS.white,
-  headerTitleStyle: {
-    fontFamily: 'Arial Narrow',
-    fontWeight: '600',
-    fontSize: 18,
-  },
+  headerTintColor: PROF.textPrimary,
+  headerTitleStyle: { fontWeight: '700', fontSize: 17, color: PROF.textPrimary },
+  cardStyle: { backgroundColor: PROF.bg },
 };
 
-const tabOptions = {
-  tabBarActiveTintColor: COLORS.accent,
-  tabBarInactiveTintColor: COLORS.textDisabled,
-  tabBarStyle: {
-    backgroundColor: COLORS.white,
-    borderTopColor: COLORS.border,
-    borderTopWidth: 1,
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 8,
-  },
-  tabBarLabelStyle: {
-    fontFamily: 'Arial Narrow',
-    fontSize: 12,
-  },
-  headerStyle: {
-    backgroundColor: COLORS.primary,
-  },
-  headerTintColor: COLORS.white,
-  headerTitleStyle: {
-    fontFamily: 'Arial Narrow',
-    fontWeight: '600',
-  },
-};
-
-// Tabs para Cliente
-function CustomerTabs() {
+// ─── Stack USUARIO PREMIUM — UserMap como pantalla raíz ─────────────────────
+// Todos en modo oscuro, sin tabs: mapa full-screen + pantallas de servicio
+function UserModeStack() {
   return (
-    <Tab.Navigator screenOptions={tabOptions}>
-      <Tab.Screen
-        name="CustomerHome"
-        component={CustomerHomeScreen}
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
+    <Stack.Navigator screenOptions={darkStackOptions}>
+      {/* 1. Raíz: mapa full-screen, sin header, sin gesto de retroceso */}
+      <Stack.Screen
+        name="UserMap"
+        component={UserMapScreen}
+        options={{ headerShown: false, gestureEnabled: false }}
       />
-      <Tab.Screen
-        name="History"
+      {/* 2. Solicitar un servicio */}
+      <Stack.Screen
+        name="ServiceRequest"
+        component={CreateRequestScreen}
+        options={{ title: 'Nueva Solicitud' }}
+      />
+      {/* 3. Ver ofertas recibidas */}
+      <Stack.Screen
+        name="ViewOffers"
+        component={ViewOffersScreen}
+        options={{ title: 'Ofertas Recibidas' }}
+      />
+      {/* 4. Seguimiento del proveedor en tiempo real */}
+      <Stack.Screen
+        name="ServiceTracking"
+        component={ServiceTrackingScreen}
+        options={{ title: 'Seguimiento' }}
+      />
+      {/* 5. Chat con el proveedor */}
+      <Stack.Screen
+        name="UserChat"
+        component={ChatScreen}
+        options={{ title: 'Chat' }}
+      />
+      {/* 6. Historial de servicios */}
+      <Stack.Screen
+        name="UserHistory"
         component={HistoryScreen}
-        options={{
-          title: 'Historial',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" size={size} color={color} />
-          ),
-        }}
+        options={{ title: 'Historial' }}
       />
-      <Tab.Screen
-        name="Profile"
+      {/* 7. Perfil del usuario */}
+      <Stack.Screen
+        name="UserProfile"
         component={ProfileScreen}
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
-        }}
+        options={{ title: 'Mi Perfil' }}
       />
-    </Tab.Navigator>
+      {/* 8. Notificaciones */}
+      <Stack.Screen
+        name="UserNotifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notificaciones' }}
+      />
+    </Stack.Navigator>
   );
 }
 
-// Tabs para Proveedor
-function ProviderTabs() {
+// ─── Tabs PROFESIONAL (modo premium oscuro) ───────────────────────────────────
+function ProfessionalTabs() {
   return (
-    <Tab.Navigator screenOptions={tabOptions}>
+    <Tab.Navigator screenOptions={profTabOptions}>
       <Tab.Screen
-        name="ProviderHome"
-        component={ProviderHomeScreen}
+        name="ProfDashboard"
+        component={ProfDashboardScreen}
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
       <Tab.Screen
-        name="AvailableRequests"
-        component={AvailableRequestsScreen}
+        name="ProfMap"
+        component={ProfMapScreen}
         options={{
-          title: 'Solicitudes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list-outline" size={size} color={color} />
-          ),
+          title: 'Mapa',
+          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tab.Screen
-        name="MyOffers"
-        component={MyOffersScreen}
+        name="ProfPerformance"
+        component={ProfPerformanceScreen}
         options={{
-          title: 'Mis Ofertas',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pricetag-outline" size={size} color={color} />
-          ),
+          title: 'Desempeño',
+          tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart" size={size} color={color} />,
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="ProfWallet"
+        component={ProfWalletScreen}
         options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
+          title: 'Cartera',
+          tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={size} color={color} />,
         }}
       />
     </Tab.Navigator>
   );
 }
 
+// ─── Drawer + Tabs para modo PROFESIONAL ─────────────────────────────────────
+function ProfessionalDrawer() {
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => <DrawerContent {...props} />}
+      screenOptions={{
+        headerShown: false,
+        drawerType: 'slide',
+        drawerStyle: { width: Math.min(280, Dimensions.get('window').width * 0.82), backgroundColor: PROF.bg },
+        overlayColor: 'rgba(0,0,0,0.6)',
+        sceneStyle: { backgroundColor: PROF.bg },
+      }}
+    >
+      <Drawer.Screen name="ProfMain" component={ProfessionalTabs} />
+    </Drawer.Navigator>
+  );
+}
+
+// ─── Navigator principal ──────────────────────────────────────────────────────
 export default function AppNavigator() {
-  const { isAuthenticated, loading, isCustomer } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
+  const { mode, setMode } = useModeStore();
+
+  // Sincronizar modo con el rol del usuario al autenticarse
+  useEffect(() => {
+    if (user) {
+      const defaultMode = user.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+      setMode(defaultMode);
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -175,72 +222,37 @@ export default function AppNavigator() {
     );
   }
 
+  const isProfessional = isAuthenticated && mode === 'profesional';
+  const isUserMode = isAuthenticated && mode === 'usuario';
+
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       {!isAuthenticated ? (
-        // Auth Stack
+        // ── Auth Stack ──
         <>
-          <Stack.Screen
-            name="RoleSelection"
-            component={RoleSelectionScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ title: 'Iniciar Sesión' }}
-          />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{ title: 'Registrarse' }}
-          />
+          <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registrarse' }} />
+        </>
+      ) : isProfessional ? (
+        // ── Modo Profesional: Drawer + Tabs oscuros ──
+        <>
+          <Stack.Screen name="Main" component={ProfessionalDrawer} options={{ headerShown: false }} />
+          <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificaciones' }} />
+          <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} options={{ title: 'Solicitudes' }} />
+          <Stack.Screen name="SendOffer" component={SendOfferScreen} options={{ title: 'Enviar Oferta' }} />
+          <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
         </>
       ) : (
-        // Main App Stack
-        <>
-          <Stack.Screen
-            name="Main"
-            component={isCustomer() ? CustomerTabs : ProviderTabs}
-            options={{ headerShown: false }}
-          />
-          
-          {/* Pantallas compartidas */}
-          <Stack.Screen
-            name="Chat"
-            component={ChatScreen}
-            options={{ title: 'Chat' }}
-          />
-          <Stack.Screen
-            name="Notifications"
-            component={NotificationsScreen}
-            options={{ title: 'Notificaciones' }}
-          />
-          
-          {/* Pantallas del cliente */}
-          <Stack.Screen
-            name="CreateRequest"
-            component={CreateRequestScreen}
-            options={{ title: 'Nueva Solicitud' }}
-          />
-          <Stack.Screen
-            name="ViewOffers"
-            component={ViewOffersScreen}
-            options={{ title: 'Ver Ofertas' }}
-          />
-          <Stack.Screen
-            name="ServiceTracking"
-            component={ServiceTrackingScreen}
-            options={{ title: 'Seguimiento' }}
-          />
-          
-          {/* Pantallas del proveedor */}
-          <Stack.Screen
-            name="SendOffer"
-            component={SendOfferScreen}
-            options={{ title: 'Enviar Oferta' }}
-          />
-        </>
+        // ── Modo Usuario: Stack oscuro premium, UserMap como raíz ──
+        // El primer screen en registrarse es el que se muestra automáticamente.
+        // UserMap = pantalla raíz → al llamar setMode('usuario') siempre aterriza aquí.
+        <Stack.Screen
+          name="UserRoot"
+          component={UserModeStack}
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
       )}
     </Stack.Navigator>
   );
@@ -254,3 +266,25 @@ const loadingStyles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
 });
+
+/*
+ * INSTRUCCIONES DE USO
+ * ─────────────────────────────────────────────────────────────
+ * CAMBIO DE MODO
+ *   const { setMode } = useModeStore();
+ *   setMode('usuario');      → va directo a UserMap (MapScreen usuario)
+ *   setMode('profesional');  → va directo al Dashboard profesional
+ *
+ * NAVEGACIÓN DENTRO DEL MODO USUARIO (desde UserMapScreen):
+ *   navigation.navigate('ServiceRequest')     → Nueva solicitud
+ *   navigation.navigate('ViewOffers')         → Ofertas recibidas
+ *   navigation.navigate('ServiceTracking')    → Seguimiento en tiempo real
+ *   navigation.navigate('UserChat')           → Chat con proveedor
+ *   navigation.navigate('UserHistory')        → Historial de servicios
+ *   navigation.navigate('UserProfile')        → Mi perfil
+ *   navigation.navigate('UserNotifications')  → Notificaciones
+ *
+ * NOTA: Al llamar setMode() desde DrawerContent no se necesita navigation.navigate()
+ * porque el re-render de AppNavigator monta la nueva pila automáticamente.
+ */
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,14 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocation } from '../../context/LocationContext';
 import apiClient from '../../services/apiClient';
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
+import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS, PROF } from '../../constants/theme';
 
 const TIPOS_LIMPIEZA = [
   { value: 'BASICA', label: 'Básica', icon: 'sparkles-outline' },
@@ -27,7 +29,7 @@ const TIPOS_LIMPIEZA = [
   { value: 'DESINFECCION', label: 'Desinfección', icon: 'shield-checkmark-outline' },
 ];
 
-export default function CreateRequestScreen({ navigation }) {
+export default function CreateRequestScreen({ navigation, route }) {
   const { location } = useLocation();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -35,54 +37,86 @@ export default function CreateRequestScreen({ navigation }) {
     descripcion: '',
     tipoLimpieza: '',
     direccion: '',
-    metrosCuadrados: '',
-    cantidadHabitaciones: '',
-    cantidadBanos: '',
+    metrosCuadrados: '60',
+    cantidadHabitaciones: '2',
+    cantidadBanos: '1',
     tieneMascotas: false,
     precioMaximo: '',
-    fechaServicio: '',
-    horaInicio: '',
+    fechaServicio: new Date().toISOString().split('T')[0],
+    horaInicio: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
     duracionEstimada: '60',
     instruccionesEspeciales: '',
   });
 
+  const selectedService = route.params?.service;
+
+  useEffect(() => {
+    if (selectedService) {
+      const tipoMapeado = selectedService.title.toUpperCase().includes('BÁSICA') ? 'BASICA' :
+                         selectedService.title.toUpperCase().includes('PROFUNDA') ? 'PROFUNDA' :
+                         selectedService.title.toUpperCase().includes('OFICINA') ? 'OFICINA' : '';
+      
+      setForm(prev => ({
+        ...prev,
+        tipoLimpieza: tipoMapeado,
+        titulo: `Solicitud de ${selectedService.title}`,
+      }));
+    }
+  }, [selectedService]);
+
+  const [isConfirmingLocation, setIsConfirmingLocation] = useState(false);
+
   const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async () => {
-    if (!form.titulo.trim() || !form.tipoLimpieza || !form.direccion.trim() || !form.fechaServicio || !form.horaInicio) {
-      Alert.alert('Campos requeridos', 'Completa título, tipo, dirección, fecha y hora.');
+    if (!form.titulo.trim() || !form.tipoLimpieza || !form.direccion.trim()) {
+      Alert.alert('Campos requeridos', 'Completa título, tipo y dirección.');
       return;
     }
 
+    const precio = form.precioMaximo ? parseFloat(form.precioMaximo) : 0;
+    if (precio < 80000) {
+      Alert.alert('Precio mínimo', 'El presupuesto mínimo para una solicitud es de COL$ 80.000.');
+      return;
+    }
+
+    setIsConfirmingLocation(true);
+  };
+
+  const executeRequest = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
+    setIsConfirmingLocation(false);
 
     try {
+      const now = new Date();
+      const futureDate = new Date(now.getTime() + 10 * 60000); 
+      
       const payload = {
         titulo: form.titulo.trim(),
-        descripcion: form.descripcion.trim(),
+        descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza}`,
         tipoLimpieza: form.tipoLimpieza,
         direccion: form.direccion.trim(),
-        latitud: location?.coords?.latitude || 4.6097,
-        longitud: location?.coords?.longitude || -74.0817,
-        metrosCuadrados: form.metrosCuadrados ? parseFloat(form.metrosCuadrados) : null,
-        cantidadHabitaciones: form.cantidadHabitaciones ? parseInt(form.cantidadHabitaciones, 10) : null,
-        cantidadBanos: form.cantidadBanos ? parseInt(form.cantidadBanos, 10) : null,
+        latitud: location?.coords?.latitude ? parseFloat(location.coords.latitude.toFixed(6)) : 4.6097,
+        longitud: location?.coords?.longitude ? parseFloat(location.coords.longitude.toFixed(6)) : -74.0817,
+        metrosCuadrados: form.metrosCuadrados ? parseFloat(form.metrosCuadrados) : 60,
+        cantidadHabitaciones: form.cantidadHabitaciones ? parseInt(form.cantidadHabitaciones, 10) : 2,
+        cantidadBanos: form.cantidadBanos ? parseInt(form.cantidadBanos, 10) : 1,
         tieneMascotas: form.tieneMascotas,
-        precioMaximo: form.precioMaximo ? parseFloat(form.precioMaximo) : null,
-        fechaServicio: form.fechaServicio,
-        horaInicio: form.horaInicio,
+        precioMaximo: parseFloat(form.precioMaximo),
+        fechaServicio: futureDate.toISOString().split('T')[0],
+        horaInicio: futureDate.toTimeString().split(' ')[0].substring(0, 5),
         duracionEstimada: parseInt(form.duracionEstimada, 10) || 60,
-        instruccionesEspeciales: form.instruccionesEspeciales.trim() || null,
+        instruccionesEspeciales: form.instruccionesEspeciales?.trim() || "Sin instrucciones adicionales",
       };
 
       await apiClient.post('/solicitudes', payload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('¡Solicitud creada!', 'Los profesionales cercanos recibirán tu solicitud.', [
-        { text: 'Ver ofertas', onPress: () => navigation.goBack() },
+      Alert.alert('¡Solicitud enviada!', 'Buscando profesionales cerca de ti...', [
+        { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      const msg = error.response?.data?.message || 'No se pudo crear la solicitud.';
+      const msg = error.response?.data?.message || 'Error al conectar con el servidor.';
       Alert.alert('Error', msg);
     } finally {
       setLoading(false);
@@ -207,48 +241,12 @@ export default function CreateRequestScreen({ navigation }) {
             <Text style={styles.toggleLabel}>Tengo mascotas</Text>
           </TouchableOpacity>
 
-          {/* Fecha y hora */}
-          <Text style={styles.sectionTitle}>Programar servicio</Text>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.miniLabel}>Fecha *</Text>
+              <Text style={styles.miniLabel}>Presupuesto sugerido (Min. $80.000) *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.textDisabled}
-                value={form.fechaServicio}
-                onChangeText={v => updateField('fechaServicio', v)}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: SPACING.sm }}>
-              <Text style={styles.miniLabel}>Hora *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="HH:MM"
-                placeholderTextColor={COLORS.textDisabled}
-                value={form.horaInicio}
-                onChangeText={v => updateField('horaInicio', v)}
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.miniLabel}>Duración (min)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="60"
-                placeholderTextColor={COLORS.textDisabled}
-                value={form.duracionEstimada}
-                onChangeText={v => updateField('duracionEstimada', v)}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: SPACING.sm }}>
-              <Text style={styles.miniLabel}>Precio máximo ($)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Opcional"
+                placeholder="Ej: 85000"
                 placeholderTextColor={COLORS.textDisabled}
                 value={form.precioMaximo}
                 onChangeText={v => updateField('precioMaximo', v)}
@@ -275,13 +273,57 @@ export default function CreateRequestScreen({ navigation }) {
               <ActivityIndicator color={COLORS.white} />
             ) : (
               <>
-                <Ionicons name="send" size={20} color={COLORS.white} />
-                <Text style={styles.submitText}>Publicar solicitud</Text>
+                <Ionicons name="flash" size={20} color={COLORS.white} />
+                <Text style={styles.submitText}>SOLICITAR OFERTAS AHORA</Text>
               </>
             )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* MODAL DE CONFIRMACIÓN DE UBICACIÓN */}
+      <Modal visible={isConfirmingLocation} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Confirma tu ubicación</Text>
+            <Text style={styles.modalSub}>El profesional llegará a este punto exacto</Text>
+            
+            <View style={styles.miniMapWrap}>
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={styles.miniMap}
+                initialRegion={{
+                  latitude: location?.coords?.latitude || 4.6097,
+                  longitude: location?.coords?.longitude || -74.0817,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: location?.coords?.latitude || 4.6097,
+                    longitude: location?.coords?.longitude || -74.0817,
+                  }}
+                >
+                  <View style={styles.markerCircle}>
+                    <View style={styles.markerDot} />
+                  </View>
+                </Marker>
+              </MapView>
+            </View>
+
+            <TouchableOpacity style={styles.confirmBtn} onPress={executeRequest}>
+              <Text style={styles.confirmBtnText}>Confirmar y Publicar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsConfirmingLocation(false)}>
+              <Text style={styles.cancelBtnText}>Editar dirección</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -333,4 +375,79 @@ const styles = StyleSheet.create({
     ...SHADOWS.md,
   },
   submitText: { color: COLORS.white, fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.bold },
+
+  // Estilos del Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: SPACING.lg,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSub: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+  },
+  miniMapWrap: {
+    height: 180,
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#eee',
+    marginBottom: SPACING.lg,
+  },
+  miniMap: {
+    flex: 1,
+  },
+  markerCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(73,192,188,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  markerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#49C0BC',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  confirmBtn: {
+    backgroundColor: '#000',
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  confirmBtnText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#666',
+    fontWeight: '600',
+  },
 });

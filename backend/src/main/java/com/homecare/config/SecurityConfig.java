@@ -91,17 +91,22 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Note: allowCredentials(true) is incompatible with the wildcard "*" origin.
-        // List explicit allowed origins instead.
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:19006",
-                "http://localhost:19000",
-                "http://localhost:8081"
+
+        // setAllowedOriginPatterns soporta wildcards y es compatible con allowCredentials(true)
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://192.168.*.*",   // celular físico en red local
+                "http://10.0.*.*",      // emulador Android
+                "exp://*"               // protocolo Expo Go
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+
+        configuration.setAllowedMethods(
+                Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        );
+        configuration.setAllowedHeaders(
+                Arrays.asList("Authorization", "Content-Type", "X-Requested-With")
+        );
+        configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

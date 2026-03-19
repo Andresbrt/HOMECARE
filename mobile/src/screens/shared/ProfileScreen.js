@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
+import ScreenLayout from '../../components/shared/ScreenLayout';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenLayout>
       <View style={styles.content}>
         <View style={styles.avatar}>
           <Ionicons name="person-circle-outline" size={80} color={COLORS.accent} />
@@ -31,7 +32,7 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 

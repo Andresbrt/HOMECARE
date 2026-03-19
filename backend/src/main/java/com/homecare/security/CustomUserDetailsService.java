@@ -1,7 +1,7 @@
 package com.homecare.security;
 
-import com.homecare.model.Usuario;
-import com.homecare.repository.UsuarioRepository;
+import com.homecare.domain.user.model.Usuario;
+import com.homecare.domain.user.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

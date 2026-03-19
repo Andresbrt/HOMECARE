@@ -1,6 +1,6 @@
 package com.homecare.security;
 
-import com.homecare.service.TokenBlacklistService;
+import com.homecare.domain.common.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

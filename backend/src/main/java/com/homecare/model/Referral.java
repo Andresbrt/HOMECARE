@@ -1,5 +1,6 @@
 package com.homecare.model;
 
+import com.homecare.domain.user.model.Usuario;
 import jakarta.persistence.*;
 import lombok.Data;
 

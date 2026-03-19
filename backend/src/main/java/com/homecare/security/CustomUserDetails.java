@@ -1,6 +1,6 @@
 package com.homecare.security;
 
-import com.homecare.model.Usuario;
+import com.homecare.domain.user.model.Usuario;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -59,6 +59,10 @@ public class CustomUserDetails implements UserDetails {
                 usuario.getVerificado(),
                 authorities
         );
+    }
+
+    public static CustomUserDetails create(Usuario usuario) {
+        return build(usuario);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.homecare.dto;
 
-import com.homecare.model.Pago.EstadoPago;
-import com.homecare.model.Pago.MetodoPago;
+import com.homecare.domain.payment.model.Pago.EstadoPago;
+import com.homecare.domain.payment.model.Pago.MetodoPago;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

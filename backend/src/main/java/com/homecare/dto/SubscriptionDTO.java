@@ -1,7 +1,7 @@
 package com.homecare.dto;
 
-import com.homecare.model.Subscription.Estado;
-import com.homecare.model.Subscription.PlanType;
+import com.homecare.domain.payment.model.Subscription.Estado;
+import com.homecare.domain.payment.model.Subscription.PlanType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

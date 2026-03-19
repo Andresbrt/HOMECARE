@@ -1,5 +1,8 @@
 package com.homecare.model;
 
+import com.homecare.domain.solicitud.model.Solicitud;
+import com.homecare.domain.offer.model.Oferta;
+import com.homecare.domain.user.model.Usuario;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

@@ -1,7 +1,7 @@
 package com.homecare.security;
 
-import com.homecare.model.Rol;
-import com.homecare.model.Usuario;
+import com.homecare.domain.user.model.Rol;
+import com.homecare.domain.user.model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

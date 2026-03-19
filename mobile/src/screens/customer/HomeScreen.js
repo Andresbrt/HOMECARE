@@ -4,17 +4,17 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
+import ScreenLayout from '../../components/shared/ScreenLayout';
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenLayout>
       <View style={styles.content}>
         {/* Greeting */}
         <Text style={styles.greeting}>
@@ -64,7 +64,7 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 

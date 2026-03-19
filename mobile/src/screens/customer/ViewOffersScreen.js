@@ -15,7 +15,7 @@ import * as Haptics from 'expo-haptics';
 import apiClient from '../../services/apiClient';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
 
-function OfferCard({ offer, onAccept }) {
+const OfferCard = React.memo(({ offer, onAccept }) => {
   return (
     <View style={styles.offerCard}>
       <View style={styles.offerHeader}>
@@ -75,7 +75,7 @@ function OfferCard({ offer, onAccept }) {
       )}
     </View>
   );
-}
+});
 
 export default function ViewOffersScreen({ route, navigation }) {
   const { solicitudId } = route.params || {};
