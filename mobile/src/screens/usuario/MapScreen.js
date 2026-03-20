@@ -12,10 +12,24 @@ import {
   ScrollView,
   SafeAreaView,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { LinearGradient } from 'expo-linear-gradient';
+
+let MapView, Marker, PROVIDER_GOOGLE;
+if (Platform.OS !== 'web') {
+  const MapModule = require('react-native-maps');
+  MapView = MapModule.default;
+  Marker = MapModule.Marker;
+  PROVIDER_GOOGLE = MapModule.PROVIDER_GOOGLE;
+} else {
+  // Mock para Web
+  MapView = ({ children, style }) => <View style={[style, { backgroundColor: '#0a1628', justifyContent: 'center', alignItems: 'center' }]}><Text style={{color: '#49C0BC'}}>Mapa no disponible en Web (Usa Expo Go)</Text>{children}</View>;
+  Marker = ({ children }) => <View>{children}</View>;
+  PROVIDER_GOOGLE = 'google';
+}
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -48,9 +62,9 @@ const DARK_MAP_STYLE = [
 const CATEGORIES = [
   { id: 'limpieza', label: 'Limpieza', icon: 'sparkles-outline' },
   { id: 'electricidad', label: 'Electricidad', icon: 'flash-outline' },
-  { id: 'plomeria', label: 'Plomería', icon: 'water-outline' },
+  { id: 'plomeria', label: 'Plomerï¿½a', icon: 'water-outline' },
   { id: 'reparacion', label: 'Reparaciones', icon: 'hammer-outline' },
-  { id: 'jardineria', label: 'Jardinería', icon: 'leaf-outline' },
+  { id: 'jardineria', label: 'Jardinerï¿½a', icon: 'leaf-outline' },
 ];
 
 const TECHNICIANS = [
@@ -80,12 +94,16 @@ function CategoryChip({ item, selected, onPress }) {
   );
 }
 
-function MenuOption({ icon, label, onPress }) {
+function MenuOption({ icon, label, onPress, index }) {
   return (
-    <TouchableOpacity style={styles.menuOption} onPress={onPress}>
-      <Ionicons name={icon} size={22} color="#fff" style={styles.menuOptionIcon} />
-      <Text style={styles.menuOptionLabel}>{label}</Text>
-    </TouchableOpacity>
+    <Animated.View 
+      entering={FadeInLeft.delay(index * 100).springify().damping(15)}
+    >
+      <TouchableOpacity style={styles.menuOption} onPress={onPress}>
+        <Ionicons name={icon} size={22} color="#fff" style={styles.menuOptionIcon} />
+        <Text style={styles.menuOptionLabel}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -165,7 +183,7 @@ export default function UserMapScreen({ navigation }) {
                   <View style={styles.notifDot} />
                 </View>
                 <View style={styles.sideInfo}>
-                  <Text style={styles.sideName}>{user?.nombre || 'Andrés'}</Text>
+                  <Text style={styles.sideName}>{user?.nombre || 'Andrï¿½s'}</Text>
                   <View style={styles.ratingRow}>
                     <Ionicons name="star" size={12} color="#FFD700" />
                     <Text style={styles.ratingText}>4.96 (115)</Text>
@@ -175,12 +193,12 @@ export default function UserMapScreen({ navigation }) {
               </TouchableOpacity>
 
               <ScrollView style={styles.menuOptions}>
-                <MenuOption icon="time-outline" label="Historial de solicitudes" onPress={() => navigation.navigate('UserHistory')} />
-                <MenuOption icon="notifications-outline" label="Notificaciones" onPress={() => navigation.navigate('UserNotifications')} />
-                <MenuOption icon="shield-checkmark-outline" label="Seguridad" onPress={() => {}} />
-                <MenuOption icon="settings-outline" label="Configuracion" onPress={() => {}} />
-                <MenuOption icon="help-circle-outline" label="Ayuda" onPress={() => {}} />
-                <MenuOption icon="chatbubble-outline" label="Soporte" onPress={() => {}} />
+                <MenuOption index={0} icon="time-outline" label="Historial de solicitudes" onPress={() => navigation.navigate('UserHistory')} />
+                <MenuOption index={1} icon="notifications-outline" label="Notificaciones" onPress={() => navigation.navigate('UserNotifications')} />
+                <MenuOption index={2} icon="shield-checkmark-outline" label="Seguridad" onPress={() => {}} />
+                <MenuOption index={3} icon="settings-outline" label="Configuracion" onPress={() => {}} />
+                <MenuOption index={4} icon="help-circle-outline" label="Ayuda" onPress={() => {}} />
+                <MenuOption index={5} icon="chatbubble-outline" label="Soporte" onPress={() => {}} />
               </ScrollView>
 
               <View style={styles.menuFooter}>

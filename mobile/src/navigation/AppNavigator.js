@@ -26,6 +26,7 @@ import DrawerContent from '../components/profesional/DrawerContent';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // ─── Usuario premium (dark map UX) ──────────────────────────────────────────
 import UserMapScreen from '../screens/usuario/MapScreen';
@@ -233,6 +234,7 @@ export default function AppNavigator() {
           <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
           <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registrarse' }} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} />
         </>
       ) : isProfessional ? (
         // ── Modo Profesional: Drawer + Tabs oscuros ──

@@ -12,6 +12,7 @@ import * as SecureStore from 'expo-secure-store';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import apiClient from '../services/apiClient';
+import { authService } from '../services/authService';
 import {
   firebaseSignIn,
   firebaseSignUp,
@@ -147,6 +148,107 @@ export const AuthProvider = ({ children }) => {
         const idToken = await getFirebaseIdToken();
         setToken(idToken);
       }
+
+      setUser(profile);
+      setIsAuthenticated(true);
+      return { success: true };
+    } catch (error) {
+      console.error('Error en login:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
+  const register = async (formData) => {
+    try {
+      const { email, password, nombre, apellido, telefono, rol } = formData;
+      const firebaseUser = await firebaseSignUp(email, password);
+
+      // Guardar perfil en Firestore
+      const profile = {
+        uid: firebaseUser.uid,
+        email,
+        nombre,
+        apellido,
+        telefono,
+        rol,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (rol === 'SERVICE_PROVIDER') {
+        await createProviderProfile(profile);
+      } else {
+        await createUserProfile(profile);
+      }
+
+      // Intercambiar por JWT (best-effort)
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        const payload = {
+          firebaseToken: idToken,
+          nombre,
+          apellido,
+          telefono,
+          rol,
+        };
+        const response = await apiClient.post('/auth/firebase-login', payload);
+        const { token: accessToken, refreshToken } = response.data;
+        await SecureStore.setItemAsync('token', accessToken);
+        await SecureStore.setItemAsync('refreshToken', refreshToken);
+        setToken(accessToken);
+      } catch (backendErr) {
+        console.warn('Backend no disponible durante registro:', backendErr.message);
+      }
+
+      setUser(profile);
+      setIsAuthenticated(true);
+      return { success: true };
+    } catch (error) {
+      console.error('Error en registro:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await firebaseSignOut();
+      await _clearSession();
+      return { success: true };
+    } catch (error) {
+      console.error('Error en logout:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
+  /**
+   * Envía email de recuperación de contraseña (Firebase Auth)
+   */
+  const forgotPassword = async (email) => {
+    try {
+      await authService.forgotPassword(email);
+      return { success: true };
+    } catch (error) {
+      console.error('Error en recuperar contraseña:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        isAuthenticated,
+        login,
+        register,
+        logout,
+        forgotPassword,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
       const fullUser = { uid: firebaseUser.uid, email, ...profile };
       setUser(fullUser);

@@ -51,7 +51,13 @@ export default function RegisterScreen({ route, navigation }) {
     const result = await register(form);
     setLoading(false);
 
-    if (!result.success) {
+    if (result.success) {
+      Alert.alert(
+        '¡Registro Exitoso!',
+        'Tu cuenta ha sido creada. Por favor verifica tu correo electrónico para activar todas las funciones.',
+        [{ text: 'Entendido' }]
+      );
+    } else {
       Alert.alert('Error', result.message);
     }
   };

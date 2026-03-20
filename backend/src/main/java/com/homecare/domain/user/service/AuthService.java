@@ -35,15 +35,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final NotificationService notificationService;
+    private final EmailService emailService;
+    private final UserTokenRepository userTokenRepository;
+
+    @Value("${app.frontend.base-url:http://localhost:3000}")
+    private String frontendBaseUrl;
 
     @Transactional
     public AuthDTO.LoginResponse registro(AuthDTO.Registro registroDTO) {
         if (usuarioRepository.existsByEmail(registroDTO.getEmail())) {
-            throw new AuthException("El email ya estÃ¡ registrado");
+            throw new AuthException("El email ya está registrado");
         }
 
         if (usuarioRepository.existsByTelefono(registroDTO.getTelefono())) {
-            throw new AuthException("El telÃ©fono ya estÃ¡ registrado");
+            throw new AuthException("El teléfono ya está registrado");
         }
 
         String rolNombre = "ROLE_" + registroDTO.getRol().toUpperCase();
@@ -74,18 +79,95 @@ public class AuthService {
 
         Usuario savedUser = usuarioRepository.save(usuario);
         
+        // Generar token de verificación
+        String token = java.util.UUID.randomUUID().toString();
+        UserToken userToken = UserToken.builder()
+                .usuario(savedUser)
+                .tokenHash(token)
+                .tokenType(UserTokenType.VERIFICATION)
+                .expiresAt(LocalDateTime.now().plusHours(24))
+                .build();
+        userTokenRepository.save(userToken);
+
+        // Enviar email de verificación
+        Map<String, Object> variables = new java.util.HashMap<>();
+        variables.put("userName", savedUser.getNombre());
+        variables.put("verificationLink", frontendBaseUrl + "/verify-email?token=" + token);
+        variables.put("expiryHours", 24);
+        emailService.sendHtmlEmail(savedUser.getEmail(), "Verifica tu email - HOME CARE", "email/verification", variables);
+        
         CustomUserDetails userDetails = CustomUserDetails.create(savedUser);
-        String token = jwtTokenProvider.generateToken(userDetails);
+        String jwtToken = jwtTokenProvider.generateToken(userDetails);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
 
         return AuthDTO.LoginResponse.builder()
-                .token(token)
+                .token(jwtToken)
                 .refreshToken(refreshToken)
                 .tipo("Bearer")
                 .email(savedUser.getEmail())
                 .rol(rolNombre)
                 .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
                 .build();
+    }
+
+    @Transactional
+    public void solicitarRecuperacionPassword(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
+        if (usuario == null) return; // Por seguridad no revelamos si el email existe
+
+        // Limpiar tokens anteriores
+        userTokenRepository.deleteByUsuarioIdAndTokenType(usuario.getId(), UserTokenType.PASSWORD_RESET);
+
+        String token = java.util.UUID.randomUUID().toString();
+        UserToken userToken = UserToken.builder()
+                .usuario(usuario)
+                .tokenHash(token)
+                .tokenType(UserTokenType.PASSWORD_RESET)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        userTokenRepository.save(userToken);
+
+        Map<String, Object> variables = new java.util.HashMap<>();
+        variables.put("userName", usuario.getNombre());
+        variables.put("resetLink", frontendBaseUrl + "/reset-password?token=" + token);
+        variables.put("expiryHours", 1);
+        emailService.sendHtmlEmail(usuario.getEmail(), "Recupera tu contraseña - HOME CARE", "email/password-reset", variables);
+    }
+
+    @Transactional
+    public void resetearPassword(String token, String nuevaPassword) {
+        UserToken userToken = userTokenRepository.findByTokenHashAndTokenType(token, UserTokenType.PASSWORD_RESET)
+                .orElseThrow(() -> new AuthException("Token inválido o expirado"));
+
+        if (userToken.getUsed() || userToken.isExpired()) {
+            throw new AuthException("Token inválido o expirado");
+        }
+
+        Usuario usuario = userToken.getUsuario();
+        usuario.setPassword(passwordEncoder.encode(nuevaPassword));
+        usuarioRepository.save(usuario);
+
+        userToken.setUsed(true);
+        userToken.setUsedAt(LocalDateTime.now());
+        userTokenRepository.save(userToken);
+    }
+
+    @Transactional
+    public void verificarEmail(String token) {
+        UserToken userToken = userTokenRepository.findByTokenHashAndTokenType(token, UserTokenType.VERIFICATION)
+                .orElseThrow(() -> new AuthException("Token de verificación inválido o expirado"));
+
+        if (userToken.getUsed() || userToken.isExpired()) {
+            throw new AuthException("Token de verificación inválido o expirado");
+        }
+
+        Usuario usuario = userToken.getUsuario();
+        usuario.setVerificado(true);
+        usuarioRepository.save(usuario);
+
+        userToken.setUsed(true);
+        userToken.setUsedAt(LocalDateTime.now());
+        userTokenRepository.save(userToken);
     }
 
     @Transactional

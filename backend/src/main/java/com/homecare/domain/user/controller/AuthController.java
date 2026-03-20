@@ -78,17 +78,26 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Solicitar recuperaciÃ³n de contraseÃ±a")
+    @Operation(summary = "Solicitar recuperación de contraseña")
     public ResponseEntity<Void> forgotPassword(@Valid @RequestBody AuthDTO.RecuperarPassword request) {
         authService.solicitarRecuperacionPassword(request.getEmail());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/reset-password")
-    @Operation(summary = "Restablecer contraseÃ±a usando token")
+    @Operation(summary = "Restablecer contraseña usando token")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody AuthDTO.ResetPassword request) {
         authService.resetearPassword(request.getToken(), request.getNuevaPassword());
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/verify-email")
+    @Operation(summary = "Verificar email del usuario")
+    public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
+        authService.verificarEmail(token);
+        return ResponseEntity.ok().build();
+    }
 }
+
+
 

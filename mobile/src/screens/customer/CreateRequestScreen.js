@@ -13,7 +13,20 @@ import {
   KeyboardAvoidingView,
   Modal,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+
+let MapView, Marker, PROVIDER_GOOGLE;
+if (Platform.OS !== 'web') {
+  const MapModule = require('react-native-maps');
+  MapView = MapModule.default;
+  Marker = MapModule.Marker;
+  PROVIDER_GOOGLE = MapModule.PROVIDER_GOOGLE;
+} else {
+  // Mock para Web
+  MapView = ({ children, style }) => <View style={[style, { backgroundColor: '#0a1628', justifyContent: 'center', alignItems: 'center' }]}><Text style={{color: '#49C0BC'}}>Mapa (Solo Móvil)</Text>{children}</View>;
+  Marker = ({ children }) => <View>{children}</View>;
+  PROVIDER_GOOGLE = 'google';
+}
+
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocation } from '../../context/LocationContext';
