@@ -143,3 +143,10 @@ firebase-credentials*.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+# Logs temporales de backend
+backend/backend_*.txt
+backend/mysql-setup-instructions.txt
+backend/package-lock.json
+backend/package.json
+backend/functions/
+
