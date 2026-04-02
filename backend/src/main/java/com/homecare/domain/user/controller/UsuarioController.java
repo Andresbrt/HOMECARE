@@ -80,5 +80,13 @@ public class UsuarioController {
         UsuarioDTO.Response perfil = usuarioService.obtenerPerfilPublico(usuarioId);
         return ResponseEntity.ok(perfil);
     }
+
+    @PostMapping("/{usuarioId}/verificar")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Verificar profesional (solo admin)")
+    public ResponseEntity<Void> verificarProfesional(@PathVariable Long usuarioId) {
+        usuarioService.verificarProfesional(usuarioId);
+        return ResponseEntity.ok().build();
+    }
 }
 

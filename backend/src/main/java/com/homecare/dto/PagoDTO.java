@@ -27,7 +27,10 @@ public class PagoDTO {
         @NotNull(message = "Método de pago es requerido")
         private MetodoPago metodoPago;
 
-        private String cardToken; // Token de tarjeta desde frontend
+        private String cardToken; // Token de Bricks
+        private String paymentMethodId; // VISA, MASTERCARD, etc.
+        private Integer installments; // Cuotas
+        private String issuerId; // Banco emisor
         private String email;
         private String telefono;
     }
@@ -41,9 +44,10 @@ public class PagoDTO {
         private BigDecimal monto;
         private BigDecimal comisionPlataforma;
         private BigDecimal montoProveedor;
-        private String metodoPago; // String para compatibilidad
+        private String metodoPago;
         private EstadoPago estado;
-        private String transaccionWompiId;
+        private String transaccionExternaId;
+        private String preferenceId;
         private String paymentLink;
         private String referencia;
         private LocalDateTime createdAt;
@@ -53,37 +57,24 @@ public class PagoDTO {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class WompiWebhookEvent {
-        private String event;
-        private WompiTransaction data;
-        private String signature;
-        private LocalDateTime sentAt;
+    public static class MercadoPagoWebhookEvent {
+        private Long id;
+        private String live_mode;
+        private String type; // payment, plan, subscription, etc.
+        private String date_created;
+        private Long application_id;
+        private Long user_id;
+        private String version;
+        private String api_version;
+        private String action; // payment.created, payment.updated
+        private MPData data;
     }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class WompiTransaction {
+    public static class MPData {
         private String id;
-        private String reference;
-        private String status; // APPROVED, DECLINED, VOIDED, ERROR
-        private BigDecimal amountInCents;
-        private String currency;
-        private String paymentMethod;
-        private String paymentMethodType;
-        private LocalDateTime createdAt;
-        private LocalDateTime finalizedAt;
-        private WompiCustomerInfo customerInfo;
-        private String statusMessage;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class WompiCustomerInfo {
-        private String fullName;
-        private String email;
-        private String phoneNumber;
     }
 
     @Data

@@ -2,6 +2,7 @@ package com.homecare.domain.user.service;
 
 import com.homecare.dto.AuthDTO;
 import com.homecare.common.exception.AuthException;
+import com.homecare.common.exception.DuplicateResourceException;
 import com.homecare.domain.user.model.Usuario;
 import com.homecare.domain.user.model.Rol;
 import com.homecare.domain.user.repository.UsuarioRepository;
@@ -9,7 +10,12 @@ import com.homecare.domain.user.repository.RolRepository;
 import com.homecare.security.CustomUserDetails;
 import com.homecare.security.JwtTokenProvider;
 import com.homecare.domain.common.service.NotificationService;
+import com.homecare.domain.common.service.EmailService;
+import com.homecare.domain.user.model.UserToken;
+import com.homecare.domain.user.model.UserTokenType;
+import com.homecare.domain.user.repository.UserTokenRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,6 +30,9 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,23 +46,36 @@ public class AuthService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final UserTokenRepository userTokenRepository;
+    private final com.homecare.domain.common.service.FileStorageService fileStorageService;
+    private final com.homecare.domain.user.validator.PasswordValidator passwordValidator;
 
-    @Value("${app.frontend.base-url:http://localhost:3000}")
+    @Value("${app.frontend.base-url:https://homecare.works}")
     private String frontendBaseUrl;
+
+    @Value("${app.backend.base-url:https://api.homecare.works}")
+    private String backendBaseUrl;
 
     @Transactional
     public AuthDTO.LoginResponse registro(AuthDTO.Registro registroDTO) {
         if (usuarioRepository.existsByEmail(registroDTO.getEmail())) {
-            throw new AuthException("El email ya está registrado");
+            throw new DuplicateResourceException("El email '" + registroDTO.getEmail() + "' ya está registrado en nuestra plataforma.");
         }
 
+        passwordValidator.validate(registroDTO.getPassword());
+
         if (usuarioRepository.existsByTelefono(registroDTO.getTelefono())) {
-            throw new AuthException("El teléfono ya está registrado");
+            throw new DuplicateResourceException("El número de teléfono '" + registroDTO.getTelefono() + "' ya está asociado a otra cuenta.");
         }
 
         String rolNombre = "ROLE_" + registroDTO.getRol().toUpperCase();
         Rol rol = rolRepository.findByNombre(rolNombre)
-                .orElseThrow(() -> new AuthException("Rol no encontrado: " + rolNombre));
+                .orElseGet(() -> {
+                    // Si el rol no existe en H2 (memoria), lo creamos al vuelo
+                    Rol nuevoRol = new Rol();
+                    nuevoRol.setNombre(rolNombre);
+                    nuevoRol.setDescripcion("Autogenerado");
+                    return rolRepository.save(nuevoRol);
+                });
 
         Usuario usuario = Usuario.builder()
                 .email(registroDTO.getEmail())
@@ -61,6 +83,9 @@ public class AuthService {
                 .nombre(registroDTO.getNombre())
                 .apellido(registroDTO.getApellido())
                 .telefono(registroDTO.getTelefono())
+                .documentoIdentidad(registroDTO.getDocumentoIdentidad())
+                .descripcion(registroDTO.getDescripcion())
+                .experienciaAnos(registroDTO.getExperienciaAnos())
                 .activo(true)
                 .verificado(false)
                 .roles(new HashSet<>(Set.of(rol)))
@@ -78,8 +103,27 @@ public class AuthService {
         }
 
         Usuario savedUser = usuarioRepository.save(usuario);
+
+        // Si es proveedor, guardar documentos DESPUÃ‰S de obtener el ID (savedUser)
+        if (registroDTO.getRol().equalsIgnoreCase("SERVICE_PROVIDER")) {
+            // Guardar documentos de identidad si vienen en base64
+            if (registroDTO.getFotoSelfieBase64() != null) {
+                savedUser.setFotoSelfieVerificacion(fileStorageService.saveBase64(registroDTO.getFotoSelfieBase64(), "verificacion", "selfie_" + savedUser.getId()));
+            }
+            if (registroDTO.getFotoCedulaFrontalBase64() != null) {
+                savedUser.setFotoCedulaFrontal(fileStorageService.saveBase64(registroDTO.getFotoCedulaFrontalBase64(), "verificacion", "cedula_front_" + savedUser.getId()));
+            }
+            if (registroDTO.getFotoCedulaPosteriorBase64() != null) {
+                savedUser.setFotoCedulaPosterior(fileStorageService.saveBase64(registroDTO.getFotoCedulaPosteriorBase64(), "verificacion", "cedula_back_" + savedUser.getId()));
+            }
+            if (registroDTO.getArchivoAntecedentesBase64() != null) {
+                savedUser.setArchivoAntecedentes(fileStorageService.saveBase64(registroDTO.getArchivoAntecedentesBase64(), "verificacion", "antecedentes_" + savedUser.getId()));
+            }
+            
+            savedUser = usuarioRepository.save(savedUser); // Actualizar con las rutas de archivos
+        }
         
-        // Generar token de verificación
+        // Generar token de verificaciÃ³n
         String token = java.util.UUID.randomUUID().toString();
         UserToken userToken = UserToken.builder()
                 .usuario(savedUser)
@@ -90,9 +134,10 @@ public class AuthService {
         userTokenRepository.save(userToken);
 
         // Enviar email de verificación
-        Map<String, Object> variables = new java.util.HashMap<>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("userName", savedUser.getNombre());
-        variables.put("verificationLink", frontendBaseUrl + "/verify-email?token=" + token);
+        String verificationUrl = backendBaseUrl + "/api/auth/verify-link?token=" + token;
+        variables.put("verificationLink", verificationUrl);
         variables.put("expiryHours", 24);
         emailService.sendHtmlEmail(savedUser.getEmail(), "Verifica tu email - HOME CARE", "email/verification", variables);
         
@@ -104,7 +149,11 @@ public class AuthService {
                 .token(jwtToken)
                 .refreshToken(refreshToken)
                 .tipo("Bearer")
+                .id(savedUser.getId())
                 .email(savedUser.getEmail())
+                .nombre(savedUser.getNombre())
+                .apellido(savedUser.getApellido())
+                .fotoPerfil(savedUser.getFotoPerfil())
                 .rol(rolNombre)
                 .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
                 .build();
@@ -118,7 +167,7 @@ public class AuthService {
         // Limpiar tokens anteriores
         userTokenRepository.deleteByUsuarioIdAndTokenType(usuario.getId(), UserTokenType.PASSWORD_RESET);
 
-        String token = java.util.UUID.randomUUID().toString();
+        String token = UUID.randomUUID().toString();
         UserToken userToken = UserToken.builder()
                 .usuario(usuario)
                 .tokenHash(token)
@@ -127,7 +176,7 @@ public class AuthService {
                 .build();
         userTokenRepository.save(userToken);
 
-        Map<String, Object> variables = new java.util.HashMap<>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("userName", usuario.getNombre());
         variables.put("resetLink", frontendBaseUrl + "/reset-password?token=" + token);
         variables.put("expiryHours", 1);
@@ -249,26 +298,12 @@ public class AuthService {
         usuarioRepository.save(usuario);
     }
 
-    @Transactional
-    public void resetearPassword(String token, String newPassword) {
-        if (!jwtTokenProvider.validateToken(token)) {
-            throw new AuthException("Enlace de restablecimiento vencido o invÃ¡lido");
-        }
-
-        Long userId = jwtTokenProvider.getUserIdFromToken(token);
-        Usuario usuario = usuarioRepository.findById(userId)
-                .orElseThrow(() -> new AuthException("Usuario no encontrado"));
-
-        usuario.setPassword(passwordEncoder.encode(newPassword));
-        usuarioRepository.save(usuario);
-    }
-
     @Transactional(readOnly = true)
     public AuthDTO.UsuarioInfo obtenerInfoUsuario(Long userId) {
         Usuario usuario = usuarioRepository.findById(userId)
                 .orElseThrow(() -> new AuthException("Usuario no encontrado"));
 
-        String mainRole = usuario.getRoles().iterator().next().getNombre();
+        String mainRole = usuario.getRoles().isEmpty() ? "USER" : usuario.getRoles().iterator().next().getNombre();
 
         return AuthDTO.UsuarioInfo.builder()
                 .id(usuario.getId())
@@ -281,18 +316,6 @@ public class AuthService {
                 .verificado(usuario.getVerificado())
                 .fotoPerfil(usuario.getFotoUrl())
                 .build();
-    }
-
-    @Transactional
-    public void solicitarRecuperacionPassword(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElse(null);
-
-        if (usuario != null) {
-            String token = jwtTokenProvider.generatePasswordResetToken(usuario.getId());
-            // Enviar email con el token...
-            notificationService.sendPasswordResetEmail(email, token);
-        }
     }
 }
 

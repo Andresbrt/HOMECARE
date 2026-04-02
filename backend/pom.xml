@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.4.3</version>
         <relativePath/>
     </parent>
     
@@ -19,9 +19,9 @@
     <description>Plataforma de servicios de limpieza - Modelo inDriver</description>
     
     <properties>
-        <java.version>20</java.version>
+        <java.version>17</java.version>
         <jwt.version>0.12.6</jwt.version>
-        <springdoc.version>2.6.0</springdoc.version>
+        <springdoc.version>2.8.4</springdoc.version>
     </properties>
     
     <dependencies>
@@ -91,6 +91,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Thymeleaf (para plantillas de email) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- Mercado Pago SDK -->
+        <dependency>
+            <groupId>com.mercadopago</groupId>
+            <artifactId>sdk-java</artifactId>
+            <version>2.1.26</version>
         </dependency>
         
         <!-- SpringDoc OpenAPI (Swagger) -->
@@ -178,9 +191,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>20</source>
-                    <target>20</target>
-                    <release>20</release>
+                    <source>17</source>
+                    <target>17</target>
+                    <release>17</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

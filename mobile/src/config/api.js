@@ -1,14 +1,19 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
-export const API_URL = Constants.expoConfig?.extra?.apiUrl 
-  || 'http://192.168.1.20:8083/api';
+// DEV: apunta al backend local (puerto 8090)
+// PROD: cambia a https://api.homecare.works/api
+export const API_URL = 'http://192.168.1.17:8090/api';
 
-export const WS_URL = Constants.expoConfig?.extra?.wsUrl 
-  || 'http://192.168.1.20:8083/ws';
-
+export const WS_URL = 'ws://192.168.1.17:8090/ws';
 export const GOOGLE_CLIENT_ID = Constants.expoConfig?.extra?.googleClientId || '';
 export const API_TIMEOUT = 30000;
+
+// MercadoPago — public key is safe to expose in the frontend
+// Switch to production key (APP_PUBLIC_KEY) before going live
+export const MP_PUBLIC_KEY =
+  Constants.expoConfig?.extra?.mercadopagoPublicKey ||
+  'TEST-2fc07872-5703-43d1-bf4d-485d988c3323';
 export const PAGE_SIZE = 20;
 export const SEARCH_RADIUS_KM = 10;
 

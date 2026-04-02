@@ -13,6 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import apiClient from '../../services/apiClient';
+import { activarChat, buildChatId } from '../../services/chatService';
+import { useAuth } from '../../context/AuthContext';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
 
 const OfferCard = React.memo(({ offer, onAccept }) => {
@@ -79,6 +81,7 @@ const OfferCard = React.memo(({ offer, onAccept }) => {
 
 export default function ViewOffersScreen({ route, navigation }) {
   const { solicitudId } = route.params || {};
+  const { user } = useAuth();
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,11 +114,26 @@ export default function ViewOffersScreen({ route, navigation }) {
           onPress: async () => {
             setAccepting(true);
             try {
+              // 1. Confirmar oferta en el backend
               await apiClient.post('/ofertas/aceptar', { ofertaId: offer.id });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert('¡Oferta aceptada!', `${offer.proveedorNombre} realizará tu servicio.`, [
-                { text: 'OK', onPress: () => navigation.goBack() },
-              ]);
+
+              // 2. Activar chat en Firestore + enviar push al profesional
+              //    (el push token del profesional viene en la oferta si el backend lo incluye)
+              await activarChat({
+                solicitudId,
+                profesionalId: offer.proveedorId,
+                profesionalNombre: offer.proveedorNombre,
+                usuarioId: user?.id,
+                usuarioPushToken: offer.proveedorPushToken ?? null,
+              });
+
+              // 3. Navegar directo al chat — sin pasos extra, como Uber
+              navigation.replace('UserChat', {
+                solicitudId,
+                destinatarioId: offer.proveedorId,
+                titulo: offer.proveedorNombre || 'Profesional',
+              });
             } catch (error) {
               Alert.alert('Error', error.response?.data?.message || 'No se pudo aceptar la oferta.');
             } finally {

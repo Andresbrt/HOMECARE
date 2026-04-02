@@ -1,0 +1,216 @@
+// firestore.rules — HomeCarE Colorimetría
+// Proyecto: homecare-1582c
+//
+// DEPLOY:
+//   firebase deploy --only firestore:rules
+//
+// PRINCIPIOS DE SEGURIDAD:
+//  1. Principio de mínimo privilegio — solo lo estrictamente necesario
+//  2. Inmutabilidad de campos clave (solicitudId, usuarioId) — no se pueden cambiar
+//  3. Solo el backend (Admin SDK / Cloud Functions) escribe solicitudes y ofertas
+//  4. Status de chat es unidireccional: pending → active → closed
+//  5. Los mensajes son inmutables una vez creados (integridad del historial)
+//  6. La presencia solo puede ser escrita por el propio usuario
+//  7. Mensajes validados: tipo, contenido, remitenteId, tamaño máximo
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ══════════════════════════════════════════════════════════════════════
+    // FUNCIONES HELPER
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Usuario autenticado */
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    /** UID del usuario autenticado */
+    function uid() {
+      return request.auth.uid;
+    }
+
+    /** ¿El UID está en la lista de participants del chat? */
+    function isParticipant(chatData) {
+      return isAuth() && uid() in chatData.participants;
+    }
+
+    /** Obtiene el doc del chat padre (para validar desde subcolecciones) */
+    function chatDoc(chatId) {
+      return get(/databases/$(database)/documents/chats/$(chatId)).data;
+    }
+
+    /** ¿El uid es participant del chatId dado? */
+    function isParticipantOf(chatId) {
+      return isParticipant(chatDoc(chatId));
+    }
+
+    /** Campo inmutable: el nuevo valor debe igual al valor actual */
+    function notChanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    /** Validación completa de un mensaje nuevo */
+    function isValidMessage() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['tipo', 'contenido', 'remitenteId', 'timestamp'])
+          // Autor = usuario autenticado
+          && d.remitenteId == uid()
+          // Tipo permitido
+          && d.tipo in ['TEXTO', 'IMAGEN', 'SISTEMA']
+          // Contenido no vacío, máx 2000 chars (anti-spam)
+          && d.contenido is string
+          && d.contenido.size() > 0
+          && d.contenido.size() <= 2000
+          // Solo TEXTO puede tener archivoUrl vacío; IMAGEN lo requiere
+          && (d.tipo != 'IMAGEN' || (d.keys().hasAny(['archivoUrl']) && d.archivoUrl.size() > 0));
+    }
+
+    /** Validación para crear un chat nuevo */
+    function isValidChatCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['solicitudId', 'usuarioId', 'status', 'participants'])
+          && d.usuarioId == uid()
+          && d.status == 'pending'
+          && d.participants is list
+          && uid() in d.participants
+          && d.participants.size() <= 2
+          && d.solicitudId is string
+          && d.solicitudId.size() > 0;
+    }
+
+    /** Validación para actualizar un chat (campos inmutables + status unidireccional) */
+    function isValidChatUpdate() {
+      let d   = request.resource.data;
+      let old = resource.data;
+      let statusOk = d.status == old.status
+          || (old.status == 'pending' && d.status == 'active')
+          || (old.status == 'active'  && d.status == 'closed');
+      return notChanged('usuarioId')
+          && notChanged('solicitudId')
+          && statusOk;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // /chats/{chatId}
+    // ══════════════════════════════════════════════════════════════════════
+    match /chats/{chatId} {
+
+      // Solo los participants pueden leer el documento del chat
+      allow read: if isParticipant(resource.data);
+
+      // Crear: solo el propio usuario (CreateRequestScreen)
+      allow create: if isAuth() && isValidChatCreate();
+
+      // Actualizar: solo participants (activar, cerrar, actualizar ultimoMensaje)
+      allow update: if isParticipant(resource.data) && isValidChatUpdate();
+
+      // Borrar: nunca desde el cliente (solo Admin SDK en Cloud Functions)
+      allow delete: if false;
+
+      // ── /chats/{chatId}/messages/{messageId} ──────────────────────────
+      match /messages/{messageId} {
+
+        // Leer mensajes: solo participants del chat padre
+        allow read: if isParticipantOf(chatId);
+
+        // Crear mensaje: participant + mensaje propio + validación completa
+        // Solo se puede crear si el chat está activo (o pending, para msg bienvenida)
+        allow create: if isParticipantOf(chatId)
+            && isValidMessage()
+            // El chat debe existir y no puede estar cerrado
+            && chatDoc(chatId).status in ['pending', 'active'];
+
+        // Mensajes son inmutables — integridad del historial de conversación
+        allow update, delete: if false;
+      }
+
+      // ── /chats/{chatId}/typing/{userId} — indicador de escritura ─────
+      match /typing/{userId} {
+        // Participants pueden ver quién está escribiendo
+        allow read: if isParticipantOf(chatId);
+        // Solo el propio usuario puede escribir su estado de typing
+        allow write: if isAuth()
+            && uid() == userId
+            && isParticipantOf(chatId)
+            // Payload liviano: { isTyping: bool, updatedAt: timestamp }
+            && request.resource.data.keys().hasOnly(['isTyping', 'updatedAt']);
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // /solicitudes/{solicitudId}
+    // ══════════════════════════════════════════════════════════════════════
+    // La creación y mutación de solicitudes va EXCLUSIVAMENTE por Spring Boot
+    // REST API. El cliente solo puede leer sus propias solicitudes para
+    // mostrar el estado en tiempo real.
+    match /solicitudes/{solicitudId} {
+
+      // El dueño (usuario) y el profesional asignado pueden leer
+      allow read: if isAuth()
+          && (resource.data.usuarioId == uid()
+              || resource.data.profesionalId == uid());
+
+      // Escritura solo por Admin SDK (Cloud Functions / Spring Boot)
+      allow write: if false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // /ofertas/{ofertaId}
+    // ══════════════════════════════════════════════════════════════════════
+    // Mismo principio: lectura para owner y profesional, escritura solo backend
+    match /ofertas/{ofertaId} {
+
+      allow read: if isAuth()
+          && (resource.data.usuarioId == uid()
+              || resource.data.profesionalId == uid());
+
+      allow write: if false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // /presence/{userId} — estado online/offline en tiempo real
+    // ══════════════════════════════════════════════════════════════════════
+    match /presence/{userId} {
+
+      // Cualquier usuario autenticado puede leer la presencia (para el chat)
+      allow read: if isAuth();
+
+      // Solo el propio usuario puede actualizar su presencia
+      // Payload restringido: { online: bool, lastSeen: timestamp, updatedAt: timestamp }
+      allow write: if isAuth()
+          && uid() == userId
+          && request.resource.data.keys().hasOnly(['online', 'lastSeen', 'updatedAt'])
+          && request.resource.data.online is bool;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // /usuarios/{userId} — perfil público (solo lectura desde mobile)
+    // ══════════════════════════════════════════════════════════════════════
+    match /usuarios/{userId} {
+
+      // Cualquier usuario autenticado puede leer perfiles (para mostrar nombres)
+      allow read: if isAuth();
+
+      // El propio usuario puede actualizar solo campos no sensibles de su perfil
+      allow update: if isAuth()
+          && uid() == userId
+          // No se puede cambiar email, rol ni id
+          && !('email' in request.resource.data.diff(resource.data).affectedKeys())
+          && !('rol'   in request.resource.data.diff(resource.data).affectedKeys())
+          && !('id'    in request.resource.data.diff(resource.data).affectedKeys());
+
+      // Crear/borrar: solo Admin SDK
+      allow create, delete: if false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // DENEGACIÓN EXPLÍCITA DE TODO LO DEMÁS
+    // Cualquier colección no listada arriba queda bloqueada
+    // ══════════════════════════════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

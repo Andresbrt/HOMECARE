@@ -21,6 +21,7 @@ import { NotificationProvider } from './src/context/NotificationContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
+import linking from './src/config/linking';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -44,7 +45,7 @@ export default function App() {
         <AuthProvider>
           <LocationProvider>
             <NotificationProvider>
-              <NavigationContainer>
+              <NavigationContainer linking={linking}>
                 <StatusBar style="light" />
                 <AppNavigator />
               </NavigationContainer>

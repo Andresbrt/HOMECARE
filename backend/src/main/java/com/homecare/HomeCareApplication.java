@@ -23,7 +23,9 @@ public class HomeCareApplication {
             "║              🏠 HOMECARE API INICIADA                     ║\n" +
             "║                                                           ║\n" +
             "║  Modelo: inDriver (Ofertas Competitivas)                 ║\n" +
-            "║  Swagger: http://localhost:8080/swagger-ui.html          ║\n" +
+            "║  Swagger: http://localhost:8090/swagger-ui/index.html   ║\n" +
+            "║  Health:  http://localhost:8090/api/test/health         ║\n" +
+            "║  H2 DB:   http://localhost:8090/h2-console              ║\n" +
             "║                                                           ║\n" +
             "╚═══════════════════════════════════════════════════════════╝\n"
         );

@@ -161,7 +161,7 @@ management:
 
 # CORS Configuration
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://app.homecare.com,https://admin.homecare.com}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://homecare.works,https://www.homecare.works,https://api.homecare.works}
   allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
   allowed-headers: Authorization,Content-Type,X-Requested-With,Accept
   exposed-headers: Authorization
@@ -174,8 +174,8 @@ wompi:
   public-key: ${WOMPI_PUBLIC_KEY:pub_test_placeholder}
   private-key: ${WOMPI_PRIVATE_KEY:prv_test_placeholder}
   event-secret: ${WOMPI_EVENT_SECRET:wompi_event_placeholder}
-  callback-url: ${PAYMENT_CALLBACK_URL:https://homecare.railway.app/api/payments/callback}
-  webhook-url: ${PAYMENT_WEBHOOK_URL:https://homecare.railway.app/api/payments/webhook}
+  callback-url: ${PAYMENT_CALLBACK_URL:https://api.homecare.works/api/payments/callback}
+  webhook-url: ${PAYMENT_WEBHOOK_URL:https://api.homecare.works/api/payments/webhook}
   commission-percentage: ${COMMISSION_PERCENTAGE:10.0}
 
 # Google Maps API
@@ -220,7 +220,7 @@ info:
     version: 1.0.0
     description: API para plataforma de servicios del hogar
     contact:
-      email: support@homecare.com
+      email: support@homecare.works
 
 # Logging
 logging:
@@ -255,5 +255,9 @@ cache:
 
 app:
   environment: production
-  frontend-url: ${FRONTEND_URL:https://app.homecare.com}
-  admin-url: ${ADMIN_URL:https://admin.homecare.com}
+  frontend-url: ${FRONTEND_URL:https://homecare.works}
+  admin-url: ${ADMIN_URL:https://admin.homecare.works}
+  frontend:
+    base-url: ${FRONTEND_URL:https://homecare.works}
+  backend:
+    base-url: ${BACKEND_URL:https://api.homecare.works}

@@ -12,6 +12,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -30,6 +31,7 @@ const firebaseConfig = {
 let app;
 let auth;
 let db;
+let storage;
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
@@ -37,12 +39,14 @@ if (getApps().length === 0) {
     persistence: getReactNativePersistence(AsyncStorage),
   });
   db = getFirestore(app);
+  storage = getStorage(app);
 } else {
   app = getApps()[0];
   // Al hacer hot-reload, importar las instancias ya creadas
   const { getAuth } = require('firebase/auth');
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
 }
 
-export { app, auth, db };
+export { app, auth, db, storage };

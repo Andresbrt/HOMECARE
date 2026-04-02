@@ -1,188 +1,273 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+/**
+ * ChatScreen — Premium real-time bidirectional chat (optimizado 2026)
+ * Route params: { solicitudId, destinatarioId, titulo }
+ */
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
+  FlatList,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  FlatList,
+  StatusBar,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
+  Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../services/apiClient';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
-function MessageBubble({ message, isOwn }) {
+import { useAuth } from '../../context/AuthContext';
+import { useChat } from '../../hooks/useChat';
+import { useTyping } from '../../hooks/useTyping';
+import { useOnlineStatus, formatLastSeen } from '../../hooks/useOnlineStatus';
+import useChatStore from '../../store/chatStore';
+
+import GlassCard from '../../components/shared/GlassCard'; // ← nuevo: usamos GlassCard
+import MessageBubble from '../../components/chat/MessageBubble';
+import TypingIndicator from '../../components/chat/TypingIndicator';
+import ChatInput from '../../components/chat/ChatInput';
+
+import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
+import { formatSectionDate } from '../../utils/chatUtils';
+
+// Date separator con glass sutil
+function DateSeparator({ label }) {
   return (
-    <View style={[styles.bubbleRow, isOwn && styles.bubbleRowOwn]}>
-      <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-        {!isOwn && <Text style={styles.senderName}>{message.remitenteNombre}</Text>}
-        <Text style={[styles.messageText, isOwn && styles.messageTextOwn]}>{message.contenido}</Text>
-        <View style={styles.timeRow}>
-          <Text style={[styles.timeText, isOwn && styles.timeTextOwn]}>
-            {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    <GlassCard variant="elevated" style={styles.dateSep}>
+      <Text style={styles.dateLabel}>{label}</Text>
+    </GlassCard>
+  );
+}
+
+// Header con GlassCard + glow en dot online
+function ChatHeader({ titulo, isOnline, lastSeen, onBack }) {
+  const subtitle = isOnline ? 'En línea' : formatLastSeen(lastSeen, false);
+
+  const dotStyle = useMemo(
+    () => ({
+      ...styles.onlineDot,
+      backgroundColor: isOnline ? PROF.available : PROF.offline,
+      ...SHADOWS.glow, // glow turquesa sutil cuando online
+    }),
+    [isOnline]
+  );
+
+  return (
+    <GlassCard variant="elevated" glow style={styles.header}>
+      <StatusBar barStyle="light-content" backgroundColor={PROF.bg} />
+      <View style={styles.headerInner}>
+        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+          <Ionicons name="chevron-back" size={28} color={PROF.textPrimary} />
+        </TouchableOpacity>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {titulo || 'Chat con proveedor'}
           </Text>
-          {isOwn && message.leido && (
-            <Ionicons name="checkmark-done" size={14} color="rgba(255,255,255,0.7)" />
-          )}
+          <View style={styles.onlineRow}>
+            <Animated.View style={dotStyle} />
+            <Text style={styles.subtitleText}>{subtitle}</Text>
+          </View>
         </View>
+
+        <View style={{ width: 48 }} /> {/* spacer */}
       </View>
-    </View>
+    </GlassCard>
+  );
+}
+
+// Scroll-to-bottom FAB con glow
+function ScrollToBottomBtn({ visible, onPress }) {
+  if (!visible) return null;
+  return (
+    <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.fab}>
+      <TouchableOpacity style={[styles.fabBtn, SHADOWS.glow]} onPress={onPress}>
+        <Ionicons name="chevron-down" size={24} color={PROF.textPrimary} />
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 export default function ChatScreen({ route, navigation }) {
   const { solicitudId, destinatarioId, titulo } = route.params || {};
   const { user } = useAuth();
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const flatListRef = useRef(null);
-  const pollRef = useRef(null);
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const { data } = await apiClient.get(`/mensajes/solicitud/${solicitudId}`);
-      setMessages(data.reverse());
-      // Mark all as read
-      apiClient.put(`/mensajes/solicitud/${solicitudId}/leer-todos`).catch(() => {});
-    } catch (error) {
-      // Silently fail on poll
-    } finally {
-      setLoading(false);
-    }
-  }, [solicitudId]);
+  const {
+    messages,
+    loading,
+    sending,
+    uploadingImage,
+    loadingMore,
+    hasMore,
+    error,
+    sendText,
+    pickImageFromLibrary,
+    takePhoto,
+    loadMore,
+    notifyTyping,
+  } = useChat(solicitudId, destinatarioId);
+
+  const { isOtherTyping } = useTyping(solicitudId);
+  useOnlineStatus(destinatarioId);
+
+  const presence = useChatStore((s) => s.presence[String(destinatarioId)]);
+  const isOnline = presence?.online ?? false;
+  const lastSeen = presence?.lastSeen ?? null;
+
+  const flatListRef = useRef(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   useEffect(() => {
-    fetchMessages();
-    // Poll for new messages every 5s
-    pollRef.current = setInterval(fetchMessages, 5000);
-    return () => clearInterval(pollRef.current);
-  }, [fetchMessages]);
+    flatListRef.current?.scrollToEnd({ animated: true });
+  }, [messages.length]);
 
-  const handleSend = async () => {
-    const content = text.trim();
-    if (!content || sending) return;
+  const handleScroll = useCallback((e) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    setShowScrollBtn(distFromBottom > 100);
+  }, []);
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSending(true);
-    setText('');
+  const handleScrollToBottom = useCallback(() => {
+    Haptics.selectionAsync();
+    flatListRef.current?.scrollToEnd({ animated: true });
+  }, []);
 
-    try {
-      const { data } = await apiClient.post('/mensajes', {
-        solicitudId,
-        destinatarioId,
-        contenido: content,
-        tipo: 'TEXTO',
-      });
-      setMessages(prev => [...prev, data]);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    } catch (error) {
-      setText(content);
-      // Could show error toast here
-    } finally {
-      setSending(false);
-    }
-  };
+  const listData = useMemo(() => {
+    if (!messages.length) return [];
+    const items = [];
+    let lastDate = null;
+    messages.forEach((msg) => {
+      const d = msg.fechaEnvio || msg.createdAt;
+      const date = d ? new Date(d).toDateString() : 'unknown';
+      if (date !== lastDate) {
+        lastDate = date;
+        items.push({ _type: 'separator', id: `sep_${date}`, label: formatSectionDate(d ? new Date(d) : null) });
+      }
+      items.push({ _type: 'message', ...msg });
+    });
+    return items;
+  }, [messages]);
+
+  const renderItem = useCallback(
+    ({ item }) => {
+      if (item._type === 'separator') {
+        return <DateSeparator label={item.label} />;
+      }
+      const isOwn = item.remitenteId === user?.id || item.remitenteId === user?.userId;
+      return <MessageBubble message={item} isOwn={isOwn} senderName={!isOwn ? titulo : undefined} />;
+    },
+    [user?.id, titulo]
+  );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-      </SafeAreaView>
+      <LinearGradient colors={PROF.gradMain} style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={PROF.accent} />
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
+    <LinearGradient colors={PROF.gradMain} style={styles.screen}>
+      <ChatHeader titulo={titulo} isOnline={isOnline} lastSeen={lastSeen} onBack={() => navigation.goBack()} />
+
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{titulo || 'Chat'}</Text>
-        </View>
-      </View>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        {/* Messages */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => String(item.id)}
-          renderItem={({ item }) => (
-            <MessageBubble message={item} isOwn={item.remitenteId === user?.id} />
+          {error && (
+            <GlassCard variant="accent" style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </GlassCard>
           )}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={48} color={COLORS.textDisabled} />
-              <Text style={styles.emptyText}>Inicia la conversación</Text>
-            </View>
-          }
-        />
 
-        {/* Input bar */}
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Escribe un mensaje..."
-            placeholderTextColor={COLORS.textDisabled}
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={1000}
+          {(uploadingImage || sending) && (
+            <GlassCard variant="elevated" style={styles.uploadBanner}>
+              <ActivityIndicator size="small" color={PROF.accent} />
+              <Text style={styles.uploadText}>{uploadingImage ? 'Subiendo imagen…' : 'Enviando…'}</Text>
+            </GlassCard>
+          )}
+
+          <FlatList
+            ref={flatListRef}
+            data={listData}
+            renderItem={renderItem}
+            keyExtractor={(item) => String(item.id || item._type + '_' + item.label)}
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              loadingMore ? (
+                <ActivityIndicator size="small" color={PROF.accent} style={{ padding: SPACING.md }} />
+              ) : hasMore ? (
+                <TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore}>
+                  <Text style={styles.loadMoreText}>Cargar mensajes anteriores</Text>
+                </TouchableOpacity>
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="chatbubbles-outline" size={64} color={PROF.textMuted} />
+                <Text style={styles.emptyText}>Inicia la conversación</Text>
+              </View>
+            }
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            inverted={false} // no invertimos, usamos scrollToEnd
+            removeClippedSubviews={Platform.OS === 'android'}
+            keyboardShouldPersistTaps="handled"
           />
-          <TouchableOpacity
-            style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={!text.trim() || sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
-            ) : (
-              <Ionicons name="send" size={20} color={COLORS.white} />
-            )}
-          </TouchableOpacity>
+
+          <TypingIndicator visible={isOtherTyping} />
+
+          <ChatInput
+            onSendText={(text) => sendText(text)}
+            onPickImage={pickImageFromLibrary}
+            onTakePhoto={takePhoto}
+            onTyping={notifyTyping}
+            disabled={sending || uploadingImage}
+          />
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      <ScrollToBottomBtn visible={showScrollBtn} onPress={handleScrollToBottom} />
+    </LinearGradient>
   );
 }
 
+// Estilos actualizados (más consistentes con tu tema)
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.backgroundSecondary },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, gap: SPACING.md, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  headerTitle: { fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.semibold, color: COLORS.textPrimary },
-  messagesList: { padding: SPACING.md, paddingBottom: SPACING.sm, flexGrow: 1, justifyContent: 'flex-end' },
-  bubbleRow: { flexDirection: 'row', marginBottom: SPACING.sm },
-  bubbleRowOwn: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '78%', padding: SPACING.md, borderRadius: BORDER_RADIUS.lg },
-  bubbleOwn: { backgroundColor: COLORS.accent, borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: COLORS.card, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: COLORS.border },
-  senderName: { fontSize: TYPOGRAPHY.xs, fontWeight: TYPOGRAPHY.semibold, color: COLORS.accent, marginBottom: 2 },
-  messageText: { fontSize: TYPOGRAPHY.md, color: COLORS.textPrimary },
-  messageTextOwn: { color: COLORS.white },
-  timeRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 4 },
-  timeText: { fontSize: 10, color: COLORS.textDisabled },
-  timeTextOwn: { color: 'rgba(255,255,255,0.7)' },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', padding: SPACING.sm, backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.border, gap: SPACING.sm },
-  textInput: { flex: 1, backgroundColor: COLORS.backgroundSecondary, borderRadius: BORDER_RADIUS.lg, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, fontSize: TYPOGRAPHY.md, color: COLORS.textPrimary, maxHeight: 100 },
-  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
-  sendBtnDisabled: { opacity: 0.5 },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACING.sm },
-  emptyText: { fontSize: TYPOGRAPHY.md, color: COLORS.textDisabled },
+  screen: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { marginTop: Platform.OS === 'ios' ? 0 : 8, marginHorizontal: SPACING.md, marginBottom: SPACING.sm },
+  headerInner: { flexDirection: 'row', alignItems: 'center', padding: SPACING.sm },
+  backBtn: { padding: SPACING.sm },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { color: PROF.textPrimary, fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.bold },
+  onlineRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
+  onlineDot: { width: 10, height: 10, borderRadius: 5 },
+  subtitleText: { color: PROF.textSecondary, fontSize: TYPOGRAPHY.sm },
+  listContent: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl + 80 },
+  dateSep: { alignSelf: 'center', marginVertical: SPACING.md, paddingHorizontal: SPACING.lg },
+  dateLabel: { color: PROF.textMuted, fontSize: TYPOGRAPHY.sm },
+  loadMoreBtn: { alignItems: 'center', padding: SPACING.md },
+  loadMoreText: { color: PROF.accent, fontWeight: TYPOGRAPHY.medium },
+  fab: { position: 'absolute', right: SPACING.md, bottom: 100, zIndex: 10 },
+  fabBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: PROF.bgElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+  },
+  errorBanner: { margin: SPACING.md, padding: SPACING.sm },
+  errorText: { color: PROF.error, textAlign: 'center', fontSize: TYPOGRAPHY.sm },
+  uploadBanner: { margin: SPACING.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, padding: SPACING.sm },
+  uploadText: { color: PROF.textSecondary, fontSize: TYPOGRAPHY.sm },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACING.lg, paddingTop: 120 },
+  emptyText: { color: PROF.textMuted, fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.medium },
 });

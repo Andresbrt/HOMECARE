@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Fallback REDONDO para Android < 8.0 (API < 26).
+    Mismo contenido que ic_launcher.xml — en versiones antiguas
+    el sistema aplica la máscara circular por su cuenta si el launcher lo soporta.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_background"/>
+    <item android:drawable="@drawable/ic_launcher_foreground"/>
+</layer-list>

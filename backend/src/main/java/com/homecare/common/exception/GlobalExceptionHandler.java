@@ -31,6 +31,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateResource(DuplicateResourceException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<Map<String, Object>> handleAuth(AuthException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
@@ -103,7 +108,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
         log.error("Error no controlado: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error interno del servidor. Contacte al administrador.");
+                "Error interno del servidor: " + ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {

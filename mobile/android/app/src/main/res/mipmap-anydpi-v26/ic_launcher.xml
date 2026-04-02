@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Ícono adaptativo para Android 8.0 (API 26) y superior.
+    "background" usa el color sólido teal de la marca.
+    "foreground" usa el vector con los anillos concéntricos y la "H".
+    Android recorta el resultado según la forma del sistema (círculo, squircle, etc.).
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>

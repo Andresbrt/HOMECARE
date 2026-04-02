@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <resources>
+  <!-- Fondo del splash screen (pantalla de inicio) -->
   <color name="splashscreen_background">#FFFFFF</color>
+  <!-- Color de fondo del ícono adaptativo — teal de la marca HomeCarE -->
+  <color name="ic_launcher_background">#49C0BC</color>
 </resources>

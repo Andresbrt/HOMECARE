@@ -6,13 +6,15 @@
 
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 
 import { useAuth } from '../context/AuthContext';
 import useModeStore from '../store/modeStore';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { COLORS, PROF } from '../constants/theme';
 
 // Professional Screens
@@ -27,6 +29,9 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
+import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
+import PendingVerificationScreen from '../screens/auth/PendingVerificationScreen';
 
 // ─── Usuario premium (dark map UX) ──────────────────────────────────────────
 import UserMapScreen from '../screens/usuario/MapScreen';
@@ -35,6 +40,7 @@ import UserMapScreen from '../screens/usuario/MapScreen';
 import CreateRequestScreen from '../screens/customer/CreateRequestScreen';
 import ViewOffersScreen from '../screens/customer/ViewOffersScreen';
 import ServiceTrackingScreen from '../screens/customer/ServiceTrackingScreen';
+import PaymentBricksScreen from '../screens/customer/PaymentBricksScreen';
 
 // Screens exclusivas del modo profesional
 import AvailableRequestsScreen from '../screens/provider/AvailableRequestsScreen';
@@ -42,6 +48,7 @@ import SendOfferScreen from '../screens/provider/SendOfferScreen';
 
 // Screens compartidas
 import ChatScreen from '../screens/shared/ChatScreen';
+import ChatListScreen from '../screens/shared/ChatListScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import HistoryScreen from '../screens/shared/HistoryScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
@@ -71,6 +78,15 @@ const screenOptions = {
   headerStyle: { backgroundColor: COLORS.primary, elevation: 0, shadowOpacity: 0 },
   headerTintColor: COLORS.white,
   headerTitleStyle: { fontWeight: '600', fontSize: 18 },
+};
+
+// ─── Transición premium para pantallas de chat ───────────────────────────────
+// forHorizontalIOS = slide nativo iOS en ambas plataformas + swipe-back fluido
+const chatScreenOptions = {
+  headerShown: false,
+  gestureEnabled: true,
+  gestureDirection: 'horizontal',
+  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
 };
 
 // ─── Opciones de Stack oscuro premium (modo usuario) ─────────────────────────
@@ -116,11 +132,22 @@ function UserModeStack() {
         component={ServiceTrackingScreen}
         options={{ title: 'Seguimiento' }}
       />
-      {/* 5. Chat con el proveedor */}
+      {/* 5. Checkout Bricks — pago seguro */}
+      <Stack.Screen
+        name="PaymentBricks"
+        component={PaymentBricksScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 5. Chat: lista e hilo de conversación — slide nativo + swipe-back */}
+      <Stack.Screen
+        name="UserChatList"
+        component={ChatListScreen}
+        options={chatScreenOptions}
+      />
       <Stack.Screen
         name="UserChat"
         component={ChatScreen}
-        options={{ title: 'Chat' }}
+        options={chatScreenOptions}
       />
       {/* 6. Historial de servicios */}
       <Stack.Screen
@@ -203,9 +230,22 @@ function ProfessionalDrawer() {
 }
 
 // ─── Navigator principal ──────────────────────────────────────────────────────
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      VerifyEmail: 'verify-email',
+      ResetPassword: 'reset-password',
+    },
+  },
+};
+
 export default function AppNavigator() {
   const { isAuthenticated, loading, user } = useAuth();
   const { mode, setMode } = useModeStore();
+
+  // Registrar dispositivo para notificaciones push (solo cuando hay usuario autenticado)
+  usePushNotifications();
 
   // Sincronizar modo con el rol del usuario al autenticarse
   useEffect(() => {
@@ -235,12 +275,17 @@ export default function AppNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
           <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registrarse' }} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nueva Contraseña' }} />
+          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verificar Email' }} />
+          <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} options={{ headerShown: false }} />
         </>
       ) : isProfessional ? (
         // ── Modo Profesional: Drawer + Tabs oscuros ──
         <>
           <Stack.Screen name="Main" component={ProfessionalDrawer} options={{ headerShown: false }} />
-          <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
+          {/* Chat: slide nativo con swipe-back, sin header propio (lo gestiona ChatScreen) */}
+          <Stack.Screen name="ChatList" component={ChatListScreen} options={chatScreenOptions} />
+          <Stack.Screen name="Chat" component={ChatScreen} options={chatScreenOptions} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notificaciones' }} />
           <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} options={{ title: 'Solicitudes' }} />
           <Stack.Screen name="SendOffer" component={SendOfferScreen} options={{ title: 'Enviar Oferta' }} />

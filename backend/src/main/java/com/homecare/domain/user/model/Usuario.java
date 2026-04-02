@@ -93,8 +93,35 @@ public class Usuario {
     @Builder.Default
     private Boolean activo = true;
 
+    @Column(name = "verificado")
     @Builder.Default
     private Boolean verificado = false;
+
+    // --- NUEVOS CAMPOS DE SEGURIDAD PARA PROFESIONALES ---
+    @Column(name = "foto_selfie_verificacion", length = 500)
+    private String fotoSelfieVerificacion;
+
+    @Column(name = "foto_cedula_frontal", length = 500)
+    private String fotoCedulaFrontal;
+
+    @Column(name = "foto_cedula_posterior", length = 500)
+    private String fotoCedulaPosterior;
+
+    @Column(name = "archivo_antecedentes", length = 500)
+    private String archivoAntecedentes;
+
+    @Column(name = "verificacion_ia_score")
+    private Double verificacionIAScore;
+
+    @Column(name = "comentarios_verificacion", columnDefinition = "TEXT")
+    private String comentariosVerificacion;
+
+    @Column(name = "fecha_verificacion")
+    private LocalDateTime fechaVerificacion;
+
+    @Column(name = "intento_verificacion_concluido")
+    @Builder.Default
+    private Boolean intentoVerificacionConcluido = false;
 
     @Builder.Default
     private Boolean disponible = true;
@@ -107,15 +134,18 @@ public class Usuario {
         inverseJoinColumns = @JoinColumn(name = "rol_id")
     )
     @Builder.Default
+    @EqualsAndHashCode.Exclude
     private Set<Rol> roles = new HashSet<>();
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
     @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @Builder.Default
     private Set<Solicitud> solicitudes = new HashSet<>();
 
     @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL)
     @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @Builder.Default
     private Set<Oferta> ofertas = new HashSet<>();
 

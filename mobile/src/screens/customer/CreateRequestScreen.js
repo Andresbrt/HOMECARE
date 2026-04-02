@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   View,
   Text,
@@ -31,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocation } from '../../context/LocationContext';
 import apiClient from '../../services/apiClient';
+import { inicializarChat, buildChatId } from '../../services/chatService';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS, PROF } from '../../constants/theme';
 
 const TIPOS_LIMPIEZA = [
@@ -44,6 +46,7 @@ const TIPOS_LIMPIEZA = [
 
 export default function CreateRequestScreen({ navigation, route }) {
   const { location } = useLocation();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     titulo: '',
@@ -123,11 +126,34 @@ export default function CreateRequestScreen({ navigation, route }) {
         instruccionesEspeciales: form.instruccionesEspeciales?.trim() || "Sin instrucciones adicionales",
       };
 
-      await apiClient.post('/solicitudes', payload);
+      // 1. Crear solicitud en el backend REST
+      const { data: solicitudCreada } = await apiClient.post('/solicitudes', payload);
+      const solicitudId = solicitudCreada?.id || solicitudCreada?.solicitudId;
+
+      // 2. Crear documento de chat en Firestore (estado "pending")
+      //    Lo hacemos en background — no bloquea la navegación
+      if (solicitudId && user?.id) {
+        inicializarChat({
+          solicitudId,
+          usuarioId: user.id,
+          tituloServicio: form.titulo.trim(),
+        }).catch((e) => console.warn('[CreateRequest] inicializarChat error:', e.message));
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('¡Solicitud enviada!', 'Buscando profesionales cerca de ti...', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+
+      // 3. Navegar directamente al chat (modo "pending" mientras espera profesional)
+      if (solicitudId) {
+        navigation.replace('UserChat', {
+          solicitudId,
+          destinatarioId: null,   // aún no hay profesional asignado
+          titulo: 'Buscando profesional…',
+          pendiente: true,        // ChatScreen muestra banner de espera
+        });
+      } else {
+        // Fallback si el backend no devuelve el ID
+        navigation.goBack();
+      }
     } catch (error) {
       const msg = error.response?.data?.message || 'Error al conectar con el servidor.';
       Alert.alert('Error', msg);

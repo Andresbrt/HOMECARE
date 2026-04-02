@@ -1,6 +1,6 @@
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-  <item android:drawable="@color/splashscreen_background"/>
-  <item>
-    <bitmap android:gravity="center" android:src="@drawable/splashscreen_logo"/>
-  </item>
-</layer-list>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo del ícono adaptativo — color principal de marca HomeCarE -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/ic_launcher_background" />
+</shape>

@@ -37,6 +37,8 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  FadeIn,
+  FadeOut,
   FadeInDown,
   FadeInLeft,
   FadeOutLeft,
@@ -47,6 +49,7 @@ import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
+import useChatStore from '../../store/chatStore';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 
 const DARK_MAP_STYLE = [
@@ -116,6 +119,31 @@ export default function UserMapScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // ── Chat activo ───────────────────────────────────────────────────────────
+  const activeService  = useChatStore((s) => s.activeService);
+  const unreadTotal    = useChatStore((s) => s.unreadTotal ?? 0);
+  const chatFabScale   = useSharedValue(0);
+  const chatFabStyle   = useAnimatedStyle(() => ({
+    transform: [{ scale: chatFabScale.value }],
+    opacity: chatFabScale.value,
+  }));
+  const [chatTooltip, setChatTooltip] = useState(false);
+
+  useEffect(() => {
+    chatFabScale.value = withSpring(activeService ? 1 : 0, { damping: 14, stiffness: 180, mass: 0.8 });
+  }, [activeService]);
+
+  const handleOpenChat = () => {
+    if (!activeService) return;
+    setChatTooltip(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    navigation.navigate('UserChat', {
+      solicitudId:    activeService.solicitudId,
+      destinatarioId: activeService.destinatarioId,
+      titulo:         activeService.titulo ?? 'Tu profesional',
+    });
+  };
+
   useEffect(() => {
     startWatching();
     return () => stopWatching();
@@ -171,6 +199,36 @@ export default function UserMapScreen({ navigation }) {
           ))}
         </ScrollView>
       </View>
+
+      {/* FAB — Chatear (aparece cuando hay un servicio en curso) */}
+      {activeService && (
+        <Animated.View style={[styles.chatFab, chatFabStyle]}>
+          {/* Tooltip on long-press */}
+          {chatTooltip && (
+            <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(160)} style={styles.chatTooltip}>
+              <Text style={styles.chatTooltipText}>
+                {activeService.titulo ? `Chatear con ${activeService.titulo}` : 'Ir al chat activo'}
+              </Text>
+            </Animated.View>
+          )}
+          <TouchableOpacity
+            onPress={handleOpenChat}
+            onLongPress={() => setChatTooltip(true)}
+            onPressOut={() => setChatTooltip(false)}
+            activeOpacity={0.82}
+          >
+            <LinearGradient colors={PROF.gradAccent} style={styles.chatFabGradient}>
+              <Ionicons name="chatbubbles" size={24} color="#fff" />
+              <Text style={styles.chatFabLabel}>Chatear</Text>
+              {unreadTotal > 0 && (
+                <View style={styles.chatFabBadge}>
+                  <Text style={styles.chatFabBadgeText}>{unreadTotal > 99 ? '99+' : unreadTotal}</Text>
+                </View>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
       {isMenuOpen && (
         <View style={StyleSheet.absoluteFill}>
@@ -247,4 +305,66 @@ const styles = StyleSheet.create({
   driverModeBtn: { width: '100%', backgroundColor: '#C5FF2D', paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginBottom: 20 },
   driverModeText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
   socialRow: { flexDirection: 'row', gap: 20 },
+
+  // ── FAB Chatear (centrado horizontalmente) ───────────────────────────────
+  chatFab: {
+    position: 'absolute',
+    bottom: 36,
+    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 200,
+    shadowColor: PROF.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.65,
+    shadowRadius: 14,
+    elevation: 12,
+  },
+  chatFabGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 50,
+    gap: 8,
+  },
+  chatFabLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  chatFabBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF4C4C',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#001B38',
+    marginLeft: 2,
+  },
+  chatFabBadgeText: { fontSize: 10, color: '#fff', fontWeight: '800' },
+  chatTooltip: {
+    position: 'absolute',
+    bottom: '100%',
+    alignSelf: 'center',
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,15,34,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(73,192,188,0.35)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    maxWidth: 240,
+  },
+  chatTooltipText: {
+    fontSize: 12,
+    color: '#E0F0FF',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });

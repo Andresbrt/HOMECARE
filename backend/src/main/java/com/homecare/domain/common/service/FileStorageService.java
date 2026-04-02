@@ -251,6 +251,47 @@ public class FileStorageService {
         );
     }
 
+    /**
+     * Guarda un archivo en formato Base64 en S3.
+     * @param base64Data El string base64 completo (con o sin prefijo data:)
+     * @param folder Carpeta de destino (ej: "verificacion")
+     * @param fileNamePrefix Prefijo para el nombre del archivo
+     * @return La URL pública del archivo guardado
+     */
+    public String saveBase64(String base64Data, String folder, String fileNamePrefix) {
+        if (base64Data == null || base64Data.isEmpty()) return null;
+
+        try {
+            // Limpiar prefijo data:image/xxx;base64, si existe
+            String pureBase64 = base64Data;
+            String extension = ".jpg";
+            if (base64Data.contains(",")) {
+                String header = base64Data.split(",")[0];
+                if (header.contains("png")) extension = ".png";
+                if (header.contains("pdf")) extension = ".pdf";
+                pureBase64 = base64Data.split(",")[1];
+            }
+
+            byte[] decodedBytes = Base64.getDecoder().decode(pureBase64);
+            String fileName = fileNamePrefix + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+            String s3Key = folder + "/" + fileName;
+
+            s3Client.putObject(PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .contentType(extension.equals(".pdf") ? "application/pdf" : "image/jpeg")
+                    .build(),
+                    RequestBody.fromBytes(decodedBytes));
+
+            String url = buildPublicUrl(s3Key);
+            log.info("Archivo base64 guardado exitosamente en S3: {}", s3Key);
+            return url;
+        } catch (Exception e) {
+            log.error("Error al guardar archivo base64 en S3: {}", e.getMessage());
+            return null; // En registro, preferimos continuar aunque falle una foto no crÃ­tica
+        }
+    }
+
     private String buildPublicUrl(String s3Key) {
         return String.format("https://%s.s3.%s.amazonaws.com/%s",
                 bucketName, region, s3Key);

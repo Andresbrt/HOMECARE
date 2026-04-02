@@ -15,11 +15,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import apiClient from '../../services/apiClient';
+import { obtenerChat, buildChatId } from '../../services/chatService';
+import { useAuth } from '../../context/AuthContext';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
 
 export default function SendOfferScreen({ route, navigation }) {
   const { solicitud } = route.params || {};
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [ofertaEnviada, setOfertaEnviada] = useState(false);
   const [form, setForm] = useState({
     precioOfrecido: '',
     mensajeOferta: '',
@@ -48,13 +52,33 @@ export default function SendOfferScreen({ route, navigation }) {
         materialesIncluidos: form.materialesIncluidos,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('¡Oferta enviada!', 'El cliente recibirá tu propuesta.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      // Mostrar botón "Ir al Chat" en vez de volver — el usuario puede ya haber aceptado
+      setOfertaEnviada(true);
     } catch (error) {
       Alert.alert('Error', error.response?.data?.message || 'No se pudo enviar la oferta.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** El profesional va al chat cuando el usuario ya aceptó su oferta */
+  const handleAbrirChat = async () => {
+    try {
+      const chatData = await obtenerChat(solicitud.id);
+      if (chatData?.status === 'active') {
+        navigation.navigate('Chat', {
+          solicitudId: solicitud.id,
+          destinatarioId: chatData.usuarioId,
+          titulo: solicitud.titulo || 'Cliente',
+        });
+      } else {
+        Alert.alert(
+          'Chat no disponible',
+          'El cliente aún no ha aceptado tu oferta. Te notificaremos cuando lo haga.',
+        );
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo verificar el estado del chat.');
     }
   };
 
@@ -142,17 +166,34 @@ export default function SendOfferScreen({ route, navigation }) {
             <Text style={styles.toggleLabel}>Materiales de limpieza incluidos</Text>
           </TouchableOpacity>
 
-          {/* Submit */}
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
-            {loading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <>
-                <Ionicons name="paper-plane" size={20} color={COLORS.white} />
-                <Text style={styles.submitText}>Enviar oferta</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {/* Submit / Post-envío */}
+          {ofertaEnviada ? (
+            <View style={styles.successBox}>
+              <Ionicons name="checkmark-circle" size={32} color={COLORS.success} />
+              <Text style={styles.successTitle}>¡Oferta enviada!</Text>
+              <Text style={styles.successSub}>
+                Cuando el cliente acepte, ambos podrán chatear directamente.
+              </Text>
+              <TouchableOpacity style={styles.chatBtn} onPress={handleAbrirChat} activeOpacity={0.85}>
+                <Ionicons name="chatbubbles" size={20} color="#fff" />
+                <Text style={styles.chatBtnText}>Verificar si ya aceptaron</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.backLinkBtn} onPress={() => navigation.goBack()}>
+                <Text style={styles.backLinkText}>Volver a solicitudes</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
+              {loading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <>
+                  <Ionicons name="paper-plane" size={20} color={COLORS.white} />
+                  <Text style={styles.submitText}>Enviar oferta</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -179,4 +220,12 @@ const styles = StyleSheet.create({
   toggleLabel: { fontSize: TYPOGRAPHY.md, color: COLORS.textPrimary },
   submitBtn: { backgroundColor: COLORS.accent, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: SPACING.xl, gap: SPACING.sm, ...SHADOWS.md },
   submitText: { color: COLORS.white, fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.bold },
+  // ── Post-envío ──────────────────────────────────────────────────────────────
+  successBox: { marginTop: SPACING.xl, alignItems: 'center', gap: SPACING.md, padding: SPACING.lg, backgroundColor: COLORS.backgroundSecondary, borderRadius: BORDER_RADIUS.xl, borderWidth: 1, borderColor: COLORS.success },
+  successTitle: { fontSize: TYPOGRAPHY.xl, fontWeight: TYPOGRAPHY.bold, color: COLORS.textPrimary },
+  successSub: { fontSize: TYPOGRAPHY.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 },
+  chatBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.accent, paddingVertical: SPACING.md, paddingHorizontal: SPACING.xl, borderRadius: BORDER_RADIUS.lg, ...SHADOWS.sm },
+  chatBtnText: { color: '#fff', fontWeight: TYPOGRAPHY.bold, fontSize: TYPOGRAPHY.md },
+  backLinkBtn: { marginTop: SPACING.xs },
+  backLinkText: { color: COLORS.textSecondary, fontSize: TYPOGRAPHY.sm, textDecorationLine: 'underline' },
 });

@@ -63,6 +63,12 @@ public class AuthDTO {
         private String descripcion;
         private Integer experienciaAnos;
 
+        // Nuevos campos para validación de identidad profesional
+        private String fotoSelfieBase64;     // Para reconocimiento facial
+        private String fotoCedulaFrontalBase64;
+        private String fotoCedulaPosteriorBase64;
+        private String archivoAntecedentesBase64; // Antecedentes judiciales/policiales
+
         // Ubicación inicial (opcional)
         private BigDecimal latitud;
         private BigDecimal longitud;

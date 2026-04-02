@@ -17,7 +17,7 @@ import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../const
 const ESTADO_CONFIG = {
   CONFIRMADO: { label: 'Confirmado', icon: 'checkmark-circle', color: COLORS.info, step: 0 },
   EN_CAMINO: { label: 'En camino', icon: 'car', color: COLORS.warning, step: 1 },
-  LLEGUE: { label: 'Llegó', icon: 'location', color: COLORS.accent, step: 2 },
+  LLEGUE: { label: 'Llego', icon: 'location', color: COLORS.accent, step: 2 },
   EN_PROGRESO: { label: 'En progreso', icon: 'construct', color: COLORS.accent, step: 3 },
   COMPLETADO: { label: 'Completado', icon: 'checkmark-done-circle', color: COLORS.success, step: 4 },
   CANCELADO: { label: 'Cancelado', icon: 'close-circle', color: COLORS.error, step: -1 },
@@ -59,6 +59,13 @@ export default function ServiceTrackingScreen({ route, navigation }) {
 
   const handleRefresh = () => { setRefreshing(true); fetchData(); };
 
+  const handlePagar = () => {
+    navigation.navigate('PaymentBricks', {
+      servicioId: service.id,
+      monto: service.precioAcordado,
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -99,6 +106,17 @@ export default function ServiceTrackingScreen({ route, navigation }) {
           <Text style={styles.statusLabel}>{estadoInfo.label}</Text>
         </View>
 
+        {/* Accion de Pago si esta completado */}
+        {service.estado === 'COMPLETADO' && (
+          <TouchableOpacity 
+            style={styles.payBtn} 
+            onPress={handlePagar}
+          >
+            <Ionicons name="card" size={20} color={COLORS.white} />
+            <Text style={styles.payBtnText}>Pagar con Mercado Pago</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Provider card */}
         <View style={styles.card}>
           <View style={styles.providerRow}>
@@ -126,7 +144,7 @@ export default function ServiceTrackingScreen({ route, navigation }) {
             </View>
             <View style={styles.infoItem}>
               <Ionicons name="cash-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={styles.infoText}>${Number(service.precioAcordado).toLocaleString()}</Text>
+              <Text style={styles.infoText}>$\</Text>
             </View>
           </View>
         </View>
@@ -134,7 +152,7 @@ export default function ServiceTrackingScreen({ route, navigation }) {
         {/* Tracking info */}
         {tracking?.ubicacionActual && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Ubicación del profesional</Text>
+            <Text style={styles.cardTitle}>Ubicacion del profesional</Text>
             <View style={styles.trackingInfo}>
               {tracking.ubicacionActual.distanciaDestinoKm != null && (
                 <View style={styles.trackItem}>
@@ -205,6 +223,8 @@ const styles = StyleSheet.create({
   errorText: { color: COLORS.textSecondary, fontSize: TYPOGRAPHY.md },
   statusBanner: { borderRadius: BORDER_RADIUS.xl, padding: SPACING.lg, flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.md },
   statusLabel: { color: COLORS.white, fontSize: TYPOGRAPHY.xl, fontWeight: TYPOGRAPHY.bold },
+  payBtn: { backgroundColor: COLORS.success, borderRadius: BORDER_RADIUS.lg, padding: SPACING.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.md, marginBottom: SPACING.md, ...SHADOWS.md },
+  payBtnText: { color: COLORS.white, fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.bold },
   card: { backgroundColor: COLORS.card, borderRadius: BORDER_RADIUS.xl, padding: SPACING.lg, marginBottom: SPACING.md, ...SHADOWS.sm },
   cardTitle: { fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.bold, color: COLORS.textPrimary, marginBottom: SPACING.md },
   providerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },

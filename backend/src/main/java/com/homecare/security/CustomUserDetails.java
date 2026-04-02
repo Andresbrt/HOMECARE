@@ -46,7 +46,13 @@ public class CustomUserDetails implements UserDetails {
 
     public static CustomUserDetails build(Usuario usuario) {
         Collection<GrantedAuthority> authorities = usuario.getRoles().stream()
-                .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol.getNombre()))
+                .map(rol -> {
+                    String roleName = rol.getNombre();
+                    if (!roleName.startsWith("ROLE_")) {
+                        roleName = "ROLE_" + roleName;
+                    }
+                    return new SimpleGrantedAuthority(roleName);
+                })
                 .collect(Collectors.toList());
 
         return new CustomUserDetails(

@@ -27,7 +27,7 @@ import java.util.List;
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Payments", description = "GestiÃ³n de pagos con Wompi")
+@Tag(name = "Payments", description = "Gestion de pagos con Mercado Pago")
 @SecurityRequirement(name = "bearerAuth")
 public class PaymentController {
 
@@ -35,7 +35,7 @@ public class PaymentController {
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('CUSTOMER')")
-    @Operation(summary = "Crear nuevo pago")
+    @Operation(summary = "Crear nuevo pago (Preferencia de Mercado Pago)")
     public ResponseEntity<PagoDTO.PagoResponse> createPayment(
             @Valid @RequestBody PagoDTO.CrearPago request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -44,33 +44,20 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/webhook/wompi")
-    @Operation(summary = "Webhook de Wompi para actualizaciÃ³n de estado de pagos")
-    public ResponseEntity<String> wompiWebhook(
-            @RequestBody String rawBody,
-            @RequestHeader(value = "X-Event-Checksum", required = false) String checksum,
-            @RequestHeader(value = "X-Event-Timestamp", required = false) String timestamp) {
+    @PostMapping("/webhook/mercadopago")
+    @Operation(summary = "Webhook de Mercado Pago para actualizacion de estado de pagos")
+    public ResponseEntity<String> mercadoPagoWebhook(
+            @RequestBody PagoDTO.MercadoPagoWebhookEvent event) {
 
-        if (checksum == null || timestamp == null) {
-            log.warn("Webhook Wompi recibido sin checksum o timestamp");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing signature headers");
-        }
-
-        if (!paymentService.validarWebhookSignature(rawBody, checksum, timestamp)) {
-            log.warn("Webhook Wompi con firma invÃ¡lida");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signature");
-        }
+        log.info("Webhook Mercado Pago recibido: tipo={}, action={}, id={}", 
+                event.getType(), event.getAction(), (event.getData() != null ? event.getData().getId() : "null"));
 
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            PagoDTO.WompiWebhookEvent webhook = objectMapper.readValue(rawBody, PagoDTO.WompiWebhookEvent.class);
-            paymentService.procesarWebhookWompi(webhook);
+            paymentService.procesarWebhookMP(event);
             return ResponseEntity.ok("Webhook procesado");
         } catch (Exception e) {
-            log.error("Error procesando webhook Wompi: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Error procesando evento");
+            log.error("Error procesando webhook Mercado Pago: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error procesando evento");
         }
     }
 
@@ -98,35 +85,24 @@ public class PaymentController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Obtener mis pagos")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
+    @Operation(summary = "Listar mis pagos")
     public ResponseEntity<List<PagoDTO.PagoResponse>> getMyPayments(
             @RequestParam(required = false) EstadoPago estado,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        List<PagoDTO.PagoResponse> pagos = paymentService.obtenerPagosPorUsuario(
-                userDetails.getId(), estado
-        );
-        return ResponseEntity.ok(pagos);
+        List<PagoDTO.PagoResponse> response = paymentService.obtenerPagosPorUsuario(userDetails.getId(), estado);
+        return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/statistics")
+    @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Obtener estadÃ­sticas de pagos")
-    public ResponseEntity<PagoDTO.EstadisticasPagos> getStatistics(
+    @Operation(summary = "Obtener estadisticas de pagos")
+    public ResponseEntity<PagoDTO.EstadisticasPagos> getStats(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
 
         PagoDTO.EstadisticasPagos stats = paymentService.obtenerEstadisticas(desde, hasta);
         return ResponseEntity.ok(stats);
     }
-
-    @PostMapping("/verify-pending")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Verificar y actualizar pagos pendientes")
-    public ResponseEntity<String> verifyPendingPayments() {
-        paymentService.verificarPagosPendientes();
-        return ResponseEntity.ok("VerificaciÃ³n de pagos pendientes iniciada");
-    }
 }
-

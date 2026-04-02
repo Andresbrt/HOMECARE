@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { notificationService } from '../services/notificationService';
 
 // Configure how notifications are presented when app is in foreground
 Notifications.setNotificationHandler({
@@ -28,7 +29,7 @@ export const NotificationProvider = ({ children }) => {
   const responseListener = useRef();
 
   useEffect(() => {
-    registerForPushNotifications().then((token) => {
+    notificationService.registerForPushNotifications().then((token) => {
       if (token) setExpoPushToken(token);
     });
 
@@ -52,38 +53,6 @@ export const NotificationProvider = ({ children }) => {
       }
     };
   }, []);
-
-  const registerForPushNotifications = async () => {
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
-        console.log('Push notification permission not granted');
-        return null;
-      }
-
-      // Android notification channel
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-        });
-      }
-
-      const tokenData = await Notifications.getExpoPushTokenAsync();
-      return tokenData.data;
-    } catch (error) {
-      console.log('Error registering push notifications:', error);
-      return null;
-    }
-  };
 
   const value = {
     expoPushToken,

@@ -5,16 +5,15 @@ spring:
     import: optional:file:.env[.properties]
   
   datasource:
-    # Railway injects PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD.
-    # SPRING_DATASOURCE_URL overrides everything (set it as a full jdbc: URL if needed).
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:${DATABASE_HOST:localhost}}:${PGPORT:${DATABASE_PORT:5432}}/${PGDATABASE:${DATABASE_NAME:homecare_db}}}
-    username: ${PGUSER:${DATABASE_USERNAME:homecare_user}}
-    password: ${PGPASSWORD:${DATABASE_PASSWORD:homecare_pass}}
+    # SPRING_DATASOURCE_URL overrides everything (usar la External URL de Render en producción).
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/homecare_db}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:homecare_user}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
     
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: update
     show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
@@ -22,8 +21,8 @@ spring:
         format_sql: true
     
   mail:
-    host: smtp.gmail.com
-    port: 587
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:noreply@homecare.local}
     password: ${MAIL_PASSWORD:}
     properties:
@@ -32,6 +31,10 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
   servlet:
     multipart:
@@ -59,13 +62,13 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
-# Wompi
-wompi:
-  api-url: ${WOMPI_API_URL:https://production.wompi.co}
-  public-key: ${WOMPI_PUBLIC_KEY:pub_test_placeholder}
-  private-key: ${WOMPI_PRIVATE_KEY:prv_test_placeholder}
-  event-secret: ${WOMPI_EVENT_SECRET:wompi_event_placeholder}
-  production: ${WOMPI_PRODUCTION:false}
+# Mercado Pago
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN:TEST-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
+  public-key: ${MP_PUBLIC_KEY:TEST-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
+  webhook-secret: ${MP_WEBHOOK_SECRET:}
+  commission-rate: ${MP_COMMISSION_RATE:0.10}
+  callback-url: ${MP_CALLBACK_URL:http://localhost:8080/api/v1/payments/webhook}
 
 # Google Maps
 google:
@@ -149,3 +152,4 @@ async:
   core-pool-size: ${ASYNC_CORE_POOL:4}
   max-pool-size: ${ASYNC_MAX_POOL:8}
   queue-capacity: ${ASYNC_QUEUE_CAPACITY:100}
+

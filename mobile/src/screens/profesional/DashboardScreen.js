@@ -7,6 +7,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   ScrollView,
   StatusBar,
@@ -22,12 +23,15 @@ import Animated, {
   withRepeat,
   withSequence,
   interpolate,
+  FadeIn,
+  FadeOut,
   Easing,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
+import useChatStore from '../../store/chatStore';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import ScreenLayout from '../../components/shared/ScreenLayout';
 
@@ -37,12 +41,17 @@ const WEEKLY_TARGET = 15;
 export default function ProfDashboardScreen({ navigation }) {
   const { width } = useWindowDimensions();
   const { user } = useAuth();
+  const unreadTotal    = useChatStore((s) => s.unreadTotal ?? 0);
+  const activeService   = useChatStore((s) => s.activeService);
   const [isAvailable, setIsAvailable] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing]   = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(null); // 'chats' | 'chatear' | null
 
   // Animaciones
-  const glowAnim = useSharedValue(0.35);
-  const toggleScale = useSharedValue(1);
+  const glowAnim     = useSharedValue(0.35);
+  const fabScale     = useSharedValue(0);
+  const fabChatScale = useSharedValue(0);
+  const toggleScale  = useSharedValue(1);
   const progressAnim = useSharedValue(0);
 
   const weeklyServices = 12;
@@ -79,6 +88,54 @@ export default function ProfDashboardScreen({ navigation }) {
   const progressStyle = useAnimatedStyle(() => ({
     width: `${interpolate(progressAnim.value, [0, 1], [0, 100])}%`,
   }));
+
+  const fabAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+    opacity: fabScale.value,
+  }));
+
+  const fabChatAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabChatScale.value }],
+    opacity: fabChatScale.value,
+  }));
+
+  // FAB “Mis chats” aparece al montar con resorte suave
+  useEffect(() => {
+    fabScale.value = withSpring(1, { damping: 14, stiffness: 160, mass: 0.8 });
+  }, []);
+
+  // FAB “Chatear” aparece/desaparece con spring + overshoot
+  useEffect(() => {
+    fabChatScale.value = withSpring(activeService ? 1 : 0, {
+      damping: 14, stiffness: 200, mass: 0.7,
+    });
+  }, [activeService]);
+
+  // Navegar: si hay activeService → Chat directo; si no → ChatList
+  const handleOpenChats = () => {
+    setTooltipVisible(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (activeService) {
+      navigation.navigate('Chat', {
+        solicitudId:    activeService.solicitudId,
+        destinatarioId: activeService.destinatarioId,
+        titulo:         activeService.titulo ?? 'Chat',
+      });
+    } else {
+      navigation.navigate('ChatList');
+    }
+  };
+
+  const handleOpenActiveChat = () => {
+    if (!activeService) return;
+    setTooltipVisible(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    navigation.navigate('Chat', {
+      solicitudId:    activeService.solicitudId,
+      destinatarioId: activeService.destinatarioId,
+      titulo:         activeService.titulo ?? 'Servicio activo',
+    });
+  };
 
   const toggleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: toggleScale.value }],
@@ -244,8 +301,64 @@ export default function ProfDashboardScreen({ navigation }) {
             ))}
           </GlassCard>
 
-          <View style={{ height: SPACING.xxl }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
+
+        {/* FAB — Chatear (solo cuando hay servicio activo en curso) */}
+        <Animated.View
+          style={[styles.fabChat, fabChatAnimStyle]}
+          pointerEvents={activeService ? 'auto' : 'none'}
+        >
+          {/* Tooltip */}
+          {tooltipVisible === 'chatear' && (
+            <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(180)} style={styles.tooltip}>
+              <Text style={styles.tooltipText}>
+                {activeService?.titulo ? `Chatear con ${activeService.titulo}` : 'Ir al chat activo'}
+              </Text>
+            </Animated.View>
+          )}
+          <TouchableOpacity
+            onPress={handleOpenActiveChat}
+            onLongPress={() => setTooltipVisible('chatear')}
+            onPressOut={() => setTooltipVisible(null)}
+            activeOpacity={0.82}
+            style={styles.fabInner}
+          >
+            <LinearGradient colors={['#1A7741', '#27AE60']} style={styles.fabGradient}>
+              <Ionicons name="chatbubble-ellipses" size={22} color="#fff" />
+              <Text style={styles.fabLabel}>Chatear</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* FAB — Mis Chats */}
+        <Animated.View style={[styles.fab, fabAnimStyle]}>
+          {/* Tooltip */}
+          {tooltipVisible === 'chats' && (
+            <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(180)} style={styles.tooltip}>
+              <Text style={styles.tooltipText}>
+                {activeService ? 'Chat activo — toca para ir' : 'Ver todas las conversaciones'}
+              </Text>
+            </Animated.View>
+          )}
+          <TouchableOpacity
+            onPress={handleOpenChats}
+            onLongPress={() => setTooltipVisible('chats')}
+            onPressOut={() => setTooltipVisible(null)}
+            activeOpacity={0.82}
+            style={styles.fabInner}
+          >
+            <LinearGradient colors={PROF.gradAccent} style={styles.fabGradient}>
+              <Ionicons name="chatbubbles" size={24} color="#fff" />
+              <Text style={styles.fabLabel}>{activeService ? 'Chat activo' : 'Mis chats'}</Text>
+            </LinearGradient>
+            {unreadTotal > 0 && (
+              <View style={styles.fabBadge}>
+                <Text style={styles.fabBadgeText}>{unreadTotal > 99 ? '99+' : unreadTotal}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       </LinearGradient>
     </ScreenLayout>
   );
@@ -367,5 +480,90 @@ const styles = StyleSheet.create({
   activityType: { fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.semibold, color: PROF.textPrimary },
   activityAddress: { fontSize: TYPOGRAPHY.xs, color: PROF.textMuted, marginTop: 2 },
   activityAmount: { fontSize: TYPOGRAPHY.md, color: PROF.accent, fontWeight: TYPOGRAPHY.bold, marginTop: 4 },
+
+  // ── FAB Mis Chats ─────────────────────────────────────────────────────────
+  fab: {
+    position: 'absolute',
+    bottom: SPACING.xl,
+    right: SPACING.lg,
+    zIndex: 99,
+    ...SHADOWS.glowStrong,
+    shadowColor: PROF.accent,
+    shadowOpacity: 0.7,
+    shadowRadius: 18,
+    elevation: 14,
+  },
+  fabInner: {
+    borderRadius: BORDER_RADIUS.full,
+    overflow: 'visible',
+  },
+  fabGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.full,
+    gap: SPACING.sm,
+  },
+  fabLabel: {
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: TYPOGRAPHY.bold,
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  fabBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#FF3B5C',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: PROF.background,
+  },
+  fabBadgeText: { fontSize: 10, color: '#fff', fontWeight: '800' },
+
+  // ── Tooltip ────────────────────────────────────────────────────────────
+  tooltip: {
+    position: 'absolute',
+    bottom: '100%',
+    right: 0,
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,15,34,0.92)',
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    maxWidth: 220,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  tooltipText: {
+    fontSize: TYPOGRAPHY.xs,
+    color: PROF.textPrimary,
+    fontWeight: TYPOGRAPHY.medium,
+    textAlign: 'right',
+  },
+
+  // ── FAB Chatear (verde, posicionado encima de Mis Chats) ─────────────────
+  fabChat: {
+    position: 'absolute',
+    bottom: SPACING.xl + 68,
+    right: SPACING.lg,
+    zIndex: 99,
+    ...SHADOWS.glowStrong,
+    shadowColor: '#27AE60',
+    shadowOpacity: 0.65,
+    shadowRadius: 16,
+    elevation: 12,
+  },
 });
 

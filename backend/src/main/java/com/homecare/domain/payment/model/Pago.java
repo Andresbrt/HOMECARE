@@ -54,11 +54,14 @@ public class Pago {
     @Column(unique = true)
     private String referencia;
 
-    @Column(name = "payment_link", length = 500)
+    @Column(name = "payment_link", length = 1000)
     private String paymentLink;
 
-    @Column(name = "transaccion_wompi_id", length = 100)
-    private String transaccionWompiId;
+    @Column(name = "transaccion_externa_id", length = 100)
+    private String transaccionExternaId;
+
+    @Column(name = "preferencia_id", length = 100)
+    private String preferenciaId;
 
     @Column(name = "metodo_pago_detalle", length = 100)
     private String metodoPagoDetalle;
@@ -100,6 +103,7 @@ public class Pago {
     // Enum interno
     public enum EstadoPago {
         PENDIENTE,
+        PROCESANDO,
         APROBADO,
         RECHAZADO,
         REEMBOLSADO,
@@ -111,10 +115,11 @@ public class Pago {
         PSE,
         TARJETA_CREDITO,
         TARJETA_DEBITO,
-        NEQUI
+        NEQUI,
+        CARD // Agregado para MP Bricks
     }
 
-    // MÃ©todos de utilidad
+    // Metodos de utilidad
     public BigDecimal getMonto() {
         return this.montoTotal;
     }

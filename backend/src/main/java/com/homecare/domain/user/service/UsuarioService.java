@@ -8,12 +8,15 @@ import com.homecare.domain.user.repository.UsuarioRepository;
 import com.homecare.domain.service_order.repository.ServicioAceptadoRepository;
 import com.homecare.domain.service_order.repository.CalificacionRepository;
 import com.homecare.domain.common.service.FileStorageService;
+import com.homecare.domain.common.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final ServicioAceptadoRepository servicioRepository;
     private final CalificacionRepository calificacionRepository;
+    private final EmailService emailService;
     @SuppressWarnings("unused")
     private final FileStorageService fileStorageService;
 
@@ -91,6 +95,34 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
         return mapToResponse(usuario);
+    }
+
+    @Transactional
+    public void verificarProfesional(Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        if (!usuario.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_SERVICE_PROVIDER"))) {
+            throw new UnauthorizedException("El usuario no es un proveedor de servicios.");
+        }
+
+        usuario.setVerificado(true);
+        usuario.setFechaVerificacion(java.time.LocalDateTime.now());
+        usuario.setActivo(true); // Asegurar que estÃ© habilitado tras verificar
+        usuarioRepository.save(usuario);
+
+        log.info("Profesional {} verificado exitosamente por administrador", usuarioId);
+
+        // Notificar por correo
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("nombre", usuario.getNombre());
+        
+        emailService.sendHtmlEmail(
+            usuario.getEmail(),
+            "Â¡Tu cuenta de HomeCare ha sido verificada!",
+            "profesional-verificado",
+            variables
+        );
     }
 
     private UsuarioDTO.Response mapToResponse(Usuario usuario) {

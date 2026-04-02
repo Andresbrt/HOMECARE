@@ -1,41 +1,58 @@
-# Perfil LOCAL de desarrollo — H2 en memoria, sin PostgreSQL
+# Perfil LOCAL de desarrollo — PostgreSQL en Render (external)
 spring:
   datasource:
-    url: jdbc:h2:mem:homecare_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false;MODE=PostgreSQL
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://dpg-d76tpmogjchc73dkl4v0-a.ohio-postgres.render.com:5432/homecare_db_xym7}
+    username: ${SPRING_DATASOURCE_USERNAME:homecare_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:9peh0USodVBNOsNCVsIGjs374rAqJ511}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
 
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
   flyway:
     enabled: false
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: noreply@homecare.local
-    password: ""
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
-      mail.smtp.auth: false
-      mail.smtp.starttls.enable: false
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.ssl.trust: "*"
+      mail.smtp.ssl.protocols: TLSv1.2
 
   data:
     redis:
       host: localhost
       port: 6379
+      timeout: 500ms
+      connect-timeout: 500ms
+
+  cache:
+    type: simple  # usa ConcurrentMap en vez de Redis en dev
+
+# Desactivar Redis y Mail del health check en dev
+management:
+  health:
+    redis:
+      enabled: false
+    mail:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  cache:
+    redis-enabled: false
 
 logging:
   level:

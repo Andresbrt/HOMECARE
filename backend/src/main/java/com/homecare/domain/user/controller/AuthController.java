@@ -97,6 +97,25 @@ public class AuthController {
         authService.verificarEmail(token);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/verify-link")
+    @Operation(summary = "Ruta para abrir la App")
+    public ResponseEntity<String> openApp(@RequestParam String token) {
+        // Usamos path exacto segun linking.js
+        String deepLink = "homecare://verify-email/" + token;
+        String html = "<!DOCTYPE html><html>" +
+                "<head><meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                "<style>body { font-family: sans-serif; background-color: #001B38; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; padding: 20px; } " +
+                ".btn { background: #49C0BC; color: white; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }</style></head>" +
+                "<body>" +
+                "<h2>HOME CARE</h2>" +
+                "<p>Haz clic abajo para verificar tu cuenta:</p>" +
+                "<a href='" + deepLink + "' class='btn'>ABRIR LA APP</a>" +
+                "<p style='margin-top: 30px; font-size: 12px; opacity: 0.7;'>Si la app no abre sola, asegúrate de tener Expo Go instalado.</p>" +
+                "<script>setTimeout(function() { window.location.href = '" + deepLink + "'; }, 1000);</script>" +
+                "</body></html>";
+        return ResponseEntity.ok().header("Content-Type", "text/html").body(html);
+    }
 }
 
 

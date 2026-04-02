@@ -2,6 +2,7 @@ package com.homecare.domain.common.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -22,6 +23,9 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
 
+    @Value("${MAIL_FROM:info@homecare.works}")
+    private String mailFrom;
+
     @Async
     public void sendHtmlEmail(String to, String subject, String templateName, Map<String, Object> variables) {
         try {
@@ -37,11 +41,11 @@ public class EmailService {
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(html, true);
-            helper.setFrom("no-reply@homecare.com");
+            helper.setFrom(mailFrom);
 
             mailSender.send(message);
             log.info("Email enviado exitosamente a {}", to);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Error al enviar email a {}: {}", to, e.getMessage());
         }
     }
