@@ -241,7 +241,7 @@ export default function UserMapScreen({ navigation }) {
                   <View style={styles.notifDot} />
                 </View>
                 <View style={styles.sideInfo}>
-                  <Text style={styles.sideName}>{user?.nombre || 'Andr�s'}</Text>
+                  <Text style={styles.sideName}>{user?.nombre || 'Usuario'}</Text>
                   <View style={styles.ratingRow}>
                     <Ionicons name="star" size={12} color="#FFD700" />
                     <Text style={styles.ratingText}>4.96 (115)</Text>
