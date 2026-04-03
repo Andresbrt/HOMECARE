@@ -1,6 +1,8 @@
 ﻿import React, { createContext, useState, useEffect, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { authService } from '../services/authService';
+import { signInWithGoogle as googleSignIn } from '../services/firebaseAuthService';
+import useModeStore from '../store/modeStore';
 
 const AuthContext = createContext();
 
@@ -110,6 +112,63 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const firebaseToken = await googleSignIn();
+      const response = await authService.firebaseLogin(firebaseToken, { rol: 'CUSTOMER' });
+      const userData = { ...response };
+
+      // Establecer modo antes del re-render para evitar flash de pantalla incorrecta
+      const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+      useModeStore.getState().setMode(roleMode);
+
+      try {
+        await SecureStore.setItemAsync('token', response.token);
+        await SecureStore.setItemAsync('user', JSON.stringify(userData));
+      } catch (storageErr) {
+        console.warn('loginWithGoogle: storage error (non-fatal):', storageErr);
+      }
+
+      setToken(response.token);
+      setUser(userData);
+      setIsAuthenticated(true);
+      return { success: true };
+    } catch (error) {
+      console.error('Error en Google Sign-In:', error);
+      const msg = error.response?.data?.message ||
+                  error.response?.data?.mensaje ||
+                  error.message ||
+                  'Error al iniciar sesión con Google';
+      return { success: false, message: msg };
+    }
+  };
+
+  // Llamado tras verificar OTP exitosamente — autentica de forma automática y transparente
+  const loginWithOTPResponse = async (response) => {
+    // 1. Establecer modo SINCRÓNICAMENTE (Zustand fuera de React) antes de cualquier
+    //    re-render, evitando que profesionales vean UserMap durante la transición
+    const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+    useModeStore.getState().setMode(roleMode);
+
+    // 2. Persistir sesión — no bloquea la autenticación si falla el storage
+    try {
+      const userData = { ...response };
+      await SecureStore.setItemAsync('token', response.token);
+      await SecureStore.setItemAsync('user', JSON.stringify(userData));
+      setToken(response.token);
+      setUser(userData);
+    } catch (storageErr) {
+      console.warn('loginWithOTPResponse: storage error (non-fatal):', storageErr);
+      // Aun sin persistencia, el usuario puede operar en esta sesión
+      setToken(response.token);
+      setUser({ ...response });
+    }
+
+    // 3. Activar autenticación → AppNavigator re-renderiza automáticamente
+    //    al flujo correcto (Profesional → Drawer/Dashboard, Usuario → UserMap)
+    setIsAuthenticated(true);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -121,6 +180,8 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         forgotPassword,
+        loginWithGoogle,
+        loginWithOTPResponse,
       }}
     >
       {children}

@@ -107,14 +107,16 @@ export default function RegisterScreen({ route, navigation }) {
     setLoading(false);
 
     if (result.success) {
+      // Enviar OTP al email del usuario
+      try {
+        const { authService: svc } = require('../../services/authService');
+        await svc.sendOTP(form.email.trim());
+      } catch (_) { /* no bloquear si hay error */}
+
       if (isProvider) {
         navigation.navigate('PendingVerification');
       } else {
-        Alert.alert(
-          '¡Registro Exitoso!',
-          'Tu cuenta ha sido creada. Por favor verifica tu correo electrónico para activar todas las funciones.',
-          [{ text: 'Entendido', onPress: () => navigation.navigate('Login') }]
-        );
+        navigation.navigate('VerifyOTP', { email: form.email.trim() });
       }
     } else {
       Alert.alert('Error', result.message);

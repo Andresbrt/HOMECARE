@@ -15,10 +15,11 @@ import { useAuth } from '../../context/AuthContext';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
 
 export default function LoginScreen({ navigation }) {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
@@ -35,6 +36,25 @@ export default function LoginScreen({ navigation }) {
 
     if (!result.success) {
       Alert.alert('Error', result.message);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setGoogleLoading(true);
+    const result = await loginWithGoogle();
+    setGoogleLoading(false);
+
+    if (!result.success) {
+      // Mensaje amigable si estamos en Expo Go (módulo nativo no disponible)
+      const isExpoGoLimit = result.message?.includes('build nativo') ||
+                            result.message?.includes('expo run');
+      Alert.alert(
+        isExpoGoLimit ? 'Solo en build nativo' : 'Error',
+        isExpoGoLimit
+          ? 'Google Sign-In requiere un build nativo.\n\nEjecuta:\n  expo run:android\n  expo run:ios\n\nO usa email/contraseña para probar en Expo Go.'
+          : result.message
+      );
     }
   };
 
@@ -103,6 +123,29 @@ export default function LoginScreen({ navigation }) {
             onPress={() => navigation.navigate('ForgotPassword')}
           >
             <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+
+          {/* Divisor */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>o</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign-In */}
+          <TouchableOpacity
+            style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#4285F4" />
+            ) : (
+              <>
+                <Text style={styles.googleIcon}>G</Text>
+                <Text style={styles.googleButtonText}>Continuar con Google</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -218,5 +261,42 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: TYPOGRAPHY.sm,
     textDecorationLine: 'underline',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: SPACING.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    marginHorizontal: SPACING.md,
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.sm,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 14,
+    backgroundColor: COLORS.backgroundSecondary,
+    ...SHADOWS.sm,
+  },
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4285F4',
+    marginRight: SPACING.sm,
+  },
+  googleButtonText: {
+    fontSize: TYPOGRAPHY.md,
+    color: COLORS.textPrimary,
+    fontWeight: TYPOGRAPHY.semibold,
   },
 });

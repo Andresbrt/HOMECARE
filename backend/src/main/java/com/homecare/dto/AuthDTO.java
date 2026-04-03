@@ -240,4 +240,35 @@ public class AuthDTO {
         /** CUSTOMER o SERVICE_PROVIDER */
         private String rol;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class VerificarOTP {
+        @NotBlank(message = "El email es obligatorio")
+        @Email
+        private String email;
+
+        @NotBlank(message = "El código es obligatorio")
+        @Size(min = 4, max = 4, message = "El código debe ser de 4 dígitos")
+        private String codigo;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ReenviarOTP {
+        @NotBlank(message = "El email es obligatorio")
+        @Email
+        private String email;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OTPResponse {
+        private String mensaje;
+        private Long expiresInSeconds;
+    }
 }

@@ -4,5 +4,6 @@ public enum UserTokenType {
     VERIFICATION,
     PASSWORD_RESET,
     EMAIL_CHANGE,
-    TWO_FACTOR
+    TWO_FACTOR,
+    OTP_VERIFICATION
 }

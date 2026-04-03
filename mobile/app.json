@@ -53,12 +53,18 @@
           "color": "#49C0BC"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.630129948671-o3pb4j0ng9f6eeln8tevjn1b89bm16da"
+        }
+      ]
     ],
     "extra": {
       "apiUrl": "http://192.168.1.20:8090/api",
       "wsUrl": "http://192.168.1.20:8090/ws",
-      "googleClientId": "YOUR_GOOGLE_CLIENT_ID",
+      "googleClientId": "630129948671-plv7lfm8e13lr8df1pec2fs9r5ppkf7i.apps.googleusercontent.com",
       "firebaseApiKey": "AIzaSyB9Y_zPsAYj50i1XOSJ6PsB_psX4uGk7K0",
       "firebaseAuthDomain": "homecare-1582c.firebaseapp.com",
       "firebaseProjectId": "homecare-1582c",

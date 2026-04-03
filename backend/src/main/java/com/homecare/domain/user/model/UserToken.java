@@ -52,6 +52,10 @@ public class UserToken {
     @Column(columnDefinition = "TEXT")
     private String userAgent;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0")
+    private Integer attempts = 0;
+
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);
     }

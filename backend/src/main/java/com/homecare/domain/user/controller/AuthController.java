@@ -38,6 +38,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(loginRequest.getEmail(), loginRequest.getPassword()));
     }
 
+    @PostMapping("/firebase-login")
+    @Operation(summary = "Autenticar con Firebase (Google Sign-In) y obtener tokens JWT")
+    public ResponseEntity<AuthDTO.LoginResponse> firebaseLogin(@Valid @RequestBody AuthDTO.FirebaseLogin dto) {
+        return ResponseEntity.ok(authService.loginWithFirebase(dto));
+    }
+
     @PostMapping("/refresh")
     @Operation(summary = "Renovar token de acceso usando refresh token")
     public ResponseEntity<AuthDTO.LoginResponse> refreshToken(@Valid @RequestBody AuthDTO.RefreshToken request) {
@@ -82,6 +88,18 @@ public class AuthController {
     public ResponseEntity<Void> forgotPassword(@Valid @RequestBody AuthDTO.RecuperarPassword request) {
         authService.solicitarRecuperacionPassword(request.getEmail());
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/send-otp")
+    @Operation(summary = "Enviar código OTP de 4 dígitos al email del usuario")
+    public ResponseEntity<AuthDTO.OTPResponse> sendOtp(@Valid @RequestBody AuthDTO.ReenviarOTP request) {
+        return ResponseEntity.ok(authService.generarYEnviarOTP(request.getEmail()));
+    }
+
+    @PostMapping("/verify-otp")
+    @Operation(summary = "Verificar código OTP e iniciar sesión")
+    public ResponseEntity<AuthDTO.LoginResponse> verifyOtp(@Valid @RequestBody AuthDTO.VerificarOTP request) {
+        return ResponseEntity.ok(authService.verificarOTP(request.getEmail(), request.getCodigo()));
     }
 
     @PostMapping("/reset-password")

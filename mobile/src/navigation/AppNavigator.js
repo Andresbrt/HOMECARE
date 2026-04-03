@@ -32,6 +32,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
 import PendingVerificationScreen from '../screens/auth/PendingVerificationScreen';
+import VerifyOTPScreen from '../screens/auth/VerifyOTPScreen';
 
 // ─── Usuario premium (dark map UX) ──────────────────────────────────────────
 import UserMapScreen from '../screens/usuario/MapScreen';
@@ -278,6 +279,7 @@ export default function AppNavigator() {
           <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nueva Contraseña' }} />
           <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verificar Email' }} />
           <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} options={{ headerShown: false }} />
         </>
       ) : isProfessional ? (
         // ── Modo Profesional: Drawer + Tabs oscuros ──

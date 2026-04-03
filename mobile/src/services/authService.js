@@ -33,6 +33,15 @@ export const authService = {
         return response.data;
     },
 
+    firebaseLogin: async (firebaseToken, extraData = {}) => {
+        const response = await api.post('/firebase-login', { firebaseToken, ...extraData });
+        if (response.data.token) {
+            await AsyncStorage.setItem('token', response.data.token);
+            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+        }
+        return response.data;
+    },
+
     register: async (userData) => {
         const response = await api.post('/registro', userData);
         return response.data;
@@ -48,6 +57,20 @@ export const authService = {
 
     verifyEmail: async (token) => {
         return await api.get(`/verify-email?token=${token}`);
+    },
+
+    sendOTP: async (email) => {
+        const response = await api.post('/send-otp', { email });
+        return response.data;
+    },
+
+    verifyOTP: async (email, codigo) => {
+        const response = await api.post('/verify-otp', { email, codigo });
+        if (response.data.token) {
+            await AsyncStorage.setItem('token', response.data.token);
+            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+        }
+        return response.data;
     },
 
     logout: async () => {

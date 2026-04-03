@@ -11,6 +11,7 @@ import com.homecare.security.CustomUserDetails;
 import com.homecare.security.JwtTokenProvider;
 import com.homecare.domain.common.service.NotificationService;
 import com.homecare.domain.common.service.EmailService;
+import com.homecare.domain.common.service.FirebaseTokenService;
 import com.homecare.domain.user.model.UserToken;
 import com.homecare.domain.user.model.UserTokenType;
 import com.homecare.domain.user.repository.UserTokenRepository;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +50,7 @@ public class AuthService {
     private final UserTokenRepository userTokenRepository;
     private final com.homecare.domain.common.service.FileStorageService fileStorageService;
     private final com.homecare.domain.user.validator.PasswordValidator passwordValidator;
+    private final FirebaseTokenService firebaseTokenService;
 
     @Value("${app.frontend.base-url:https://homecare.works}")
     private String frontendBaseUrl;
@@ -315,6 +318,164 @@ public class AuthService {
                 .activo(usuario.getActivo())
                 .verificado(usuario.getVerificado())
                 .fotoPerfil(usuario.getFotoUrl())
+                .build();
+    }
+
+    @Transactional
+    public AuthDTO.LoginResponse loginWithFirebase(AuthDTO.FirebaseLogin dto) {
+        com.google.firebase.auth.FirebaseToken decoded = firebaseTokenService.verifyIdToken(dto.getFirebaseToken());
+        String email = decoded.getEmail();
+        if (email == null || email.isBlank()) {
+            throw new AuthException("El token de Firebase no contiene un email válido");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseGet(() -> crearUsuarioDesdeFirebase(decoded, dto));
+
+        if (!usuario.getActivo()) {
+            throw new AuthException("Su cuenta está inactiva. Contacte al administrador.");
+        }
+
+        usuario.setUltimoAcceso(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+
+        CustomUserDetails userDetails = CustomUserDetails.create(usuario);
+        String token = jwtTokenProvider.generateToken(userDetails);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+        String mainRole = usuario.getRoles().iterator().next().getNombre();
+
+        return AuthDTO.LoginResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .tipo("Bearer")
+                .email(usuario.getEmail())
+                .rol(mainRole)
+                .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
+                .build();
+    }
+
+    private Usuario crearUsuarioDesdeFirebase(com.google.firebase.auth.FirebaseToken decoded, AuthDTO.FirebaseLogin dto) {
+        String displayName = decoded.getName() != null ? decoded.getName() : "";
+        String nombre = dto.getNombre() != null && !dto.getNombre().isBlank() ? dto.getNombre()
+                : (displayName.contains(" ") ? displayName.substring(0, displayName.indexOf(" "))
+                : displayName.isEmpty() ? "Usuario" : displayName);
+        String apellido = dto.getApellido() != null && !dto.getApellido().isBlank() ? dto.getApellido()
+                : (displayName.contains(" ") ? displayName.substring(displayName.indexOf(" ") + 1) : "Google");
+
+        String rolNombre = "ROLE_" + (dto.getRol() != null && !dto.getRol().isBlank()
+                ? dto.getRol().toUpperCase() : "CUSTOMER");
+
+        Rol rol = rolRepository.findByNombre(rolNombre)
+                .orElseGet(() -> {
+                    Rol nuevoRol = new Rol();
+                    nuevoRol.setNombre(rolNombre);
+                    nuevoRol.setDescripcion("Autogenerado");
+                    return rolRepository.save(nuevoRol);
+                });
+
+        Usuario usuario = Usuario.builder()
+                .email(decoded.getEmail())
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .nombre(nombre)
+                .apellido(apellido)
+                .telefono(dto.getTelefono())
+                .activo(true)
+                .verificado(true)
+                .roles(new HashSet<>(Set.of(rol)))
+                .build();
+
+        if (rolNombre.contains("SERVICE_PROVIDER")) {
+            usuario.setDisponible(false);
+            usuario.setCalificacionPromedio(BigDecimal.ZERO);
+        }
+
+        return usuarioRepository.save(usuario);
+    }
+
+    // ─── OTP ─────────────────────────────────────────────────────────────────────
+
+    @Transactional
+    public AuthDTO.OTPResponse generarYEnviarOTP(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthException("Usuario no encontrado"));
+
+        long enviosUltimaHora = userTokenRepository.countByUsuarioIdAndTokenTypeAndCreatedAtAfter(
+                usuario.getId(), UserTokenType.OTP_VERIFICATION, LocalDateTime.now().minusHours(1));
+        if (enviosUltimaHora >= 5) {
+            throw new AuthException("Demasiados intentos. Espera una hora antes de solicitar otro código.");
+        }
+
+        userTokenRepository.deleteByUsuarioIdAndTokenType(usuario.getId(), UserTokenType.OTP_VERIFICATION);
+
+        String codigo = String.format("%04d", ThreadLocalRandom.current().nextInt(0, 10000));
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+
+        UserToken otpToken = UserToken.builder()
+                .usuario(usuario)
+                .tokenHash(codigo)
+                .tokenType(UserTokenType.OTP_VERIFICATION)
+                .expiresAt(expiresAt)
+                .used(false)
+                .attempts(0)
+                .build();
+        userTokenRepository.save(otpToken);
+
+        emailService.sendHtmlEmail(email, "Tu código de verificación — HOME CARE",
+                "email/otp-verification",
+                Map.of("userName", usuario.getNombre(), "otpCode", codigo, "expiryMinutes", 10));
+
+        return AuthDTO.OTPResponse.builder()
+                .mensaje("Código enviado a " + email)
+                .expiresInSeconds(600L)
+                .build();
+    }
+
+    @Transactional
+    public AuthDTO.LoginResponse verificarOTP(String email, String codigo) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthException("Usuario no encontrado"));
+
+        UserToken otpToken = userTokenRepository
+                .findByUsuarioIdAndTokenType(usuario.getId(), UserTokenType.OTP_VERIFICATION)
+                .orElseThrow(() -> new AuthException("No hay un código de verificación activo para este email"));
+
+        if (otpToken.getUsed() || otpToken.isExpired()) {
+            throw new AuthException("El código ha expirado. Solicita uno nuevo.");
+        }
+
+        int intentos = otpToken.getAttempts() + 1;
+        if (intentos > 3) {
+            throw new AuthException("Demasiados intentos fallidos. Solicita un nuevo código.");
+        }
+
+        if (!otpToken.getTokenHash().equals(codigo)) {
+            otpToken.setAttempts(intentos);
+            userTokenRepository.save(otpToken);
+            int restantes = 3 - intentos;
+            throw new AuthException("Código incorrecto. Te quedan " + restantes + " intento(s).");
+        }
+
+        otpToken.setUsed(true);
+        otpToken.setUsedAt(LocalDateTime.now());
+        userTokenRepository.save(otpToken);
+
+        usuario.setVerificado(true);
+        usuario.setUltimoAcceso(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+
+        CustomUserDetails userDetails = CustomUserDetails.create(usuario);
+        String token = jwtTokenProvider.generateToken(userDetails);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+        String mainRole = usuario.getRoles().iterator().next().getNombre();
+
+        return AuthDTO.LoginResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .tipo("Bearer")
+                .email(usuario.getEmail())
+                .rol(mainRole)
+                .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
                 .build();
     }
 }
