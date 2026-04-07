@@ -35,13 +35,10 @@ import apiClient from '../../services/apiClient';
 import { inicializarChat, buildChatId } from '../../services/chatService';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS, PROF } from '../../constants/theme';
 
-const TIPOS_LIMPIEZA = [
-  { value: 'BASICA', label: 'Básica', icon: 'sparkles-outline' },
-  { value: 'PROFUNDA', label: 'Profunda', icon: 'water-outline' },
-  { value: 'OFICINA', label: 'Oficina', icon: 'business-outline' },
-  { value: 'POST_CONSTRUCCION', label: 'Post-construcción', icon: 'construct-outline' },
-  { value: 'MUDANZA', label: 'Mudanza', icon: 'cube-outline' },
-  { value: 'DESINFECCION', label: 'Desinfección', icon: 'shield-checkmark-outline' },
+const SERVICIOS = [
+  { id: 'general', label: 'Limpieza\nGeneral',  tipo: 'BASICA',   icon: 'sparkles-outline' },
+  { id: 'premium', label: 'Limpieza\nPremium',  tipo: 'PROFUNDA', icon: 'diamond-outline'  },
+  { id: 'horas',   label: 'Por\nHoras',          tipo: 'BASICA',   icon: 'time-outline'     },
 ];
 
 export default function CreateRequestScreen({ navigation, route }) {
@@ -49,6 +46,7 @@ export default function CreateRequestScreen({ navigation, route }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
+    servicioId: '',
     titulo: '',
     descripcion: '',
     tipoLimpieza: '',
@@ -58,6 +56,8 @@ export default function CreateRequestScreen({ navigation, route }) {
     cantidadBanos: '1',
     tieneMascotas: false,
     precioMaximo: '',
+    cantidadHoras: '2',
+    precioPorHora: '',
     fechaServicio: new Date().toISOString().split('T')[0],
     horaInicio: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
     duracionEstimada: '60',
@@ -68,14 +68,19 @@ export default function CreateRequestScreen({ navigation, route }) {
 
   useEffect(() => {
     if (selectedService) {
-      const tipoMapeado = selectedService.title.toUpperCase().includes('BÁSICA') ? 'BASICA' :
-                         selectedService.title.toUpperCase().includes('PROFUNDA') ? 'PROFUNDA' :
-                         selectedService.title.toUpperCase().includes('OFICINA') ? 'OFICINA' : '';
-      
+      const tipoMapeado = selectedService.tipoLimpieza ||
+                         (selectedService.title?.toUpperCase().includes('BÁSICA')    ? 'BASICA'    :
+                          selectedService.title?.toUpperCase().includes('PROFUNDA')  ? 'PROFUNDA'  : '');
+      const tituloNorm = (selectedService.titulo || selectedService.title || '').toLowerCase();
+      const esHoras = tituloNorm.includes('hora') || selectedService.esPorHoras;
+      const sid = esHoras ? 'horas'
+                : tipoMapeado === 'PROFUNDA' ? 'premium' : 'general';
+
       setForm(prev => ({
         ...prev,
+        servicioId:  sid,
         tipoLimpieza: tipoMapeado,
-        titulo: `Solicitud de ${selectedService.title}`,
+        titulo: selectedService.titulo || `Solicitud de ${selectedService.title || ''}`,
       }));
     }
   }, [selectedService]);
@@ -85,15 +90,27 @@ export default function CreateRequestScreen({ navigation, route }) {
   const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async () => {
-    if (!form.titulo.trim() || !form.tipoLimpieza || !form.direccion.trim()) {
-      Alert.alert('Campos requeridos', 'Completa título, tipo y dirección.');
+    if (!form.titulo.trim() || !form.servicioId || !form.direccion.trim()) {
+      Alert.alert('Campos requeridos', 'Completa título, tipo de servicio y dirección.');
       return;
     }
 
-    const precio = form.precioMaximo ? parseFloat(form.precioMaximo) : 0;
-    if (precio < 80000) {
-      Alert.alert('Precio mínimo', 'El presupuesto mínimo para una solicitud es de COL$ 80.000.');
-      return;
+    if (form.servicioId === 'horas') {
+      if (!form.cantidadHoras || !form.precioPorHora) {
+        Alert.alert('Campos requeridos', 'Ingresa la cantidad de horas y el valor por hora.');
+        return;
+      }
+      const total = parseInt(form.cantidadHoras || 0) * parseInt(form.precioPorHora || 0);
+      if (total < 80000) {
+        Alert.alert('Precio mínimo', 'El total del servicio debe ser de mínimo COL$ 80.000.');
+        return;
+      }
+    } else {
+      const precio = form.precioMaximo ? parseFloat(form.precioMaximo) : 0;
+      if (precio < 80000) {
+        Alert.alert('Precio mínimo', 'El presupuesto mínimo para una solicitud es de COL$ 80.000.');
+        return;
+      }
     }
 
     setIsConfirmingLocation(true);
@@ -108,6 +125,14 @@ export default function CreateRequestScreen({ navigation, route }) {
       const now = new Date();
       const futureDate = new Date(now.getTime() + 10 * 60000); 
       
+      const esHoras = form.servicioId === 'horas';
+      const precioFinal = esHoras
+        ? parseInt(form.cantidadHoras || 2) * parseInt(form.precioPorHora || 0)
+        : parseFloat(form.precioMaximo);
+      const duracion = esHoras
+        ? parseInt(form.cantidadHoras || 2) * 60
+        : (parseInt(form.duracionEstimada, 10) || 60);
+
       const payload = {
         titulo: form.titulo.trim(),
         descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza}`,
@@ -119,11 +144,13 @@ export default function CreateRequestScreen({ navigation, route }) {
         cantidadHabitaciones: form.cantidadHabitaciones ? parseInt(form.cantidadHabitaciones, 10) : 2,
         cantidadBanos: form.cantidadBanos ? parseInt(form.cantidadBanos, 10) : 1,
         tieneMascotas: form.tieneMascotas,
-        precioMaximo: parseFloat(form.precioMaximo),
+        precioMaximo: precioFinal,
         fechaServicio: futureDate.toISOString().split('T')[0],
         horaInicio: futureDate.toTimeString().split(' ')[0].substring(0, 5),
-        duracionEstimada: parseInt(form.duracionEstimada, 10) || 60,
-        instruccionesEspeciales: form.instruccionesEspeciales?.trim() || "Sin instrucciones adicionales",
+        duracionEstimada: duracion,
+        instruccionesEspeciales: esHoras
+          ? `Servicio por horas: ${form.cantidadHoras}h × $${parseInt(form.precioPorHora).toLocaleString('es-CO')}/h. ${form.instruccionesEspeciales?.trim() || ''}`.trim()
+          : (form.instruccionesEspeciales?.trim() || 'Sin instrucciones adicionales'),
       };
 
       // 1. Crear solicitud en el backend REST
@@ -175,26 +202,72 @@ export default function CreateRequestScreen({ navigation, route }) {
             <View style={{ width: 24 }} />
           </View>
 
-          {/* Tipo de limpieza */}
+          {/* Tipo de servicio */}
           <Text style={styles.label}>Tipo de servicio *</Text>
           <View style={styles.tipoGrid}>
-            {TIPOS_LIMPIEZA.map(tipo => (
+            {SERVICIOS.map(s => (
               <TouchableOpacity
-                key={tipo.value}
-                style={[styles.tipoCard, form.tipoLimpieza === tipo.value && styles.tipoCardActive]}
-                onPress={() => { updateField('tipoLimpieza', tipo.value); Haptics.selectionAsync(); }}
+                key={s.id}
+                style={[styles.tipoCard, form.servicioId === s.id && styles.tipoCardActive]}
+                onPress={() => {
+                  updateField('servicioId', s.id);
+                  updateField('tipoLimpieza', s.tipo);
+                  Haptics.selectionAsync();
+                }}
               >
                 <Ionicons
-                  name={tipo.icon}
+                  name={s.icon}
                   size={24}
-                  color={form.tipoLimpieza === tipo.value ? COLORS.white : COLORS.accent}
+                  color={form.servicioId === s.id ? COLORS.white : COLORS.accent}
                 />
-                <Text style={[styles.tipoLabel, form.tipoLimpieza === tipo.value && styles.tipoLabelActive]}>
-                  {tipo.label}
+                <Text style={[styles.tipoLabel, form.servicioId === s.id && styles.tipoLabelActive]}>
+                  {s.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Campos extra: Por Horas */}
+          {form.servicioId === 'horas' && (
+            <>
+              <Text style={styles.sectionTitle}>Detalle del servicio por horas</Text>
+              <View style={styles.row}>
+                <View style={styles.halfField}>
+                  <Text style={styles.miniLabel}>Número de horas *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="2"
+                    placeholderTextColor={COLORS.textDisabled}
+                    value={form.cantidadHoras}
+                    onChangeText={v => updateField('cantidadHoras', v)}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.halfField}>
+                  <Text style={styles.miniLabel}>Valor por hora (COP) *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ej: 25000"
+                    placeholderTextColor={COLORS.textDisabled}
+                    value={form.precioPorHora}
+                    onChangeText={v => updateField('precioPorHora', v)}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+              {!!form.cantidadHoras && !!form.precioPorHora && (
+                <View style={styles.totalRow}>
+                  <Ionicons name="calculator-outline" size={15} color={COLORS.accent} />
+                  <Text style={styles.totalText}>
+                    Total estimado:{' '}
+                    <Text style={styles.totalAmount}>
+                      ${(parseInt(form.cantidadHoras || 0) * parseInt(form.precioPorHora || 0)).toLocaleString('es-CO')} COP
+                    </Text>
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
 
           {/* Título */}
           <Text style={styles.label}>Título *</Text>
@@ -280,6 +353,8 @@ export default function CreateRequestScreen({ navigation, route }) {
             <Text style={styles.toggleLabel}>Tengo mascotas</Text>
           </TouchableOpacity>
 
+          {/* Presupuesto — solo cuando NO es por horas */}
+          {form.servicioId !== 'horas' && (
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Text style={styles.miniLabel}>Presupuesto sugerido (Min. $80.000) *</Text>
@@ -293,6 +368,7 @@ export default function CreateRequestScreen({ navigation, route }) {
               />
             </View>
           </View>
+          )}
 
           {/* Instrucciones */}
           <Text style={styles.label}>Instrucciones especiales</Text>
@@ -400,6 +476,10 @@ const styles = StyleSheet.create({
   tipoCardActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   tipoLabel: { fontSize: TYPOGRAPHY.xs, color: COLORS.textPrimary, marginTop: 4, textAlign: 'center' },
   tipoLabelActive: { color: COLORS.white, fontWeight: TYPOGRAPHY.semibold },
+  // Total por horas
+  totalRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACING.sm, backgroundColor: 'rgba(73,192,188,0.1)', borderRadius: BORDER_RADIUS.sm, paddingVertical: 8, paddingHorizontal: 12 },
+  totalText: { fontSize: TYPOGRAPHY.sm, color: COLORS.textSecondary },
+  totalAmount: { fontWeight: TYPOGRAPHY.bold, color: COLORS.accent },
   toggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.md, gap: SPACING.sm },
   toggleLabel: { fontSize: TYPOGRAPHY.md, color: COLORS.textPrimary },
   submitBtn: {

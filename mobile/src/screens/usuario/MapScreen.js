@@ -50,6 +50,7 @@ import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
 import useChatStore from '../../store/chatStore';
+import useModeStore from '../../store/modeStore';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 
 const DARK_MAP_STYLE = [
@@ -64,10 +65,7 @@ const DARK_MAP_STYLE = [
 
 const CATEGORIES = [
   { id: 'limpieza', label: 'Limpieza', icon: 'sparkles-outline' },
-  { id: 'electricidad', label: 'Electricidad', icon: 'flash-outline' },
-  { id: 'plomeria', label: 'Plomer�a', icon: 'water-outline' },
-  { id: 'reparacion', label: 'Reparaciones', icon: 'hammer-outline' },
-  { id: 'jardineria', label: 'Jardiner�a', icon: 'leaf-outline' },
+
 ];
 
 const TECHNICIANS = [
@@ -115,6 +113,7 @@ export default function UserMapScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { location, startWatching, stopWatching } = useLocation();
+  const { setMode } = useModeStore();
   const mapRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -230,6 +229,33 @@ export default function UserMapScreen({ navigation }) {
         </Animated.View>
       )}
 
+      {/* ── Panel inferior: 3 servicios de limpieza ─────────────────────── */}
+      <Animated.View entering={FadeInDown.delay(300).springify()} style={[styles.servicesBar, { bottom: insets.bottom + 16 }]}>
+        {[
+          { label: 'Limpieza\nGeneral',   tipo: 'BASICA',   titulo: 'Limpieza General del Hogar',     icon: 'sparkles-outline' },
+          { label: 'Limpieza\nPremium',   tipo: 'PROFUNDA', titulo: 'Limpieza Premium Profunda',       icon: 'diamond-outline'  },
+          { label: 'Por\nHoras',          tipo: 'BASICA',   titulo: 'Servicio de Limpieza por Horas', icon: 'time-outline'     },
+        ].map(s => (
+          <TouchableOpacity
+            key={s.label}
+            style={styles.serviceBarBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              navigation.navigate('ServiceRequest', { service: { title: s.titulo, tipoLimpieza: s.tipo, titulo: s.titulo } });
+            }}
+            activeOpacity={0.82}
+          >
+            <LinearGradient
+              colors={['rgba(73,192,188,0.18)', 'rgba(14,77,104,0.25)']}
+              style={styles.serviceBarInner}
+            >
+              <Ionicons name={s.icon} size={22} color="#49C0BC" />
+              <Text style={styles.serviceBarLabel}>{s.label}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ))}
+      </Animated.View>
+
       {isMenuOpen && (
         <View style={StyleSheet.absoluteFill}>
           <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setIsMenuOpen(false)} />
@@ -251,16 +277,47 @@ export default function UserMapScreen({ navigation }) {
               </TouchableOpacity>
 
               <ScrollView style={styles.menuOptions}>
-                <MenuOption index={0} icon="time-outline" label="Historial de solicitudes" onPress={() => navigation.navigate('UserHistory')} />
-                <MenuOption index={1} icon="notifications-outline" label="Notificaciones" onPress={() => navigation.navigate('UserNotifications')} />
-                <MenuOption index={2} icon="shield-checkmark-outline" label="Seguridad" onPress={() => {}} />
-                <MenuOption index={3} icon="settings-outline" label="Configuracion" onPress={() => {}} />
-                <MenuOption index={4} icon="help-circle-outline" label="Ayuda" onPress={() => {}} />
-                <MenuOption index={5} icon="chatbubble-outline" label="Soporte" onPress={() => {}} />
+                {/* Servicios rapidos de limpieza */}
+                <View style={styles.quickServicesHeader}>
+                  <Ionicons name="flash" size={13} color="#49C0BC" />
+                  <Text style={styles.quickServicesTitle}>Servicios rapidos</Text>
+                </View>
+                {[
+                  { label: 'Limpieza General',   tipo: 'BASICA',  titulo: 'Limpieza General del Hogar', icon: 'sparkles-outline' },
+                  { label: 'Limpieza Premium',   tipo: 'PROFUNDA', titulo: 'Limpieza Premium Profunda',  icon: 'diamond-outline'  },
+                  { label: 'Limpieza por Horas', tipo: 'BASICA',  titulo: 'Servicio de Limpieza por Horas', icon: 'time-outline' },
+                ].map((s, i) => (
+                  <TouchableOpacity
+                    key={s.label}
+                    style={styles.quickServiceRow}
+                    onPress={() => {
+                      setIsMenuOpen(false);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      navigation.navigate('ServiceRequest', { service: { title: s.titulo, tipoLimpieza: s.tipo, titulo: s.titulo } });
+                    }}
+                  >
+                    <View style={styles.quickServiceIcon}>
+                      <Ionicons name={s.icon} size={16} color="#49C0BC" />
+                    </View>
+                    <Text style={styles.quickServiceLabel}>{s.label}</Text>
+                    <Ionicons name="chevron-forward" size={14} color="#555" />
+                  </TouchableOpacity>
+                ))}
+                <View style={styles.menuDivider} />
+                <MenuOption index={3} icon="time-outline" label="Historial de solicitudes" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserHistory'); }} />
+                <MenuOption index={4} icon="notifications-outline" label="Notificaciones" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserNotifications'); }} />
+                <MenuOption index={5} icon="shield-checkmark-outline" label="Seguridad" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserProfile'); }} />
+                <MenuOption index={6} icon="help-circle-outline" label="Ayuda" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserProfile'); }} />
+                <MenuOption index={7} icon="chatbubble-outline" label="Soporte" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserProfile'); }} />
               </ScrollView>
 
               <View style={styles.menuFooter}>
-                <TouchableOpacity style={styles.driverModeBtn}><Text style={styles.driverModeText}>Modo profesional</Text></TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.driverModeBtn}
+                  onPress={() => { setIsMenuOpen(false); setMode('profesional'); }}
+                >
+                  <Text style={styles.driverModeText}>Modo profesional</Text>
+                </TouchableOpacity>
                 <View style={styles.socialRow}><Ionicons name="logo-facebook" size={24} color="#1877F2" /><Ionicons name="logo-instagram" size={24} color="#E4405F" /></View>
               </View>
             </SafeAreaView>
@@ -305,11 +362,48 @@ const styles = StyleSheet.create({
   driverModeBtn: { width: '100%', backgroundColor: '#C5FF2D', paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginBottom: 20 },
   driverModeText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
   socialRow: { flexDirection: 'row', gap: 20 },
+  // ── Servicios rapidos en menú ──
+  quickServicesHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
+  quickServicesTitle: { color: '#49C0BC', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  quickServiceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, gap: 12 },
+  quickServiceIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(73,192,188,0.12)', justifyContent: 'center', alignItems: 'center' },
+  quickServiceLabel: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '500' },
+  menuDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 20, marginVertical: 8 },
 
   // ── FAB Chatear (centrado horizontalmente) ───────────────────────────────
+  // ── Panel servicios rápidos ─────────────────────────────────────────────
+  servicesBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    gap: 10,
+    zIndex: 150,
+  },
+  serviceBarBtn: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(73,192,188,0.25)',
+  },
+  serviceBarInner: {
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    gap: 5,
+  },
+  serviceBarLabel: {
+    color: '#E0F0FF',
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+    lineHeight: 14,
+  },
   chatFab: {
     position: 'absolute',
-    bottom: 36,
+    bottom: 140,
     alignSelf: 'center',
     left: 0,
     right: 0,

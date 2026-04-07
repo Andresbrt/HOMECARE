@@ -9,34 +9,62 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
+import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function LoginScreen({ navigation }) {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, devLogin } = useAuth();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [quickLoading, setQuickLoading] = useState(null);
+
+  const btnScale = useSharedValue(1);
+  const btnGlow = useSharedValue(0);
+
+  const btnAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: btnScale.value }],
+    shadowOpacity: interpolate(btnGlow.value, [0, 1], [0.25, 0.55]),
+    shadowRadius: interpolate(btnGlow.value, [0, 1], [6, 15]),
+    elevation: interpolate(btnGlow.value, [0, 1], [3, 10]),
+  }));
+
+  const handleQuickLogin = (role) => {
+    setQuickLoading(role);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    devLogin(role === 'profesional' ? 'SERVICE_PROVIDER' : 'CUSTOMER');
+    setQuickLoading(null);
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert('Campos requeridos', 'Por favor completa todos los campos');
       return;
     }
-
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     const result = await login(email.trim(), password);
     setLoading(false);
-
-    if (!result.success) {
-      Alert.alert('Error', result.message);
-    }
+    if (!result.success) Alert.alert('Error al ingresar', result.message);
   };
 
   const handleGoogleLogin = async () => {
@@ -44,224 +72,298 @@ export default function LoginScreen({ navigation }) {
     setGoogleLoading(true);
     const result = await loginWithGoogle();
     setGoogleLoading(false);
-
     if (!result.success) {
-      // Mensaje amigable si estamos en Expo Go (módulo nativo no disponible)
-      const isExpoGoLimit = result.message?.includes('build nativo') ||
-                            result.message?.includes('expo run');
+      const isExpoGoLimit = result.message?.includes('build nativo') || result.message?.includes('expo run');
       Alert.alert(
         isExpoGoLimit ? 'Solo en build nativo' : 'Error',
         isExpoGoLimit
-          ? 'Google Sign-In requiere un build nativo.\n\nEjecuta:\n  expo run:android\n  expo run:ios\n\nO usa email/contraseña para probar en Expo Go.'
+          ? 'Google Sign-In requiere un build nativo.\nEjecuta: expo run:android / expo run:ios'
           : result.message
       );
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.inner}>
-        {/* Logo area */}
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>HOMECARE</Text>
-          <Text style={styles.tagline}>Servicios a tu alcance</Text>
-        </View>
+    <LinearGradient colors={['#000F22', '#001B38', '#0a2a42']} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Logo ── */}
+          <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="home" size={28} color={PROF.accent} />
+            </View>
+            <Text style={styles.logoText}>HOMECARE</Text>
+            <Text style={styles.tagline}>Servicios a tu alcance</Text>
+          </Animated.View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="ejemplo@correo.com"
-              placeholderTextColor={COLORS.textDisabled}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          {/* ── Card Form ── */}
+          <Animated.View entering={FadeInDown.duration(600).delay(120).springify()} style={styles.card}>
+            {/* Email */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Correo electrónico</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="mail-outline" size={18} color={PROF.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="ejemplo@correo.com"
+                  placeholderTextColor={PROF.textMuted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Contraseña</Text>
-            <View style={styles.passwordRow}>
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                placeholder="••••••••"
-                placeholderTextColor={COLORS.textDisabled}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
+            {/* Contraseña */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Contraseña</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="lock-closed-outline" size={18} color={PROF.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="••••••••"
+                  placeholderTextColor={PROF.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={PROF.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Olvidé contraseña */}
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotBtn}>
+              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+
+            {/* Botón principal */}
+            <Animated.View style={[styles.primaryBtn, loading && styles.btnDisabled, btnAnimStyle]}>
               <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.9}
+                onPressIn={() => {
+                  btnScale.value = withSpring(0.96, { damping: 10, stiffness: 300 });
+                  btnGlow.value = withTiming(1, { duration: 120 });
+                }}
+                onPressOut={() => {
+                  btnScale.value = withSpring(1, { damping: 10, stiffness: 300 });
+                  btnGlow.value = withTiming(0, { duration: 400 });
+                }}
+                style={{ overflow: 'hidden', borderRadius: BORDER_RADIUS.md }}
               >
-                <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+                <LinearGradient colors={PROF.gradAccent} style={styles.primaryBtnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Iniciar sesión</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Divisor */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o continúa con</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google */}
+            <TouchableOpacity
+              style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
+              onPress={handleGoogleLogin}
+              disabled={googleLoading}
+              activeOpacity={0.85}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={PROF.textSecondary} />
+              ) : (
+                <>
+                  <View style={styles.googleIconCircle}>
+                    <Text style={styles.googleG}>G</Text>
+                  </View>
+                  <Text style={styles.googleBtnText}>Continuar con Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* ── Enlace a registro ── */}
+          <Animated.View entering={FadeInDown.duration(600).delay(240).springify()} style={styles.footer}>
+            <Text style={styles.footerText}>¿No tienes cuenta? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
+              <Text style={styles.footerLink}>Regístrate</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* ── DEV quick access ── */}
+          <Animated.View entering={FadeIn.duration(400).delay(400)} style={styles.devSection}>
+            <Text style={styles.devLabel}>⚡ DEV</Text>
+            <View style={styles.devRow}>
+              <TouchableOpacity
+                style={[styles.devBtn, { backgroundColor: 'rgba(14,77,104,0.6)' }]}
+                onPress={() => handleQuickLogin('profesional')}
+                disabled={!!quickLoading}
+              >
+                {quickLoading === 'profesional' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.devBtnText}>👷 Profesional</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.devBtn, { backgroundColor: 'rgba(20,100,60,0.6)' }]}
+                onPress={() => handleQuickLogin('usuario')}
+                disabled={!!quickLoading}
+              >
+                {quickLoading === 'usuario' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.devBtnText}>👤 Usuario</Text>
+                )}
               </TouchableOpacity>
             </View>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.buttonText}>Iniciar Sesión</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.forgotPasswordButton}
-            onPress={() => navigation.navigate('ForgotPassword')}
-          >
-            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-          </TouchableOpacity>
-
-          {/* Divisor */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>o</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Google Sign-In */}
-          <TouchableOpacity
-            style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
-            onPress={handleGoogleLogin}
-            disabled={googleLoading}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color="#4285F4" />
-            ) : (
-              <>
-                <Text style={styles.googleIcon}>G</Text>
-                <Text style={styles.googleButtonText}>Continuar con Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Register')}
-          >
-            <Text style={styles.linkText}>
-              ¿No tienes cuenta?{' '}
-              <Text style={styles.linkTextBold}>Regístrate</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  inner: {
-    flex: 1,
-    justifyContent: 'center',
+  scroll: {
+    flexGrow: 1,
     paddingHorizontal: SPACING.xl,
+    alignItems: 'stretch',
   },
+
+  // Logo
   logoContainer: {
     alignItems: 'center',
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.xl,
+    marginTop: SPACING.md,
+  },
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: PROF.accentDim,
+    borderWidth: 1.5,
+    borderColor: PROF.accentGlow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
   },
   logoText: {
-    fontSize: 36,
-    fontWeight: TYPOGRAPHY.bold,
-    color: COLORS.primary,
-    letterSpacing: 2,
+    fontSize: 28,
+    fontWeight: '700',
+    color: PROF.textPrimary,
+    letterSpacing: 4,
   },
   tagline: {
-    fontSize: TYPOGRAPHY.md,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textSecondary,
+    marginTop: 4,
+    letterSpacing: 0.5,
   },
-  form: {
-    width: '100%',
+
+  // Card
+  card: {
+    backgroundColor: PROF.glass,
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+    borderRadius: BORDER_RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xl,
   },
-  inputContainer: {
-    marginBottom: SPACING.lg,
+
+  // Inputs
+  inputGroup: {
+    marginBottom: SPACING.md,
   },
   label: {
-    fontSize: TYPOGRAPHY.sm,
-    fontWeight: TYPOGRAPHY.semibold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.xs,
+    fontSize: TYPOGRAPHY.xs,
+    fontWeight: '600',
+    color: PROF.textSecondary,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 14,
-    fontSize: TYPOGRAPHY.md,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.backgroundSecondary,
-  },
-  passwordRow: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  passwordInput: {
-    flex: 1,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 14,
-    padding: 4,
-  },
-  eyeText: {
-    fontSize: 20,
-  },
-  button: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
     borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    height: 52,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.md,
+    color: PROF.textPrimary,
+    height: '100%',
+  },
+  eyeBtn: {
+    padding: 4,
+    marginLeft: 8,
+  },
+
+  // Forgot
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 2,
+    marginBottom: SPACING.lg,
+  },
+  forgotText: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.accent,
+  },
+
+  // Primary button
+  primaryBtn: {
+    borderRadius: BORDER_RADIUS.md,
+    overflow: 'hidden',
+    shadowColor: PROF.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  primaryBtnGrad: {
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: SPACING.md,
-    ...SHADOWS.md,
+    justifyContent: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: COLORS.white,
+  primaryBtnText: {
     fontSize: TYPOGRAPHY.lg,
-    fontWeight: TYPOGRAPHY.bold,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
-  linkButton: {
-    alignItems: 'center',
-    marginTop: SPACING.lg,
+  btnDisabled: {
+    opacity: 0.65,
   },
-  linkText: {
-    fontSize: TYPOGRAPHY.md,
-    color: COLORS.textSecondary,
-  },
-  linkTextBold: {
-    color: COLORS.accent,
-    fontWeight: TYPOGRAPHY.semibold,
-  },
-  forgotPasswordButton: {
-    marginTop: SPACING.md,
-    alignItems: 'center',
-  },
-  forgotPasswordText: {
-    color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.sm,
-    textDecorationLine: 'underline',
-  },
+
+  // Divider
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -270,33 +372,101 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: PROF.glassBorder,
   },
   dividerText: {
-    marginHorizontal: SPACING.md,
-    color: COLORS.textSecondary,
-    fontSize: TYPOGRAPHY.sm,
+    marginHorizontal: SPACING.sm,
+    fontSize: TYPOGRAPHY.xs,
+    color: PROF.textMuted,
+    letterSpacing: 0.3,
   },
-  googleButton: {
+
+  // Google
+  googleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: PROF.glassBorder,
     borderRadius: BORDER_RADIUS.md,
-    paddingVertical: 14,
-    backgroundColor: COLORS.backgroundSecondary,
-    ...SHADOWS.sm,
+    paddingVertical: 15,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  googleIcon: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  googleIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(66,133,244,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(66,133,244,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleG: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#4285F4',
-    marginRight: SPACING.sm,
   },
-  googleButtonText: {
+  googleBtnText: {
     fontSize: TYPOGRAPHY.md,
-    color: COLORS.textPrimary,
-    fontWeight: TYPOGRAPHY.semibold,
+    fontWeight: '600',
+    color: PROF.textPrimary,
+  },
+
+  // Footer
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: SPACING.xl,
+  },
+  footerText: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textSecondary,
+  },
+  footerLink: {
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '700',
+    color: PROF.accent,
+  },
+
+  // DEV
+  devSection: {
+    marginTop: SPACING.xl,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    paddingTop: SPACING.md,
+  },
+  devLabel: {
+    fontSize: 11,
+    color: PROF.textMuted,
+    marginBottom: SPACING.sm,
+    letterSpacing: 1,
+  },
+  devRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    width: '100%',
+  },
+  devBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: BORDER_RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  devBtnText: {
+    color: PROF.textPrimary,
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '600',
   },
 });

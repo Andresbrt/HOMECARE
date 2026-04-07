@@ -143,7 +143,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Llamado tras verificar OTP exitosamente — autentica de forma automática y transparente
+  // ─── Actualizar datos del usuario (refleja cambios sin re-login) ──────
+  const updateUser = async (updates) => {
+    const merged = { ...user, ...updates };
+    setUser(merged);
+    try {
+      await SecureStore.setItemAsync('user', JSON.stringify(merged));
+    } catch (err) {
+      console.warn('updateUser: storage error (non-fatal):', err);
+    }
+  };
+
+  // ─── Dev login: acceso directo sin API (solo desarrollo) ─────────────────
+  const devLogin = (role) => {
+    const mockUser = {
+      id: role === 'SERVICE_PROVIDER' ? 'dev-prof-001' : 'dev-user-001',
+      email: role === 'SERVICE_PROVIDER' ? 'profesional@homecare.com' : 'usuario@homecare.com',
+      nombre: role === 'SERVICE_PROVIDER' ? 'Profesional Demo' : 'Usuario Demo',
+      rol: role,
+      token: 'dev-token-bypass',
+    };
+    const roleMode = role === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+    useModeStore.getState().setMode(roleMode);
+    setToken('dev-token-bypass');
+    setUser(mockUser);
+    setIsAuthenticated(true);
+  };
+
   const loginWithOTPResponse = async (response) => {
     // 1. Establecer modo SINCRÓNICAMENTE (Zustand fuera de React) antes de cualquier
     //    re-render, evitando que profesionales vean UserMap durante la transición
@@ -182,6 +208,8 @@ export const AuthProvider = ({ children }) => {
         forgotPassword,
         loginWithGoogle,
         loginWithOTPResponse,
+        updateUser,
+        devLogin,
       }}
     >
       {children}

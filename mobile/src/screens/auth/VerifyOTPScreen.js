@@ -8,17 +8,30 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withSpring,
+  withRepeat,
+  interpolate,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useOTPVerification } from '../../hooks/useOTPVerification';
-import { COLORS, PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
+import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function VerifyOTPScreen({ route, navigation }) {
   const { email } = route.params;
   const { loginWithOTPResponse } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const {
     code, setCode,
@@ -32,56 +45,94 @@ export default function VerifyOTPScreen({ route, navigation }) {
   } = useOTPVerification(email);
 
   const inputRef = useRef(null);
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const successScale = useRef(new Animated.Value(0)).current;
+  const prevCodeLen = useRef(0);
+  const shakeX = useSharedValue(0);
+  const successScale = useSharedValue(0);
+  const d0Scale = useSharedValue(1);
+  const d1Scale = useSharedValue(1);
+  const d2Scale = useSharedValue(1);
+  const d3Scale = useSharedValue(1);
+  const btnGlow = useSharedValue(0);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 400);
   }, []);
 
-  // Shake al error
+  // Shake on error
   useEffect(() => {
     if (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Animated.sequence([
-        Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
-      ]).start();
+      shakeX.value = withSequence(
+        withTiming(10, { duration: 55 }),
+        withTiming(-10, { duration: 55 }),
+        withTiming(7, { duration: 55 }),
+        withTiming(-7, { duration: 55 }),
+        withTiming(0, { duration: 55 }),
+      );
     }
   }, [error]);
 
-  // Animación éxito
+  // Success scale-in
   useEffect(() => {
     if (success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Animated.spring(successScale, {
-        toValue: 1,
-        tension: 80,
-        friction: 6,
-        useNativeDriver: true,
-      }).start();
+      successScale.value = withSpring(1, { damping: 12, stiffness: 120 });
     }
   }, [success]);
+
+  // Pulse por dígito al escribir
+  useEffect(() => {
+    const newLen = code.length;
+    if (newLen > prevCodeLen.current && newLen > 0) {
+      const scales = [d0Scale, d1Scale, d2Scale, d3Scale];
+      const idx = newLen - 1;
+      scales[idx].value = withSequence(
+        withTiming(0.8, { duration: 60 }),
+        withSpring(1, { damping: 8, stiffness: 280 }),
+      );
+    }
+    prevCodeLen.current = newLen;
+  }, [code]);
+
+  // Glow pulsante del botón cuando se completan los 4 dígitos
+  useEffect(() => {
+    if (code.length === 4 && !error && !expired && !blocked) {
+      btnGlow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 700 }),
+          withTiming(0.45, { duration: 700 }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      btnGlow.value = withTiming(0, { duration: 200 });
+    }
+  }, [code.length, error, expired, blocked]);
+
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+  const successScaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: successScale.value }] }));
+  const d0AnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: d0Scale.value }] }));
+  const d1AnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: d1Scale.value }] }));
+  const d2AnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: d2Scale.value }] }));
+  const d3AnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: d3Scale.value }] }));
+  const digitAnimStyles = [d0AnimStyle, d1AnimStyle, d2AnimStyle, d3AnimStyle];
+  const btnGlowStyle = useAnimatedStyle(() => ({
+    shadowOpacity: interpolate(btnGlow.value, [0, 1], [0.25, 0.55]),
+    shadowRadius: interpolate(btnGlow.value, [0, 1], [6, 15]),
+    elevation: interpolate(btnGlow.value, [0, 1], [3, 10]),
+  }));
 
   const handleVerify = async () => {
     const response = await verify();
     if (response) {
-      // 1. Activar animación de éxito + haptics de inmediato (feedback instantáneo al usuario)
       setSuccess(true);
-      // 2. Autenticar: establece modo + token → AppNavigator redirige automáticamente
-      //    al flujo del rol: SERVICE_PROVIDER → Drawer/Dashboard, CUSTOMER → UserMap
-      //    (la animación de éxito corre ~100-200ms mientras el storage persiste la sesión,
-      //     luego AppNavigator desmonta el Auth Stack → el usuario ve su pantalla principal)
       await loginWithOTPResponse(response);
     }
   };
 
   const handleCodeChange = (text) => {
-    const clean = text.replace(/[^0-9]/g, '').slice(0, 4);
-    setCode(clean);
+    setCode(text.replace(/[^0-9]/g, '').slice(0, 4));
   };
 
   const digits = code.padEnd(4, ' ').split('');
@@ -89,8 +140,10 @@ export default function VerifyOTPScreen({ route, navigation }) {
   if (success) {
     return (
       <LinearGradient colors={PROF.gradMain} style={styles.container}>
-        <Animated.View style={[styles.successBox, { transform: [{ scale: successScale }] }]}>
-          <Text style={styles.successIcon}>✓</Text>
+        <Animated.View style={[styles.successBox, successScaleStyle]}>
+          <View style={styles.successCircle}>
+            <Text style={styles.successIcon}>✓</Text>
+          </View>
           <Text style={styles.successTitle}>¡Verificado!</Text>
           <Text style={styles.successSub}>Tu cuenta está activa</Text>
         </Animated.View>
@@ -99,96 +152,144 @@ export default function VerifyOTPScreen({ route, navigation }) {
   }
 
   return (
-    <LinearGradient colors={PROF.gradMain} style={styles.container}>
+    <LinearGradient colors={['#000F22', '#001B38', '#0a2a42']} style={styles.container}>
       <KeyboardAvoidingView
-        style={styles.inner}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>✉</Text>
-          </View>
-          <Text style={styles.title}>Verifica tu correo</Text>
-          <Text style={styles.subtitle}>
-            Enviamos un código de 4 dígitos a
-          </Text>
-          <Text style={styles.emailText}>{email}</Text>
-        </View>
+        <View style={[styles.inner, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
 
-        {/* Cajas de dígitos (visual) */}
-        <Animated.View style={[styles.codeRow, { transform: [{ translateX: shakeAnim }] }]}>
-          {digits.map((d, i) => (
-            <View
-              key={i}
-              style={[
-                styles.digitBox,
-                code.length === i && styles.digitBoxActive,
-                error && styles.digitBoxError,
-                success && styles.digitBoxSuccess,
-              ]}
-            >
-              <Text style={styles.digitText}>{d.trim()}</Text>
+          {/* ── Icono + títulos ── */}
+          <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
+            <View style={styles.iconCircle}>
+              <Text style={styles.iconText}>✉</Text>
             </View>
-          ))}
-        </Animated.View>
+            <Text style={styles.title}>Verifica tu correo</Text>
+            <Text style={styles.subtitle}>Enviamos un código de 4 dígitos a</Text>
+            <Text style={styles.emailText}>{email}</Text>
+          </Animated.View>
 
-        {/* Input oculto que captura el teclado numérico */}
-        <TextInput
-          ref={inputRef}
-          value={code}
-          onChangeText={handleCodeChange}
-          keyboardType="number-pad"
-          maxLength={4}
-          style={styles.hiddenInput}
-          caretHidden
-          onSubmitEditing={handleVerify}
-        />
+          {/* ── Cajas de dígitos ── */}
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(100).springify()}
+            style={[styles.codeRow, shakeStyle]}
+          >
+            {digits.map((d, i) => {
+              const isFilled = d.trim() !== '';
+              const allFilled = code.length === 4;
+              return (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.digitBox,
+                    code.length === i && styles.digitBoxActive,
+                    isFilled && allFilled && !error && styles.digitBoxFilled,
+                    error && styles.digitBoxError,
+                    digitAnimStyles[i],
+                  ]}
+                >
+                  <Text style={[
+                    styles.digitText,
+                    isFilled && allFilled && !error && styles.digitTextFilled,
+                  ]}>
+                    {d.trim()}
+                  </Text>
+                  {code.length === i && <View style={styles.cursor} />}
+                </Animated.View>
+              );
+            })}
+          </Animated.View>
 
-        {/* Timer expiry */}
-        <View style={styles.timerRow}>
-          <View style={[styles.timerBadge, expired && styles.timerBadgeExpired]}>
-            <Text style={[styles.timerText, expired && styles.timerTextExpired]}>
-              {expired ? 'Código expirado' : `Expira en ${expiryFormatted}`}
-            </Text>
-          </View>
+          {/* Input invisible que captura el teclado numérico */}
+          <TextInput
+            ref={inputRef}
+            value={code}
+            onChangeText={handleCodeChange}
+            keyboardType="number-pad"
+            maxLength={4}
+            style={styles.hiddenInput}
+            caretHidden
+            onSubmitEditing={handleVerify}
+          />
+
+          {/* ── Timer ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(180).springify()} style={styles.timerRow}>
+            <View style={[styles.timerBadge, expired && styles.timerBadgeExpired]}>
+              <Text style={[styles.timerText, expired && styles.timerTextExpired]}>
+                {expired ? '⏱ Código expirado' : `⏱ Expira en ${expiryFormatted}`}
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* ── Error ── */}
+          {error ? (
+            <Animated.Text entering={FadeIn.duration(250)} style={styles.errorText}>
+              {error}
+            </Animated.Text>
+          ) : null}
+
+          {/* ── Botón verificar ── */}
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(220).springify()}
+            style={[styles.button, (loading || code.length < 4 || expired || blocked) && styles.buttonDisabled, btnGlowStyle]}
+          >
+            <TouchableOpacity
+              onPress={handleVerify}
+              disabled={loading || code.length < 4 || expired || blocked}
+              activeOpacity={0.88}
+              onPressIn={() => inputRef.current?.focus()}
+              style={{ overflow: 'hidden', borderRadius: BORDER_RADIUS.md }}
+            >
+              <LinearGradient
+                colors={PROF.gradAccent}
+                style={styles.buttonGrad}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Verificar código</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* ── Reenviar ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(280).springify()} style={styles.resendWrapper}>
+            <Text style={styles.resendLabel}>¿No recibiste el código?</Text>
+            {resending ? (
+              <View style={styles.resendLoadingRow}>
+                <ActivityIndicator color={PROF.accent} size="small" />
+                <Text style={styles.resendSendingText}>Enviando…</Text>
+              </View>
+            ) : canResend ? (
+              <TouchableOpacity
+                onPress={resend}
+                activeOpacity={0.8}
+                style={styles.resendBtn}
+              >
+                <LinearGradient
+                  colors={['rgba(73,192,188,0.18)', 'rgba(73,192,188,0.08)']}
+                  style={styles.resendBtnGrad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="refresh" size={14} color={PROF.accent} />
+                  <Text style={styles.resendBtnText}>Reenviar código</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.resendCountdownPill}>
+                <Ionicons name="time-outline" size={14} color={PROF.textMuted} />
+                <Text style={styles.resendCountdownText}>
+                  Reenviar en{' '}<Text style={styles.resendCountdownTime}>{resendFormatted}</Text>
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+
         </View>
-
-        {/* Error */}
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : null}
-
-        {/* Botón verificar */}
-        <TouchableOpacity
-          style={[styles.button, (loading || code.length < 4 || expired || blocked) && styles.buttonDisabled]}
-          onPress={handleVerify}
-          disabled={loading || code.length < 4 || expired || blocked}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Verificar código</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Reenviar */}
-        <TouchableOpacity
-          style={[styles.resendButton, !canResend && styles.resendDisabled]}
-          onPress={resend}
-          disabled={!canResend}
-        >
-          {resending ? (
-            <ActivityIndicator color={PROF.accent} size="small" />
-          ) : (
-            <Text style={[styles.resendText, !canResend && styles.resendTextDisabled]}>
-              {canResend
-                ? 'Reenviar código'
-                : `Reenviar en ${resendFormatted}`}
-            </Text>
-          )}
-        </TouchableOpacity>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -196,47 +297,61 @@ export default function VerifyOTPScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
   inner: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.xl,
   },
-  header: { alignItems: 'center', marginBottom: 36 },
+
+  // Header
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(73,192,188,0.18)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: PROF.accentDim,
     borderWidth: 1.5,
-    borderColor: 'rgba(73,192,188,0.45)',
+    borderColor: PROF.accentGlow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
   },
-  iconText: { fontSize: 30 },
+  iconText: { fontSize: 32 },
   title: {
-    fontSize: 26,
+    fontSize: TYPOGRAPHY.xxl,
     fontWeight: '700',
     color: PROF.textPrimary,
     marginBottom: 8,
+    textAlign: 'center',
   },
-  subtitle: { fontSize: 14, color: PROF.textSecondary, textAlign: 'center' },
+  subtitle: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textSecondary,
+    textAlign: 'center',
+  },
   emailText: {
-    fontSize: 15,
+    fontSize: TYPOGRAPHY.md,
     fontWeight: '600',
     color: PROF.accent,
     marginTop: 4,
+    textAlign: 'center',
   },
+
+  // Digit boxes
   codeRow: {
     flexDirection: 'row',
     gap: 14,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   digitBox: {
-    width: 62,
-    height: 72,
-    borderRadius: 14,
+    width: 64,
+    height: 76,
+    borderRadius: BORDER_RADIUS.md,
     backgroundColor: PROF.glass,
     borderWidth: 1.5,
     borderColor: PROF.glassBorder,
@@ -245,21 +360,38 @@ const styles = StyleSheet.create({
   },
   digitBoxActive: {
     borderColor: PROF.accent,
-    backgroundColor: 'rgba(73,192,188,0.12)',
+    backgroundColor: 'rgba(73,192,188,0.1)',
   },
   digitBoxError: {
-    borderColor: '#EF5350',
-    backgroundColor: 'rgba(239,83,80,0.10)',
+    borderColor: PROF.error || '#FF5B5B',
+    backgroundColor: 'rgba(255,91,91,0.08)',
   },
-  digitBoxSuccess: {
-    borderColor: '#49C0BC',
-    backgroundColor: 'rgba(73,192,188,0.18)',
+  digitBoxFilled: {
+    borderColor: PROF.accent,
+    backgroundColor: 'rgba(73,192,188,0.14)',
+    shadowColor: PROF.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  digitTextFilled: {
+    color: PROF.accent,
   },
   digitText: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '700',
     color: PROF.textPrimary,
     fontFamily: Platform.select({ ios: 'Courier New', android: 'monospace' }),
+  },
+  cursor: {
+    position: 'absolute',
+    bottom: 16,
+    width: 2,
+    height: 20,
+    borderRadius: 1,
+    backgroundColor: PROF.accent,
+    opacity: 0.9,
   },
   hiddenInput: {
     position: 'absolute',
@@ -267,54 +399,135 @@ const styles = StyleSheet.create({
     width: 1,
     height: 1,
   },
+
+  // Timer
   timerRow: { marginBottom: 16 },
   timerBadge: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: 'rgba(73,192,188,0.12)',
+    backgroundColor: 'rgba(73,192,188,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(73,192,188,0.25)',
+    borderColor: 'rgba(73,192,188,0.22)',
   },
   timerBadgeExpired: {
-    backgroundColor: 'rgba(239,83,80,0.12)',
-    borderColor: 'rgba(239,83,80,0.3)',
+    backgroundColor: 'rgba(255,91,91,0.1)',
+    borderColor: 'rgba(255,91,91,0.28)',
   },
-  timerText: { fontSize: 13, color: PROF.accent, fontWeight: '500' },
-  timerTextExpired: { color: '#EF5350' },
+  timerText: { fontSize: TYPOGRAPHY.sm, color: PROF.accent, fontWeight: '500' },
+  timerTextExpired: { color: PROF.error || '#FF5B5B' },
+
+  // Error
   errorText: {
-    color: '#EF5350',
-    fontSize: 13,
+    color: PROF.error || '#FF5B5B',
+    fontSize: TYPOGRAPHY.sm,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
     maxWidth: 280,
+    lineHeight: 18,
   },
+
+  // Verify button
   button: {
     width: '100%',
-    backgroundColor: PROF.accent,
     borderRadius: BORDER_RADIUS.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
+    overflow: 'hidden',
     shadowColor: PROF.accent,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 6,
+    marginBottom: 4,
+  },
+  buttonGrad: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonDisabled: { opacity: 0.45, shadowOpacity: 0 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  resendButton: { marginTop: 20, padding: 8 },
-  resendDisabled: { opacity: 0.5 },
-  resendText: { color: PROF.accent, fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
-  resendTextDisabled: { color: PROF.textSecondary, textDecorationLine: 'none' },
+  buttonText: { color: '#fff', fontSize: TYPOGRAPHY.lg, fontWeight: '700' },
+
+  // Resend
+  resendWrapper: {
+    alignItems: 'center',
+    marginTop: SPACING.xl,
+    gap: 10,
+  },
+  resendLabel: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textSecondary,
+  },
+  resendLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resendSendingText: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.accent,
+  },
+  resendBtn: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(73,192,188,0.3)',
+  },
+  resendBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  resendBtnText: {
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '700',
+    color: PROF.accent,
+  },
+  resendCountdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+  },
+  resendCountdownIcon: {
+    fontSize: 14,
+  },
+  resendCountdownText: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textMuted,
+  },
+  resendCountdownTime: {
+    fontWeight: '700',
+    fontSize: TYPOGRAPHY.md,
+    color: PROF.accent,
+  },
+
   // Success
   successBox: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
   },
-  successIcon: { fontSize: 72, color: PROF.accent, marginBottom: 16 },
-  successTitle: { fontSize: 32, fontWeight: '800', color: PROF.textPrimary, marginBottom: 8 },
-  successSub: { fontSize: 16, color: PROF.textSecondary },
+  successCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(73,192,188,0.18)',
+    borderWidth: 2,
+    borderColor: PROF.accentGlow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successIcon: { fontSize: 44, color: PROF.accent },
+  successTitle: { fontSize: TYPOGRAPHY.xxxl, fontWeight: '800', color: PROF.textPrimary, marginBottom: 8 },
+  successSub: { fontSize: TYPOGRAPHY.md, color: PROF.textSecondary },
 });
+
