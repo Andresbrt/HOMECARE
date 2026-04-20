@@ -47,10 +47,19 @@ public class PaymentController {
     @PostMapping("/webhook/mercadopago")
     @Operation(summary = "Webhook de Mercado Pago para actualizacion de estado de pagos")
     public ResponseEntity<String> mercadoPagoWebhook(
-            @RequestBody PagoDTO.MercadoPagoWebhookEvent event) {
+            @RequestBody PagoDTO.MercadoPagoWebhookEvent event,
+            @RequestHeader(value = "x-signature",   required = false) String xSignature,
+            @RequestHeader(value = "x-request-id",  required = false) String xRequestId) {
 
-        log.info("Webhook Mercado Pago recibido: tipo={}, action={}, id={}", 
-                event.getType(), event.getAction(), (event.getData() != null ? event.getData().getId() : "null"));
+        String dataId = (event.getData() != null) ? event.getData().getId() : null;
+        log.info("Webhook MP recibido — tipo={}, action={}, dataId={}", 
+                event.getType(), event.getAction(), dataId);
+
+        // Validar firma si el secreto está configurado
+        if (!paymentService.validarFirmaWebhookMP(xSignature, xRequestId, dataId)) {
+            log.warn("Firma de webhook MP inválida — xSignature={}", xSignature);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Firma inválida");
+        }
 
         try {
             paymentService.procesarWebhookMP(event);
@@ -104,5 +113,40 @@ public class PaymentController {
 
         PagoDTO.EstadisticasPagos stats = paymentService.obtenerEstadisticas(desde, hasta);
         return ResponseEntity.ok(stats);
+    }
+
+    // ─── Callbacks de back_url de Mercado Pago (suscripciones) ────────────────
+    // El WebView los intercepta antes de cargar, por lo que estos endpoints
+    // son de respaldo para compatibilidad con tests en browser y para evitar 404.
+
+    @GetMapping("/subscription/success")
+    @Operation(summary = "Callback back_url — suscripción aprobada")
+    public ResponseEntity<Void> subscriptionSuccess(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String payment_id,
+            @RequestParam(required = false) String external_reference) {
+        log.info("Callback suscripción SUCCESS — paymentId={}, ref={}", payment_id, external_reference);
+        // El webhook /webhook/mercadopago ya activará la suscripción en la BD.
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/subscription/failure")
+    @Operation(summary = "Callback back_url — suscripción rechazada")
+    public ResponseEntity<Void> subscriptionFailure(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String payment_id,
+            @RequestParam(required = false) String external_reference) {
+        log.warn("Callback suscripción FAILURE — paymentId={}, ref={}", payment_id, external_reference);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/subscription/pending")
+    @Operation(summary = "Callback back_url — suscripción pendiente")
+    public ResponseEntity<Void> subscriptionPending(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String payment_id,
+            @RequestParam(required = false) String external_reference) {
+        log.info("Callback suscripción PENDING — paymentId={}, ref={}", payment_id, external_reference);
+        return ResponseEntity.ok().build();
     }
 }

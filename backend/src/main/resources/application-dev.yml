@@ -58,4 +58,18 @@ logging:
   level:
     com.homecare: DEBUG
     org.springframework.security: DEBUG
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mercado Pago — SANDBOX (PRUEBAS)
+# ⚠️  CAMBIAR a credenciales de producción antes del lanzamiento.
+#     El Access Token NUNCA debe enviarse al cliente móvil.
+#     En producción: definir MP_ACCESS_TOKEN y MP_PUBLIC_KEY como variables
+#     de entorno en Railway (o el proveedor de hosting).
+# ──────────────────────────────────────────────────────────────────────────────
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN:TEST-4573125636727659-032221-11800df54c72dd6083c707976fb36e0f-1128115382}
+  public-key:   ${MP_PUBLIC_KEY:TEST-2fc07872-5703-43d1-bf4d-485d988c3323}
+  callback-url: ${MP_CALLBACK_URL:http://192.168.1.17:8090/api}
+  webhook-secret: ${MP_WEBHOOK_SECRET:}
+  commission-rate: ${MP_COMMISSION_RATE:0.10}
     org.hibernate.SQL: DEBUG

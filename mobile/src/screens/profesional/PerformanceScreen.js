@@ -24,6 +24,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import GlassCard from '../../components/shared/GlassCard';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
+import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
 
 // Datos del gráfico semanal (porcentaje de actividad)
 const WEEKLY_DATA = [
@@ -190,10 +191,15 @@ export default function ProfPerformanceScreen({ navigation }) {
 
   const metrics = [
     { icon: 'star', label: 'Calificación', value: '4.9', sub: 'Promedio', color: '#F5A623', index: 0 },
-    { icon: 'checkmark-circle', label: 'Completados', value: '127', sub: 'Servicios', color: PROF.accent, index: 1 },
+    { icon: 'checkmark-circle', label: 'Completados', value: '127', sub: 'Total', color: PROF.accent, index: 1 },
     { icon: 'trending-up', label: 'Tasa Éxito', value: '98%', sub: 'Confirmados', color: '#4CAF50', index: 2 },
     { icon: 'time', label: 'Hrs Activo', value: '164', sub: 'Este mes', color: '#9C27B0', index: 3 },
   ];
+
+  // Servicios del trimestre (mock — en producción: filtrar por fecha del trimestre desde backend)
+  const serviciosTrimestre = 20;
+  const quarterLabel = getQuarterLabel();
+  const level = computeLevel(serviciosTrimestre);
 
   const reviews = [
     { author: 'María García', text: 'Excelente servicio, muy profesional y puntual. Quedé encantada con el resultado.', rating: 5, time: 'Hace 2 días', index: 0 },
@@ -281,42 +287,70 @@ export default function ProfPerformanceScreen({ navigation }) {
 
           {/* ── Nivel e insignias ── */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Nivel</Text>
+            <Text style={styles.sectionTitle}>Nivel del Trimestre</Text>
+            <Text style={styles.sectionSub}>{quarterLabel}</Text>
           </View>
 
           <GlassCard style={styles.levelCard}>
             <LinearGradient
-              colors={PROF.gradCard}
+              colors={[`${level.color}18`, `${level.color}06`]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.levelContent}
             >
+              {/* Badge + texto motivacional */}
               <View style={styles.levelHeader}>
-                <LinearGradient colors={PROF.gradAccent} style={styles.levelBadge}>
-                  <Ionicons name="diamond" size={16} color="#fff" />
-                  <Text style={styles.levelBadgeText}>PLATINO</Text>
+                <LinearGradient colors={level.gradColors} style={styles.levelBadge}>
+                  <Ionicons name={level.icon} size={16} color="#fff" />
+                  <Text style={styles.levelBadgeText}>{level.label.toUpperCase()}</Text>
                 </LinearGradient>
-                <Text style={styles.levelScore}>89 puntos</Text>
+                {level.nextLabel ? (
+                  <Text style={styles.levelNextHint}>Siguiente: {level.nextLabel}</Text>
+                ) : (
+                  <Text style={[styles.levelNextHint, { color: level.color }]}>★ Máximo nivel</Text>
+                )}
               </View>
-              <LevelProgressBar progress={0.89} />
+
+              {/* Barra de progreso */}
+              <LevelProgressBar progress={level.progress} color={level.color} />
+
+              {/* Motivacional */}
+              <Text style={styles.levelMotivo}>{level.motivo}</Text>
+
+              {/* Bono visibilidad */}
+              <View style={styles.visiBonusRow}>
+                <Ionicons name="eye" size={12} color={level.color} />
+                <Text style={[styles.visiBonusText, { color: level.color }]}>
+                  {level.visibilityBonus > 0
+                    ? `+${level.visibilityBonus}% visibilidad extra en solicitudes cercanas`
+                    : 'Visibilidad base — sube a Pro para +5%'}
+                </Text>
+              </View>
+
+              {/* Stats trimestre */}
               <View style={styles.levelStats}>
                 <View style={styles.levelStat}>
-                  <Text style={styles.levelStatVal}>12</Text>
-                  <Text style={styles.levelStatLabel}>Servicios</Text>
+                  <Text style={styles.levelStatVal}>{serviciosTrimestre}</Text>
+                  <Text style={styles.levelStatLabel}>Este trimestre</Text>
                 </View>
                 <View style={styles.levelDivider} />
                 <View style={styles.levelStat}>
-                  <Text style={styles.levelStatVal}>15</Text>
-                  <Text style={styles.levelStatLabel}>Meta semanal</Text>
+                  <Text style={styles.levelStatVal}>{level.next ?? '∞'}</Text>
+                  <Text style={styles.levelStatLabel}>Meta siguiente</Text>
                 </View>
                 <View style={styles.levelDivider} />
                 <View style={styles.levelStat}>
-                  <Text style={styles.levelStatVal}>3</Text>
-                  <Text style={styles.levelStatLabel}>Faltan para Diamante</Text>
+                  <Text style={[styles.levelStatVal, { color: level.remaining === 0 ? level.color : PROF.textPrimary }]}>
+                    {level.remaining === 0 ? '★' : level.remaining}
+                  </Text>
+                  <Text style={styles.levelStatLabel}>
+                    {level.remaining === 0 ? 'Nível máximo' : `Para ${level.nextLabel}`}
+                  </Text>
                 </View>
               </View>
             </LinearGradient>
           </GlassCard>
 
-          {/* ── Reseñas recientes ── */}
+          {/* ── Reseñas recientes ── */}}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Reseñas recientes</Text>
             <TouchableOpacity>
@@ -335,12 +369,12 @@ export default function ProfPerformanceScreen({ navigation }) {
   );
 }
 
-function LevelProgressBar({ progress }) {
+function LevelProgressBar({ progress, color }) {
   const width = useSharedValue(0);
 
   useEffect(() => {
     width.value = withTiming(progress * 100, { duration: 1000, easing: Easing.out(Easing.cubic) });
-  }, []);
+  }, [progress]);
 
   const barStyle = useAnimatedStyle(() => ({
     width: `${width.value}%`,
@@ -349,7 +383,11 @@ function LevelProgressBar({ progress }) {
   return (
     <View style={styles.progressTrack}>
       <Animated.View style={[styles.progressFill, barStyle]}>
-        <LinearGradient colors={PROF.gradAccent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient
+          colors={color ? [color, color + 'cc'] : PROF.gradAccent}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
       </Animated.View>
     </View>
   );
@@ -513,6 +551,31 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sm,
     color: PROF.textSecondary,
     fontWeight: TYPOGRAPHY.medium,
+  },
+  levelNextHint: {
+    fontSize: TYPOGRAPHY.xs,
+    color: PROF.textMuted,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  levelMotivo: {
+    fontSize: TYPOGRAPHY.xs,
+    color: PROF.textSecondary,
+    marginBottom: SPACING.xs,
+    lineHeight: 16,
+  },
+  visiBonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: SPACING.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8,
+    padding: 6,
+  },
+  visiBonusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
   },
   progressTrack: {
     height: 8,

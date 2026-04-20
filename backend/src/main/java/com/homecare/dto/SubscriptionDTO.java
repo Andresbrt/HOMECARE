@@ -98,4 +98,40 @@ public class SubscriptionDTO {
         private Boolean autoRenovar;
         private String nuevoMetodoPagoId;
     }
+
+    /**
+     * DTO de solicitud para iniciar checkout de suscripción con Mercado Pago.
+     * El campo 'plan' acepta los IDs del frontend: "premium" | "pro"
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutRequest {
+        @NotNull(message = "El plan es obligatorio")
+        private String plan; // "premium" | "pro"
+    }
+
+    /**
+     * DTO de respuesta con la URL de Checkout Pro de Mercado Pago.
+     * El frontend abre 'initPoint' en un WebView.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutResponse {
+        /** URL de Checkout Pro para abrir en el WebView del cliente */
+        private String initPoint;
+        /** ID de la preferencia creada en Mercado Pago */
+        private String preferenceId;
+        /** Referencia externa usada para correlacionar el pago */
+        private String externalReference;
+        /** Plan solicitado (para display en el cliente) */
+        private String plan;
+        /** Monto del plan */
+        private BigDecimal monto;
+        /** Moneda (ej: COP) */
+        private String moneda;
+    }
 }

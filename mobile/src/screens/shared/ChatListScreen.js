@@ -29,6 +29,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 import apiClient from '../../services/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import useChatStore from '../../store/chatStore';
@@ -114,7 +119,7 @@ export default function ChatListScreen({ navigation }) {
       setConversations(list);
       setError(null);
     } catch (e) {
-      console.error('[ChatListScreen] fetchConversations error:', e.message);
+      __DEV_LOG__('[ChatListScreen] fetchConversations error:', e.message);
       setError('No se pudieron cargar los mensajes');
     } finally {
       setLoading(false);

@@ -31,6 +31,11 @@ import {
 import { db } from '../config/firebase';
 import apiClient from './apiClient';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** chatId determinista — nunca necesitas guardarlo en otro lado */
@@ -187,7 +192,7 @@ export function escucharMensajes(chatId, onMessages) {
       }));
       onMessages(msgs);
     },
-    (err) => console.error('[chatService] onSnapshot error:', err.message),
+    (err) => __DEV_LOG__('[chatService] onSnapshot error:', err.message),
   );
 }
 

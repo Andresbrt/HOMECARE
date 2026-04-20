@@ -20,11 +20,13 @@ import { useAuth } from '../../context/AuthContext';
 import useChatStore from '../../store/chatStore';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import ScreenLayout from '../../components/shared/ScreenLayout';
+import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
 
 // Número de solicitudes pendientes (mock — conectar a backend)
 const PENDING_REQUESTS = 3;
 
-const WEEKLY_TARGET = 15;
+// Umbral del nivel Elite (meta trimestral)
+const ELITE_THRESHOLD = 26;
 
 // ─── Tooltip helper ───────────────────────────────────────────────────────────
 function Tooltip({ text }) {
@@ -100,8 +102,11 @@ export default function ProfDashboardScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [tooltip, setTooltip] = useState(null);
 
-  const weeklyServices = 12;
-  const progressPct = weeklyServices / WEEKLY_TARGET;
+  const weeklyServices = 20;  // demo Pro — en producción: user?.serviciosCompletados ?? 0
+  const level = computeLevel(weeklyServices);
+  const quarterLabel = getQuarterLabel();
+  // Progreso dentro del nivel actual (barra de la tarjeta)
+  const progressPct = level.progress;
 
   // ── Animaciones ──
   const glowAnim = useSharedValue(0.35);
@@ -258,19 +263,34 @@ export default function ProfDashboardScreen({ navigation }) {
             </View>
           </GlassCard>
 
-          {/* ═══ PROGRESO SEMANAL (compacto) ═══ */}
+          {/* ═══ PROGRESO TRIMESTRAL ═══ */}
           <GlassCard variant="elevated" style={dp.progressCard}>
             <View style={dp.progressRow}>
               <View style={dp.progressBadge}>
-                <Ionicons name="star" size={13} color={PROF.accent} />
-                <Text style={dp.progressBadgeText}>Nivel Platino</Text>
+                <Ionicons name={level.icon} size={13} color={level.color} />
+                <Text style={[dp.progressBadgeText, { color: level.color }]}>Nivel {level.label}</Text>
               </View>
-              <Text style={dp.progressPct}>{Math.round(progressPct * 100)}%</Text>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
+                {level.visibilityBonus > 0 && (
+                  <Text style={{ fontSize:10, color: level.color, fontWeight:'700' }}>+{level.visibilityBonus}% visibilidad</Text>
+                )}
+                <Text style={dp.progressPct}>{Math.round(level.progress * 100)}%</Text>
+              </View>
             </View>
             <View style={dp.progressTrack}>
-              <Animated.View style={[dp.progressFill, progressStyle]} />
+              <Animated.View style={[dp.progressFill, progressStyle, { backgroundColor: level.color }]} />
             </View>
-            <Text style={dp.progressHint}>{weeklyServices} de {WEEKLY_TARGET} servicios esta semana</Text>
+            <Text style={dp.progressHint}>
+              {level.remaining > 0
+                ? `${weeklyServices} servicios este trimestre · ${level.motivo}`
+                : level.motivo}
+            </Text>
+            <Text style={dp.progressQuarter}>Trimestre actual: {quarterLabel}</Text>
+            {/* Texto motivacional */}
+            <View style={dp.motivoRow}>
+              <Ionicons name="flash" size={13} color="#FFD700" />
+              <Text style={dp.motivoText} numberOfLines={2}>{MOTIVATIONAL_TEXT}</Text>
+            </View>
           </GlassCard>
 
           {/* ═══ ACCIONES RÁPIDAS (3 circulares, no duplican tabs) ═══ */}
@@ -404,8 +424,11 @@ const dp = StyleSheet.create({
   progressBadgeText: { marginLeft: 6, color: PROF.accent, fontWeight: TYPOGRAPHY.semibold, fontSize: TYPOGRAPHY.xs },
   progressPct: { fontSize: TYPOGRAPHY.lg, color: PROF.accent, fontWeight: TYPOGRAPHY.bold },
   progressTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 999, marginHorizontal: SPACING.md, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: PROF.accent },
-  progressHint: { fontSize: TYPOGRAPHY.xs, color: PROF.textSecondary, marginHorizontal: SPACING.md, marginTop: SPACING.sm, marginBottom: SPACING.md, fontWeight: TYPOGRAPHY.medium },
+  progressFill: { height: '100%', borderRadius: 999 },
+  progressHint: { fontSize: TYPOGRAPHY.xs, color: PROF.textSecondary, marginHorizontal: SPACING.md, marginTop: SPACING.sm, fontWeight: TYPOGRAPHY.medium },
+  progressQuarter: { fontSize: 10, color: PROF.textMuted, marginHorizontal: SPACING.md, marginTop: 4, marginBottom: SPACING.xs, fontStyle: 'italic' },
+  motivoRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: SPACING.md, marginTop: 6, marginBottom: SPACING.md, backgroundColor: 'rgba(255,215,0,0.07)', borderRadius: 8, padding: 8 },
+  motivoText:   { flex: 1, fontSize: 10, color: PROF.textSecondary, lineHeight: 14 },
 
   // Quick circles
   sectionLabel: { fontSize: 10, fontWeight: '700', color: PROF.textMuted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: SPACING.sm, marginTop: 4 },

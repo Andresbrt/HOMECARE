@@ -79,6 +79,11 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findSuscripcionesPendientesPago(@Param("fecha") LocalDate fecha);
 
     /**
+     * Busca suscripción por ID de transacción (idempotencia de webhook)
+     */
+    Optional<Subscription> findByTransactionId(String transactionId);
+
+    /**
      * Obtiene estadÃ­sticas de retenciÃ³n por plan
      */
     @Query("SELECT s.plan, " +

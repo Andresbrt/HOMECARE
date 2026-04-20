@@ -13,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
 import useModeStore from '../../store/modeStore';
 import { PROF, SPACING, BORDER_RADIUS } from '../../constants/theme';
+import { computeLevel } from '../../utils/levelUtils';
 
 // ─── Menú principal: exactamente 6 opciones ──────────────────────────────────
 const MENU = [
@@ -112,6 +113,8 @@ export default function DrawerContent(props) {
     ? user.nombre.split(' ').slice(0, 2).map(n => n[0]?.toUpperCase()).join('')
     : 'HC';
 
+  const level = computeLevel(user?.serviciosCompletados ?? 0);
+
   return (
     <LinearGradient colors={['#000F22', '#0a2235', PROF.bg]} style={styles.container} locations={[0, 0.4, 1]}>
       <DrawerContentScrollView {...props} scrollEnabled showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -123,19 +126,28 @@ export default function DrawerContent(props) {
           </LinearGradient>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName} numberOfLines={1}>{user?.nombre || 'Profesional'}</Text>
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={12} color="#FFD700" />
-              <Text style={styles.ratingText}>4.9 · 127 servicios</Text>
-            </View>
+            {(user?.calificacionPromedio != null || user?.serviciosCompletados != null) && (
+              <View style={styles.ratingRow}>
+                <Ionicons name="star" size={12} color="#FFD700" />
+                <Text style={styles.ratingText}>
+                  {user?.calificacionPromedio != null
+                    ? parseFloat(user.calificacionPromedio).toFixed(1)
+                    : '—'}
+                  {user?.serviciosCompletados != null
+                    ? ` · ${user.serviciosCompletados} servicio${user.serviciosCompletados !== 1 ? 's' : ''}`
+                    : ''}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
         {/* ── Badge Nivel ── */}
         <View style={styles.nivelRow}>
-          <LinearGradient colors={[`${PROF.accent}22`, `${PROF.accent}06`]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.nivelBadge}>
-            <Ionicons name="diamond" size={13} color={PROF.accent} />
-            <Text style={styles.nivelText}>Nivel Platino · Homecare</Text>
-            <View style={styles.nivelDot} />
+          <LinearGradient colors={[`${level.color}22`, `${level.color}06`]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.nivelBadge}>
+            <Ionicons name={level.icon} size={13} color={level.color} />
+            <Text style={[styles.nivelText, { color: level.color }]}>Nivel {level.label} · Homecare</Text>
+            <View style={[styles.nivelDot, { backgroundColor: level.color }]} />
           </LinearGradient>
         </View>
 

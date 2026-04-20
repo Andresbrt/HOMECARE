@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
+import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
 
 // ─── Datos mock Finanzas ──────────────────────────────────────────────────────
 const BALANCE = 328630;
@@ -31,7 +32,7 @@ const TRANSACTIONS = [
   { id: '2', type: 'income', title: 'Análisis de Fachada',   client: 'Ana L.',   amount: 60000,  date: 'Hoy, 8:00 AM',  icon: 'home-outline' },
   { id: '3', type: 'withdrawal', title: 'Retiro a Bancolombia', client: null, amount: -120000, date: 'Ayer, 4:00 PM', icon: 'card-outline' },
   { id: '4', type: 'income', title: 'Diagnóstico Cromático', client: 'Laura M.', amount: 60000,  date: 'Ayer, 2:30 PM', icon: 'eye-outline' },
-  { id: '5', type: 'bonus',  title: 'Bono Nivel Platino',    client: null, amount: 25000,  date: 'Lun, 9:00 AM',  icon: 'star' },
+  { id: '5', type: 'bonus',  title: 'Bono Nivel Pro',    client: null, amount: 25000,  date: 'Lun, 9:00 AM',  icon: 'star' },
 ];
 
 // ─── Datos mock Rendimiento ──────────────────────────────────────────────────
@@ -251,7 +252,9 @@ export default function FinancePerformanceScreen({ navigation }) {
   }, []);
 
   // ── Tab: Finanzas ──
-  const FinanzasTab = () => (
+  const FinanzasTab = () => {
+    const finLevel = computeLevel(user?.serviciosCompletados ?? 0);
+    return (
     <View>
       {/* Saldo principal */}
       <GlassCard variant="elevated" glow style={fp.balanceCard} padding={0}>
@@ -260,8 +263,8 @@ export default function FinancePerformanceScreen({ navigation }) {
         <View style={fp.balTop}>
           <Text style={fp.balLabel}>Saldo disponible</Text>
           <View style={fp.balBadge}>
-            <Ionicons name="star" size={10} color={PROF.accent} />
-            <Text style={fp.balBadgeText}>Platino</Text>
+            <Ionicons name={finLevel.icon} size={10} color={finLevel.color} />
+            <Text style={[fp.balBadgeText, { color: finLevel.color }]}>{finLevel.label}</Text>
           </View>
         </View>
         <Animated.View style={balStyle}>
@@ -334,12 +337,16 @@ export default function FinancePerformanceScreen({ navigation }) {
       <Text style={fp.sectionTitle}>Movimientos recientes</Text>
       {TRANSACTIONS.map((tx, i) => <TxItem key={tx.id} item={tx} index={i} />)}
     </View>
-  );
+    );
+  };
 
   // ── Tab: Rendimiento ──
   const RendimientoTab = () => {
+    const serviciosTrimestre = user?.serviciosCompletados ?? 20;
+    const rndLevel = computeLevel(serviciosTrimestre);
+    const quarterLabel = getQuarterLabel();
     const progressW = useSharedValue(0);
-    useEffect(() => { progressW.value = withTiming(89, { duration: 1000, easing: Easing.out(Easing.cubic) }); }, []);
+    useEffect(() => { progressW.value = withTiming(rndLevel.progress * 100, { duration: 1000, easing: Easing.out(Easing.cubic) }); }, [rndLevel.progress]);
     const progStyle = useAnimatedStyle(() => ({ width: `${progressW.value}%` }));
 
     return (
@@ -386,26 +393,32 @@ export default function FinancePerformanceScreen({ navigation }) {
 
         {/* Nivel */}
         <GlassCard style={fp.levelCard}>
-          <LinearGradient colors={PROF.gradCard} style={fp.levelContent}>
+          <LinearGradient colors={[`${rndLevel.color}18`, `${rndLevel.color}06`]} style={fp.levelContent}>
             <View style={fp.levelHead}>
-              <LinearGradient colors={PROF.gradAccent} style={fp.levelBadge}>
-                <Ionicons name="diamond" size={14} color="#fff" />
-                <Text style={fp.levelBadgeText}>PLATINO</Text>
+              <LinearGradient colors={rndLevel.gradColors} style={fp.levelBadge}>
+                <Ionicons name={rndLevel.icon} size={14} color="#fff" />
+                <Text style={fp.levelBadgeText}>{rndLevel.label.toUpperCase()}</Text>
               </LinearGradient>
-              <Text style={fp.levelScore}>89 puntos</Text>
+              {rndLevel.nextLabel ? (
+                <Text style={fp.levelScore}>Siguiente: {rndLevel.nextLabel}</Text>
+              ) : (
+                <Text style={[fp.levelScore, { color: rndLevel.color }]}>★ Máximo nivel</Text>
+              )}
             </View>
+            <Text style={[fp.levelScore, { marginBottom: SPACING.sm, fontSize: TYPOGRAPHY.xs, color: PROF.textSecondary }]}>{rndLevel.motivo}</Text>
             <View style={fp.progressTrack}>
               <Animated.View style={[fp.progressFill, progStyle]}>
-                <LinearGradient colors={PROF.gradAccent} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={rndLevel.gradColors} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill} />
               </Animated.View>
             </View>
             <View style={fp.levelStats}>
-              <View style={fp.levelStat}><Text style={fp.levelStatVal}>12</Text><Text style={fp.levelStatLabel}>Servicios</Text></View>
+              <View style={fp.levelStat}><Text style={fp.levelStatVal}>{serviciosTrimestre}</Text><Text style={fp.levelStatLabel}>Este trimestre</Text></View>
               <View style={fp.levelDivider} />
-              <View style={fp.levelStat}><Text style={fp.levelStatVal}>15</Text><Text style={fp.levelStatLabel}>Meta semanal</Text></View>
+              <View style={fp.levelStat}><Text style={fp.levelStatVal}>{rndLevel.next ?? '∞'}</Text><Text style={fp.levelStatLabel}>Meta siguiente</Text></View>
               <View style={fp.levelDivider} />
-              <View style={fp.levelStat}><Text style={fp.levelStatVal}>3</Text><Text style={fp.levelStatLabel}>Para Diamante</Text></View>
+              <View style={fp.levelStat}><Text style={[fp.levelStatVal, { color: rndLevel.remaining === 0 ? rndLevel.color : PROF.textPrimary }]}>{rndLevel.remaining === 0 ? '★' : rndLevel.remaining}</Text><Text style={fp.levelStatLabel}>{rndLevel.remaining === 0 ? 'Nível máximo' : `Para ${rndLevel.nextLabel}`}</Text></View>
             </View>
+            <Text style={[fp.levelScore, { color: PROF.textMuted, fontSize: 10, fontStyle: 'italic', marginTop: SPACING.xs }]}>{quarterLabel}</Text>
           </LinearGradient>
         </GlassCard>
 

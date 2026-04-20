@@ -1,58 +1,39 @@
 # ==============================================
-# HOMECARE Backend — Multi-Stage Dockerfile
-# Java 23 + Spring Boot 3.5
+# HOMECARE Backend — Dockerfile para Render
+# Root Directory = backend
 # ==============================================
 
-# ── Stage 1: Build ────────────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-23 AS builder
+FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /build
 
-# BUILD_DATE invalida el cache de Railway en cada deploy forzado
-ARG BUILD_DATE=unknown
-RUN echo "Build date: $BUILD_DATE"
-
-# Copy POM first — dependency layer cached separately
-# Build context = repo root (set by root-level railway.json)
-COPY backend/pom.xml .
+# Copiar POM primero (ya estamos dentro de la carpeta backend)
+COPY pom.xml .
 RUN mvn dependency:go-offline -B -q
 
-# Copy source and build the fat JAR (tests run in CI, skipped here)
-COPY backend/src/ src/
-RUN mvn package -DskipTests -B -q
+# Copiar código fuente
+COPY src/ src/
 
-# ── Stage 2: Runtime ──────────────────────────────────────────────
-FROM eclipse-temurin:23-jre-noble AS runtime
+# Compilar
+RUN mvn clean package -DskipTests -B -q
+
+# ==============================================
+# Etapa final (runtime)
+FROM eclipse-temurin:17-jre AS runtime
 WORKDIR /app
 
-# Force production profile — Railway sets PORT and PG* env vars that only
-# application-production.yml knows how to read.
-ENV SPRING_PROFILES_ACTIVE=production
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8080
 
-# curl needed for HEALTHCHECK; clean apt cache after
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar curl para healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Security: run as non-root user
-RUN groupadd -r homecare && useradd -r -g homecare -d /app -s /sbin/nologin homecare
-
-# Copy the fat JAR from builder stage
-COPY --from=builder /build/target/homecare-backend-*.jar homecare.jar
-RUN chown homecare:homecare homecare.jar
-
-USER homecare
+# Copiar el JAR generado desde la etapa builder
+COPY --from=builder /build/target/*.jar app.jar
 
 EXPOSE 8080
 
-# PORT es la variable que Railway inyecta con el puerto dinámico (default 8080)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
-    CMD curl -sf http://localhost:${PORT:-8080}/actuator/health | grep -q '"status":"UP"' || exit 1
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-ENTRYPOINT ["java", \
-    "-XX:+UseContainerSupport", \
-    "-XX:MaxRAMPercentage=75.0", \
-    "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dlogging.level.org.springframework=INFO", \
-    "-Dlogging.level.com.homecare=DEBUG", \
-    "-Dspring.jpa.show-sql=false", \
-    "-jar", "homecare.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

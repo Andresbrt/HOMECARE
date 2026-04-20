@@ -18,6 +18,11 @@ import { Client } from '@stomp/stompjs';
 import * as SecureStore from 'expo-secure-store';
 import { WS_URL } from '../config/api';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 // Convert http(s)://host/ws  →  ws(s)://host/ws
 const toWsUrl = (url) => url.replace(/^http/, 'ws');
 
@@ -50,21 +55,21 @@ function _buildClient(token) {
     appendMissingNULLonIncoming: true,
 
     onConnect: () => {
-      console.log('[WS] ✓ Connected to STOMP broker');
+      __DEV_LOG__('[WS] ✓ Connected to STOMP broker');
       _connectPromise = null;
       _onConnectCallbacks.forEach((cb) => cb());
       _onConnectCallbacks = [];
     },
     onDisconnect: () => {
-      console.log('[WS] Disconnected');
+      __DEV_LOG__('[WS] Disconnected');
       _connectPromise = null;
     },
     onStompError: (frame) => {
-      console.error('[WS] STOMP error:', frame.headers?.message);
+      __DEV_LOG__('[WS] STOMP error:', frame.headers?.message);
       _connectPromise = null;
     },
     onWebSocketError: (error) => {
-      console.error('[WS] WebSocket error:', error?.message || error);
+      __DEV_LOG__('[WS] WebSocket error:', error?.message || error);
       _connectPromise = null;
     },
   });
@@ -134,7 +139,7 @@ export const wsClient = {
    */
   subscribe: (destination, callback) => {
     if (!_client?.connected) {
-      console.warn('[WS] subscribe called but not connected:', destination);
+      __DEV_LOG__('[WS] subscribe called but not connected:', destination);
       return () => {};
     }
     const sub = _client.subscribe(destination, (frame) => {
@@ -155,7 +160,7 @@ export const wsClient = {
    */
   publish: (destination, body = {}) => {
     if (!_client?.connected) {
-      console.warn('[WS] publish called but not connected:', destination);
+      __DEV_LOG__('[WS] publish called but not connected:', destination);
       return;
     }
     _client.publish({

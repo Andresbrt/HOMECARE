@@ -26,21 +26,21 @@ public class SubscriptionController {
     private final SubscriptionService subscriptionService;
 
     @PostMapping("/subscribe")
-    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
-    @Operation(summary = "Crear suscripciÃ³n a un plan")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
+    @Operation(summary = "DEPRECADO — Usar POST /subscriptions/checkout")
     public ResponseEntity<SubscriptionDTO.Response> crearSuscripcion(
             @Valid @RequestBody SubscriptionDTO.Crear request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        SubscriptionDTO.Response response = subscriptionService.crearSuscripcion(
-                userDetails.getId(), request
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        // Flujo legacy deshabilitado. Checkout Pro es el único flujo válido para PREMIUM.
+        return ResponseEntity.status(HttpStatus.GONE)
+                .header("X-Deprecated-By", "POST /api/subscriptions/checkout")
+                .build();
     }
 
     @PutMapping("/cancel")
-    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
-    @Operation(summary = "Cancelar suscripciÃ³n activa")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
+    @Operation(summary = "Cancelar suscripción activa")
     public ResponseEntity<Void> cancelarSuscripcion(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -49,14 +49,15 @@ public class SubscriptionController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
-    @Operation(summary = "Obtener suscripciÃ³n actual")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
+    @Operation(summary = "Obtener suscripción actual (null si no tiene ninguna)")
     public ResponseEntity<SubscriptionDTO.Response> obtenerSuscripcionActual(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         SubscriptionDTO.Response response = subscriptionService.obtenerSuscripcionActual(
                 userDetails.getId()
         );
+        // Retorna 200 con null body si no hay suscripción (evita 404 post-pago mientras llega el webhook)
         return ResponseEntity.ok(response);
     }
 
@@ -66,6 +67,23 @@ public class SubscriptionController {
     public ResponseEntity<List<SubscriptionDTO.PlanInfo>> obtenerPlanes() {
         List<SubscriptionDTO.PlanInfo> planes = subscriptionService.obtenerPlanes();
         return ResponseEntity.ok(planes);
+    }
+
+    /**
+     * Inicia el flujo de Checkout Pro de Mercado Pago para una suscripción.
+     * Devuelve la URL 'init_point' que el cliente debe abrir en un WebView.
+     */
+    @PostMapping("/checkout")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Crear preferencia de pago Mercado Pago para suscripción")
+    public ResponseEntity<SubscriptionDTO.CheckoutResponse> crearCheckout(
+            @Valid @RequestBody SubscriptionDTO.CheckoutRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        SubscriptionDTO.CheckoutResponse response = subscriptionService.crearCheckoutSuscripcion(
+                userDetails.getId(), request.getPlan()
+        );
+        return ResponseEntity.ok(response);
     }
 }
 

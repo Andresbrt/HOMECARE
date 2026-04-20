@@ -35,6 +35,11 @@ import apiClient from '../../services/apiClient';
 import { inicializarChat, buildChatId } from '../../services/chatService';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS, PROF } from '../../constants/theme';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 const SERVICIOS = [
   { id: 'general', label: 'Limpieza\nGeneral',  tipo: 'BASICA',   icon: 'sparkles-outline' },
   { id: 'premium', label: 'Limpieza\nPremium',  tipo: 'PROFUNDA', icon: 'diamond-outline'  },
@@ -164,7 +169,7 @@ export default function CreateRequestScreen({ navigation, route }) {
           solicitudId,
           usuarioId: user.id,
           tituloServicio: form.titulo.trim(),
-        }).catch((e) => console.warn('[CreateRequest] inicializarChat error:', e.message));
+        }).catch((e) => __DEV_LOG__('[CreateRequest] inicializarChat error:', e.message));
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -8,6 +8,11 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { storage } from '../config/firebase';
 import * as ImageManipulator from 'expo-image-manipulator';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 /** Carpeta en Storage donde se guardan los avatares */
 const AVATAR_FOLDER = 'avatars';
 /** Tamaño máximo (px) para el largo de la imagen */
@@ -72,7 +77,7 @@ export async function uploadAvatar(uid, localUri) {
     const url = await getDownloadURL(newRef);
     return url;
   } catch (error) {
-    console.error('Error subiendo avatar:', error);
+    __DEV_LOG__('Error subiendo avatar:', error);
     throw new Error('No se pudo subir la foto de perfil.');
   }
 }

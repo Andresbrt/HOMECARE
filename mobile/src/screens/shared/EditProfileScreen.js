@@ -36,6 +36,11 @@ import { updateUserProfile } from '../../services/firestoreService';
 import { uploadAvatar } from '../../services/storageService';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 // ─── Campo de formulario ─────────────────────────────────────────────────────
 function FormField({
   icon,
@@ -208,7 +213,7 @@ export default function EditProfileScreen({ navigation }) {
       Alert.alert('Perfil actualizado', 'Tus cambios se han guardado correctamente.');
       navigation.goBack();
     } catch (error) {
-      console.error('Error guardando perfil:', error);
+      __DEV_LOG__('Error guardando perfil:', error);
       setLoadingPhoto(false);
       setSaving(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

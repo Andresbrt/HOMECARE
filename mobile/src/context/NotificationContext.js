@@ -1,67 +1,22 @@
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import { notificationService } from '../services/notificationService';
+import React, { createContext, useContext } from 'react';
 
-// Configure how notifications are presented when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+/**
+ * NotificationContext — módulo reducido (legacy eliminado).
+ *
+ * El manejo real de notificaciones push está en:
+ *   src/hooks/usePushNotifications.js  ← canónico (FCM + canales Android + navegación)
+ *
+ * Se eliminó el cuerpo del NotificationProvider para evitar:
+ *  - Doble registro de dispositivo (notificationService legacy + usePushNotifications)
+ *  - Triple setNotificationHandler (aquí + notificationService + usePushNotifications)
+ *
+ * NotificationProvider se mantiene como pass-through para compatibilidad con App.js.
+ * useNotifications() devuelve null (sin consumidores activos).
+ */
 
-const NotificationContext = createContext();
+const NotificationContext = createContext(null);
 
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotifications debe ser usado dentro de NotificationProvider');
-  }
-  return context;
-};
+export const useNotifications = () => useContext(NotificationContext);
 
-export const NotificationProvider = ({ children }) => {
-  const [expoPushToken, setExpoPushToken] = useState(null);
-  const [notification, setNotification] = useState(null);
-  const notificationListener = useRef();
-  const responseListener = useRef();
-
-  useEffect(() => {
-    notificationService.registerForPushNotifications().then((token) => {
-      if (token) setExpoPushToken(token);
-    });
-
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notif) => setNotification(notif)
-    );
-
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        // User tapped on notification — handle navigation here later
-        console.log('Notification tapped:', response.notification.request.content.data);
-      }
-    );
-
-    return () => {
-      if (notificationListener.current) {
-        notificationListener.current.remove();
-      }
-      if (responseListener.current) {
-        responseListener.current.remove();
-      }
-    };
-  }, []);
-
-  const value = {
-    expoPushToken,
-    notification,
-  };
-
-  return (
-    <NotificationContext.Provider value={value}>
-      {children}
-    </NotificationContext.Provider>
-  );
-};
+// Pass-through: no registra dispositivo ni configura listeners duplicados.
+export const NotificationProvider = ({ children }) => children;

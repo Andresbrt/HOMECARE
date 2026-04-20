@@ -4,8 +4,9 @@
  * Modo Usuario     : Stack oscuro premium → UserMap como raíz (MapScreen.js)
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -23,6 +24,7 @@ import ProfFinancePerformanceScreen from '../screens/profesional/FinancePerforma
 import DrawerContent from '../components/profesional/DrawerContent';
 
 // Auth Screens
+import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
@@ -55,6 +57,10 @@ import HelpSupportScreen from '../screens/shared/HelpSupportScreen';
 import QuickActionsScreen from '../screens/shared/QuickActionsScreen';
 import HistoryScreen from '../screens/shared/HistoryScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
+import AdminPanelScreen from '../screens/admin/AdminPanelScreen';
+import SubscriptionScreen from '../screens/shared/SubscriptionScreen';
+import RecommendationsScreen from '../screens/shared/RecommendationsScreen';
+import PremiumServicesScreen from '../screens/shared/PremiumServicesScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -200,6 +206,11 @@ function UserModeStack() {
         component={NotificationsScreen}
         options={{ headerShown: false }}
       />
+      {/* 9. Pantallas secundarias compartidas */}
+      <Stack.Screen name="AdminPanel"     component={AdminPanelScreen}     options={{ headerShown: false }} />
+      <Stack.Screen name="Subscription"   component={SubscriptionScreen}   options={{ headerShown: false }} />
+      <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -258,9 +269,21 @@ function ProfessionalDrawer() {
 export default function AppNavigator() {
   const { isAuthenticated, loading, user } = useAuth();
   const { mode, setMode } = useModeStore();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingDone, setOnboardingDone]       = useState(false);
 
   // Registrar dispositivo para notificaciones push (solo cuando hay usuario autenticado)
   usePushNotifications();
+
+  // Verificar si el onboarding ya fue completado
+  useEffect(() => {
+    SecureStore.getItemAsync('onboardingDone').then(val => {
+      setOnboardingDone(val === 'true');
+      setOnboardingChecked(true);
+    }).catch(() => {
+      setOnboardingChecked(true);
+    });
+  }, []);
 
   // Sincronizar modo con el rol del usuario al autenticarse
   useEffect(() => {
@@ -270,7 +293,7 @@ export default function AppNavigator() {
     }
   }, [user]);
 
-  if (loading) {
+  if (loading || !onboardingChecked) {
     return (
       <View style={loadingStyles.container}>
         <ActivityIndicator size="large" color={COLORS.accent} />
@@ -285,12 +308,15 @@ export default function AppNavigator() {
       {!isAuthenticated ? (
         // ── Auth Stack ──
         <>
+          {!onboardingDone && (
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+          )}
           <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
-          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registrarse' }} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} />
-          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nueva Contraseña' }} />
-          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verificar Email' }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} options={{ headerShown: false }} />
           <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} options={{ headerShown: false }} />
         </>
@@ -306,12 +332,15 @@ export default function AppNavigator() {
           <Stack.Screen name="SendOffer" component={SendOfferScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfProfile" component={ProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="ProfFinancePerformance" component={ProfFinancePerformanceScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfSecurity" component={SecurityScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfHelpSupport" component={HelpSupportScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfRequests" component={AvailableRequestsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfHistory" component={HistoryScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfNotifications" component={NotificationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AdminPanel"      component={AdminPanelScreen}     options={{ headerShown: false }} />
+          <Stack.Screen name="Subscription"    component={SubscriptionScreen}   options={{ headerShown: false }} />
+          <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
         </>
       ) : (
         // ── Modo Usuario: Stack oscuro premium, UserMap como raíz ──

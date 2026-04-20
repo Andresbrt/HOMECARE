@@ -94,7 +94,7 @@ function ScrollToBottomBtn({ visible, onPress }) {
 }
 
 export default function ChatScreen({ route, navigation }) {
-  const { solicitudId, destinatarioId, titulo } = route.params || {};
+  const { solicitudId, destinatarioId, titulo, chatId } = route.params || {};
   const { user } = useAuth();
 
   const {

@@ -24,6 +24,11 @@ import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 20;
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 /** Normaliza un QueryDocumentSnapshot de Firestore al formato interno */
 function normalizeFirestoreMsg(doc) {
   const d = doc.data();
@@ -72,7 +77,7 @@ export function useChat(solicitudId, destinatarioId) {
 
     // Conectar WS para envío (non-blocking; Firestore se encarga de leer)
     wsClient.connect().catch((e) =>
-      console.warn('[useChat] WS connect warning (send degraded):', e.message),
+      __DEV_LOG__('[useChat] WS connect warning (send degraded):', e.message),
     );
 
     const msgsRef = collection(db, 'chats', chatId, 'messages');
@@ -111,7 +116,7 @@ export function useChat(solicitudId, destinatarioId) {
         }
       },
       (err) => {
-        console.error('[useChat] onSnapshot error:', err.message);
+        __DEV_LOG__('[useChat] onSnapshot error:', err.message);
         setError('No se pudo cargar el chat');
         setLoading(false);
       },
@@ -145,7 +150,7 @@ export function useChat(solicitudId, destinatarioId) {
       }
       setHasMore(snap.docs.length >= PAGE_SIZE);
     } catch (e) {
-      console.error('[useChat] loadMore error:', e.message);
+      __DEV_LOG__('[useChat] loadMore error:', e.message);
     } finally {
       setLoadingMore(false);
     }
@@ -229,7 +234,7 @@ export function useChat(solicitudId, destinatarioId) {
           _temp: true,
         });
       } catch (e) {
-        console.error('[useChat] sendImage error:', e.message);
+        __DEV_LOG__('[useChat] sendImage error:', e.message);
         throw e;
       } finally {
         setUploadingImage(false);

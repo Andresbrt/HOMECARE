@@ -2,6 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, TYPOGRAPHY, SPACING } from '../constants/theme';
 
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
+
 export default class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
@@ -10,7 +15,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('ErrorBoundary caught:', error, info.componentStack);
+    __DEV_LOG__('ErrorBoundary caught:', error, info.componentStack);
   }
 
   handleReset = () => {

@@ -131,7 +131,7 @@ export default function ServiceTrackingScreen({ route, navigation }) {
             </View>
             <TouchableOpacity
               style={styles.chatBtn}
-              onPress={() => navigation.navigate('Chat', { solicitudId: service.solicitudId })}
+              onPress={() => navigation.navigate('UserChat', { solicitudId: service.solicitudId, titulo: service.proveedorNombre || 'Chat' })}
             >
               <Ionicons name="chatbubble-ellipses" size={20} color={COLORS.accent} />
             </TouchableOpacity>

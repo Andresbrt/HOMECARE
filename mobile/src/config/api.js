@@ -1,19 +1,31 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
-// DEV: apunta al backend local (puerto 8090)
-// PROD: cambia a https://api.homecare.works/api
-export const API_URL = 'http://192.168.1.17:8090/api';
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
 
-export const WS_URL = 'ws://192.168.1.17:8090/ws';
-export const GOOGLE_CLIENT_ID = Constants.expoConfig?.extra?.googleClientId || '';
+// ─── URLs — resueltas desde app.json extra (dev/prod) ────────────────────────
+// En producción Railway usa: https://homecare-backend.up.railway.app/api
+// Para desarrollo local sobreescribe apiUrl en app.json extra.
+const _cfg = Constants.expoConfig?.extra ?? {};
+
+export const API_URL =
+  _cfg.apiUrl ??
+  process.env.EXPO_PUBLIC_API_URL ??
+  'https://homecare-backend.up.railway.app/api';
+
+export const WS_URL =
+  _cfg.wsUrl ??
+  process.env.EXPO_PUBLIC_WS_URL ??
+  'wss://homecare-backend.up.railway.app/ws';
+
+export const GOOGLE_CLIENT_ID = _cfg.googleClientId ?? '';
 export const API_TIMEOUT = 30000;
 
-// MercadoPago — public key is safe to expose in the frontend
-// Switch to production key (APP_PUBLIC_KEY) before going live
-export const MP_PUBLIC_KEY =
-  Constants.expoConfig?.extra?.mercadopagoPublicKey ||
-  'TEST-2fc07872-5703-43d1-bf4d-485d988c3323';
+// MercadoPago public key — usa MERCADOPAGO_PUBLIC_KEY de constants/payment.js
+// No se duplica aquí: la key canónica está en src/constants/payment.js
 export const PAGE_SIZE = 20;
 export const SEARCH_RADIUS_KM = 10;
 
@@ -35,7 +47,7 @@ export async function apiFetch(endpoint, options = {}) {
     return { ok: true, data };
 
   } catch (error) {
-    console.error(`❌ apiFetch ${endpoint}:`, error.message);
+    __DEV_LOG__(`❌ apiFetch ${endpoint}:`, error.message);
     return { ok: false, error: error.message };
   }
 }

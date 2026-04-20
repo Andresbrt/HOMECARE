@@ -1,9 +1,9 @@
 ﻿/**
  * Professional WalletScreen  Cartera Premium Homecare 2026
  * Saldo COL$, botones Recargar/Retirar con glow, préstamo animado,
- * stats de ingresos y historial completo con GlassCard
+ * stats de ingresos y historial real desde el backend.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   StyleSheet,
   StatusBar,
   SafeAreaView,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +20,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
   withSpring,
   withRepeat,
   withSequence,
@@ -29,30 +29,64 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
+import { useAuth } from '../../context/AuthContext';
+import apiClient from '../../services/apiClient';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
+import { computeLevel } from '../../utils/levelUtils';
 
-//  Datos mock 
-const BALANCE_CENTS = 32863; // COL$ 328.63
+// ─── Icono por tipo de transacción ───────────────────────────────────────────
+const TX_ICONS = {
+  income:     'color-palette',
+  bonus:      'star',
+  withdrawal: 'card-outline',
+  refund:     'refresh-circle',
+  default:    'cash-outline',
+};
 
-const STATS = [
-  { label: 'Hoy',    amount: '185.000', delta: '+12%' },
-  { label: 'Semana', amount: '780.000', delta: '+8%' },
-  { label: 'Mes',    amount: '2.340.000', delta: '+22%' },
-];
+function txIcon(tx) {
+  if (tx.tipo === 'RETIRO' || tx.monto < 0) return TX_ICONS.withdrawal;
+  if (tx.tipo === 'BONO') return TX_ICONS.bonus;
+  if (tx.tipo === 'REEMBOLSO') return TX_ICONS.refund;
+  return TX_ICONS.income;
+}
 
-const TRANSACTIONS = [
-  { id: '1', type: 'income',     title: 'Colorimetría Interior', client: 'María G.', amount: 85000,   date: 'Hoy, 10:30 AM', icon: 'color-palette' },
-  { id: '2', type: 'income',     title: 'Análisis de Fachada',   client: 'Ana L.',   amount: 60000,   date: 'Hoy, 8:00 AM',  icon: 'home-outline' },
-  { id: '3', type: 'withdrawal', title: 'Retiro a Bancolombia',  client: null,       amount: -120000, date: 'Ayer, 4:00 PM', icon: 'card-outline' },
-  { id: '4', type: 'income',     title: 'Diagnóstico Cromático', client: 'Laura M.', amount: 60000,   date: 'Ayer, 2:30 PM', icon: 'eye-outline' },
-  { id: '5', type: 'bonus',      title: 'Bono Nivel Platino',    client: null,       amount: 25000,   date: 'Lun, 9:00 AM',  icon: 'star' },
-  { id: '6', type: 'income',     title: 'Tratamiento Cromático', client: 'Sara M.',  amount: 55000,   date: 'Lun, 11:00 AM', icon: 'sparkles' },
-];
+function txType(tx) {
+  if (tx.tipo === 'RETIRO' || tx.monto < 0) return 'withdrawal';
+  if (tx.tipo === 'BONO') return 'bonus';
+  return 'income';
+}
 
-//  Item de transacción con animación de entrada 
+// ─── Calcular estadísticas rápidas desde lista de pagos ──────────────────────
+function buildStats(pagos) {
+  const now = new Date();
+  const startOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek  = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let hoy = 0, semana = 0, mes = 0;
+  for (const p of pagos) {
+    const monto = Number(p.monto ?? p.precioAcordado ?? 0);
+    if (monto <= 0) continue;
+    const d = new Date(p.createdAt ?? p.fechaPago ?? p.fecha ?? 0);
+    if (d >= startOfMonth) mes += monto;
+    if (d >= startOfWeek)  semana += monto;
+    if (d >= startOfDay)   hoy += monto;
+  }
+  return [
+    { label: 'Hoy',    amount: hoy.toLocaleString('es-CO') },
+    { label: 'Semana', amount: semana.toLocaleString('es-CO') },
+    { label: 'Mes',    amount: mes.toLocaleString('es-CO') },
+  ];
+}
+
+// ─── Item de transacción con animación de entrada ─────────────────────────────
 function TxItem({ item, index }) {
-  const isPositive = item.amount > 0;
-  const isBonus    = item.type === 'bonus';
+  const monto = Number(item.monto ?? item.precioAcordado ?? 0);
+  const isPositive = monto >= 0;
+  const type = txType(item);
+  const isBonus = type === 'bonus';
+  const icon = txIcon(item);
+  const date = new Date(item.createdAt ?? item.fechaPago ?? item.fecha ?? 0);
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 75).duration(300)}>
@@ -68,16 +102,20 @@ function TxItem({ item, index }) {
             }
             style={styles.txIconWrap}
           >
-            <Ionicons name={item.icon} size={17} color={isBonus ? '#fff' : PROF.accent} />
+            <Ionicons name={icon} size={17} color={isBonus ? '#fff' : PROF.accent} />
           </LinearGradient>
           <View style={styles.txInfo}>
-            <Text style={styles.txTitle}>{item.title}</Text>
-            {item.client ? <Text style={styles.txClient}>{item.client}</Text> : null}
-            <Text style={styles.txDate}>{item.date}</Text>
+            <Text style={styles.txTitle} numberOfLines={1}>
+              {item.descripcion ?? item.titulo ?? item.tipoServicio ?? 'Pago'}
+            </Text>
+            {item.clienteNombre || item.proveedorNombre ? (
+              <Text style={styles.txClient}>{item.clienteNombre ?? item.proveedorNombre}</Text>
+            ) : null}
+            <Text style={styles.txDate}>{date.toLocaleDateString('es-CO')}</Text>
           </View>
           <Text style={[styles.txAmount, isPositive ? styles.txPos : styles.txNeg]}>
             {isPositive ? '+' : ''}COL${'\n'}
-            {Math.abs(item.amount).toLocaleString('es-CO')}
+            {Math.abs(monto).toLocaleString('es-CO')}
           </Text>
         </View>
       </GlassCard>
@@ -85,10 +123,23 @@ function TxItem({ item, index }) {
   );
 }
 
-// 
+// ─────────────────────────────────────────────────────────────────────────────
 export default function WalletScreen({ navigation }) {
+  const { user } = useAuth();
+  const level = computeLevel(user?.serviciosCompletados ?? 0);
   const { width } = useWindowDimensions();
-  // Animaciones
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [pagos, setPagos]       = useState([]);
+  const [stats, setStats]       = useState([
+    { label: 'Hoy',    amount: '—' },
+    { label: 'Semana', amount: '—' },
+    { label: 'Mes',    amount: '—' },
+  ]);
+  const [balance, setBalance]   = useState(0);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // ── Animaciones ───────────────────────────────────────────────────────────
   const balanceScale  = useSharedValue(0.88);
   const loanPulse     = useSharedValue(1);
   const loanGlow      = useSharedValue(0.4);
@@ -114,6 +165,26 @@ export default function WalletScreen({ navigation }) {
   const loanGlowStyle  = useAnimatedStyle(() => ({ shadowOpacity: loanGlow.value }));
   const recargarStyle  = useAnimatedStyle(() => ({ transform: [{ scale: recargarScale.value }] }));
 
+  // ── Fetch pagos reales ────────────────────────────────────────────────────
+  const fetchWalletData = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/payments/me');
+      const lista = Array.isArray(data) ? data : [];
+      setPagos(lista);
+      setStats(buildStats(lista));
+      // Balance = suma de ingresos positivos (el backend no tiene endpoint de saldo dedicado)
+      const bal = lista.reduce((acc, p) => acc + Number(p.monto ?? p.precioAcordado ?? 0), 0);
+      setBalance(Math.max(0, bal));
+    } catch {
+      // Silencioso: la UI muestra "—" si falla
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchWalletData(); }, [fetchWalletData]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleRecargar = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     recargarScale.value = withSpring(0.93, { damping: 10 }, () => {
@@ -136,11 +207,16 @@ export default function WalletScreen({ navigation }) {
             <Ionicons name="menu" size={28} color={PROF.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.brandTitle}>CARTERA</Text>
-          <TouchableOpacity style={styles.historyBtn}>
-            <Ionicons name="receipt-outline" size={24} color={PROF.textPrimary} />
+          <TouchableOpacity style={styles.historyBtn} onPress={fetchWalletData}>
+            <Ionicons name="refresh-outline" size={24} color={PROF.textPrimary} />
           </TouchableOpacity>
         </View>
 
+        {loadingData ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={PROF.accent} />
+          </View>
+        ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
           {/*  TARJETA DE SALDO PRINCIPAL (elevated + glow)  */}
@@ -149,27 +225,28 @@ export default function WalletScreen({ navigation }) {
               colors={['rgba(14,77,104,0.0)', 'rgba(0,27,56,0.45)']}
               style={StyleSheet.absoluteFill}
             />
-            {/* Decoraciones circulares */}
             <View style={styles.decor1} />
             <View style={styles.decor2} />
 
             <View style={styles.balanceTop}>
               <Text style={styles.balanceLabel}>Saldo disponible</Text>
               <View style={styles.platinoBadge}>
-                <Ionicons name="star" size={10} color={PROF.accent} />
-                <Text style={styles.platinoText}>Platino</Text>
+                <Ionicons name={level.icon} size={10} color={level.color} />
+                <Text style={[styles.platinoText, { color: level.color }]}>{level.label}</Text>
               </View>
             </View>
 
             <Animated.View style={balanceStyle}>
               <Text style={[styles.balanceAmount, { fontSize: Math.min(44, width * 0.11) }]}>
-                COL$ {(BALANCE_CENTS / 100).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
+                COL$ {balance.toLocaleString('es-CO', { minimumFractionDigits: 0 })}
               </Text>
             </Animated.View>
 
             <View style={styles.balanceDeltaRow}>
               <Ionicons name="trending-up" size={13} color={PROF.success} />
-              <Text style={styles.balanceDeltaText}>+22% vs mes anterior  38 servicios</Text>
+              <Text style={styles.balanceDeltaText}>
+                {pagos.length} transacciones totales
+              </Text>
             </View>
 
             {/* Botones Recargar / Retirar */}
@@ -194,7 +271,7 @@ export default function WalletScreen({ navigation }) {
 
           {/*  ESTADÍSTICAS RÁPIDAS  */}
           <View style={styles.statsRow}>
-            {STATS.map((s, i) => (
+            {stats.map((s, i) => (
               <Animated.View
                 key={s.label}
                 entering={FadeInDown.delay(i * 100).duration(280)}
@@ -202,10 +279,10 @@ export default function WalletScreen({ navigation }) {
               >
                 <GlassCard variant="accent" animated={false} padding={SPACING.md}>
                   <Text style={styles.statLabel}>{s.label}</Text>
-                  <Text style={styles.statAmount}>COL$ {s.amount}</Text>
+                  <Text style={styles.statAmount} numberOfLines={1}>COL$ {s.amount}</Text>
                   <View style={styles.statDeltaRow}>
                     <Ionicons name="trending-up" size={10} color={PROF.success} />
-                    <Text style={styles.statDelta}>{s.delta}</Text>
+                    <Text style={styles.statDelta}>acumulado</Text>
                   </View>
                 </GlassCard>
               </Animated.View>
@@ -239,7 +316,7 @@ export default function WalletScreen({ navigation }) {
                     <View style={styles.loanInfo}>
                       <Text style={styles.loanTitle}>Préstamo para equipo</Text>
                       <Text style={styles.loanSub}>
-                        Hasta COL$ 2.000.000 para profesionales Platino
+                        Hasta COL$ 2.000.000 para profesionales Elite
                       </Text>
                       <View style={styles.loanBadge}>
                         <Ionicons name="flash" size={10} color={PROF.accent} />
@@ -258,21 +335,34 @@ export default function WalletScreen({ navigation }) {
 
           {/*  HISTORIAL DE MOVIMIENTOS  */}
           <Text style={styles.sectionTitle}>Movimientos recientes</Text>
-          {TRANSACTIONS.map((tx, i) => (
-            <TxItem key={tx.id} item={tx} index={i} />
-          ))}
+          {pagos.length === 0 ? (
+            <GlassCard animated={false} padding={SPACING.xl}>
+              <View style={styles.emptyWrap}>
+                <Ionicons name="receipt-outline" size={40} color={PROF.textMuted} />
+                <Text style={styles.emptyTitle}>Sin movimientos</Text>
+                <Text style={styles.emptyDesc}>
+                  Cuando completes servicios y recibas pagos aparecerán aquí.
+                </Text>
+              </View>
+            </GlassCard>
+          ) : (
+            pagos.slice(0, 30).map((tx, i) => (
+              <TxItem key={String(tx.id ?? i)} item={tx} index={i} />
+            ))
+          )}
 
           <View style={{ height: SPACING.xxl }} />
         </ScrollView>
+        )}
       </SafeAreaView>
     </LinearGradient>
   );
 }
 
-// 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   safe:   { flex: 1 },
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   header: {
     flexDirection: 'row',
@@ -321,7 +411,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: BORDER_RADIUS.full, gap: 4,
   },
-  platinoText: { fontSize: 10, color: PROF.accent, fontWeight: TYPOGRAPHY.bold },
+  platinoText: { fontSize: 10, fontWeight: TYPOGRAPHY.bold },
 
   balanceAmount: {
     fontWeight: TYPOGRAPHY.bold,
@@ -429,4 +519,10 @@ const styles = StyleSheet.create({
   txAmount: { fontSize: TYPOGRAPHY.xs, fontWeight: TYPOGRAPHY.bold, textAlign: 'right' },
   txPos: { color: PROF.success },
   txNeg: { color: PROF.error },
+
+  // Empty state
+  emptyWrap: { alignItems: 'center', paddingVertical: SPACING.md },
+  emptyTitle: { fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.semibold, color: PROF.textPrimary, marginTop: SPACING.md },
+  emptyDesc:  { fontSize: TYPOGRAPHY.sm, color: PROF.textMuted, textAlign: 'center', marginTop: SPACING.xs, lineHeight: 18 },
 });
+

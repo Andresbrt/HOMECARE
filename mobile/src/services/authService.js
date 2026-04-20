@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 import { API_URL as BASE_API_URL } from '../config/api';
 
@@ -14,7 +14,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     async (config) => {
-        const token = await AsyncStorage.getItem('token');
+        const token = await SecureStore.getItemAsync('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -27,8 +27,8 @@ export const authService = {
     login: async (email, password) => {
         const response = await api.post('/login', { email, password });
         if (response.data.token) {
-            await AsyncStorage.setItem('token', response.data.token);
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+            await SecureStore.setItemAsync('token', response.data.token);
+            await SecureStore.setItemAsync('user', JSON.stringify(response.data));
         }
         return response.data;
     },
@@ -36,8 +36,8 @@ export const authService = {
     firebaseLogin: async (firebaseToken, extraData = {}) => {
         const response = await api.post('/firebase-login', { firebaseToken, ...extraData });
         if (response.data.token) {
-            await AsyncStorage.setItem('token', response.data.token);
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+            await SecureStore.setItemAsync('token', response.data.token);
+            await SecureStore.setItemAsync('user', JSON.stringify(response.data));
         }
         return response.data;
     },
@@ -67,19 +67,34 @@ export const authService = {
     verifyOTP: async (email, codigo) => {
         const response = await api.post('/verify-otp', { email, codigo });
         if (response.data.token) {
-            await AsyncStorage.setItem('token', response.data.token);
-            await AsyncStorage.setItem('user', JSON.stringify(response.data));
+            await SecureStore.setItemAsync('token', response.data.token);
+            await SecureStore.setItemAsync('user', JSON.stringify(response.data));
         }
         return response.data;
     },
 
-    logout: async () => {
-        await AsyncStorage.removeItem('token');
-        await AsyncStorage.removeItem('user');
+    // ─── Recuperación de contraseña con OTP ──────────────────────────────────
+    sendForgotPasswordOTP: async (email) => {
+        const response = await api.post('/forgot-password-otp', { email });
+        return response.data;
     },
 
-    getCurrentUser: async () => {
-        const user = await AsyncStorage.getItem('user');
-        return user ? JSON.parse(user) : null;
-    }
+    verifyForgotPasswordOTP: async (email, code) => {
+        const response = await api.post('/verify-forgot-password-otp', { email, codigo: code });
+        return response.data;
+    },
+
+    resetPasswordWithOTP: async (email, code, newPassword) => {
+        const response = await api.post('/reset-password-otp', {
+            email,
+            codigo: code,
+            nuevaContrasena: newPassword,
+        });
+        return response.data;
+    },
+
+    logout: async () => {
+        await SecureStore.deleteItemAsync('token');
+        await SecureStore.deleteItemAsync('user');
+    },
 };

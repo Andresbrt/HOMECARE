@@ -45,9 +45,9 @@ public class Subscription {
     private String transactionId; // ID de transacciÃ³n para pagos
 
     public enum PlanType {
-        BASICO,    // Gratis
-        PRO,       // $19.99/mes - Solicitudes ilimitadas, prioridad en listado
-        ENTERPRISE // $49.99/mes - Todo PRO + analytics avanzado + soporte 24/7
+        // Precio en COP + IVA 19% - Colombia
+        // $30.000 COP base + $5.700 IVA (19%) = $35.700 COP/mes
+        PREMIUM   // Unico plan: descuentos + prioridad alta en asignacion de profesionales
     }
 
     public enum Estado {

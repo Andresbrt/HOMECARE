@@ -1,10 +1,12 @@
 package com.homecare.domain.payment.service;
 
 import com.homecare.dto.PagoDTO;
+import com.homecare.dto.SubscriptionDTO;
 import com.homecare.common.exception.NotFoundException;
 import com.homecare.common.exception.PaymentException;
 import com.homecare.domain.payment.model.Pago;
 import com.homecare.domain.payment.model.Pago.EstadoPago;
+import com.homecare.domain.payment.model.Subscription.PlanType;
 import com.homecare.model.ServicioAceptado;
 import com.homecare.domain.payment.repository.PagoRepository;
 import com.homecare.domain.service_order.repository.ServicioAceptadoRepository;
@@ -21,16 +23,21 @@ import com.mercadopago.resources.preference.Preference;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -57,6 +64,15 @@ public class PaymentService {
 
     @Value("${wompi.event.secret:}")
     private String wompiEventSecret;
+
+    /** Secreto para validar notificaciones de Mercado Pago (x-signature header) */
+    @Value("${mercadopago.webhook-secret:}")
+    private String mpWebhookSecret;
+
+    /** Inyectar SubscriptionService con @Lazy para evitar dependencia circular */
+    @Lazy
+    @Autowired
+    private SubscriptionService subscriptionService;
 
     @PostConstruct
     public void init() {
@@ -138,7 +154,7 @@ public class PaymentService {
                     .paymentMethodId(request.getPaymentMethodId())
                     .transactionAmount(pago.getMontoTotal())
                     .externalReference(pago.getReferencia())
-                    .notificationUrl(callbackUrl)
+                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
                     .issuerId(request.getIssuerId())
                     .payer(com.mercadopago.client.payment.PaymentPayerRequest.builder()
                         .email(request.getEmail() != null ? request.getEmail() : pago.getCliente().getEmail())
@@ -183,8 +199,17 @@ public class PaymentService {
         try {
             PaymentClient client = new PaymentClient();
             Payment payment = client.get(Long.valueOf(event.getData().getId()));
-            
+
             String referencia = payment.getExternalReference();
+
+            // Suscripciones tienen el prefijo HC-SUB-; enrutar a SubscriptionService
+            if (referencia != null && referencia.startsWith("HC-SUB-")) {
+                log.info("[MP-WEBHOOK] Enrutando a SubscriptionService — ref: {}, paymentId: {}, estado: {}",
+                        referencia, payment.getId(), payment.getStatus());
+                subscriptionService.activarSuscripcionPorWebhook(payment);
+                return;
+            }
+
             Pago pago = pagoRepository.findByReferencia(referencia)
                     .orElseThrow(() -> new NotFoundException("Pago no encontrado con referencia: " + referencia));
 
@@ -291,10 +316,73 @@ public class PaymentService {
                 .backUrls(backUrls)
                 .externalReference(pago.getReferencia())
                 .autoReturn("approved")
-                .notificationUrl(callbackUrl + "/api/payments/webhook/mercadopago")
+                .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
                 .build();
 
         return client.create(request);
+    }
+
+    /**
+     * Crea una preferencia de Checkout Pro en Mercado Pago para el pago de una suscripción.
+     * Es llamado por SubscriptionService y devuelve la URL init_point lista para el WebView.
+     *
+     * @param usuarioId ID del usuario que contrata la suscripción
+     * @param planType  Plan al que se está suscribiendo
+     * @param precio    Precio del plan en la moneda configurada (COP)
+     * @param email     Email del pagador (enviado a MP para pre-llenar el formulario)
+     * @return CheckoutResponse con initPoint, preferenceId y externalReference
+     */
+    public SubscriptionDTO.CheckoutResponse crearPreferenciaSuscripcion(
+            Long usuarioId, PlanType planType, BigDecimal precio, String email) {
+
+        try {
+            PreferenceClient client = new PreferenceClient();
+
+            String externalReference = "HC-SUB-" + planType.name()
+                    + "-" + usuarioId
+                    + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+            // Precio en COP + IVA 19% - Colombia
+            PreferenceItemRequest item = PreferenceItemRequest.builder()
+                    .title("Homecare Colorimetria — Suscripcion Premium")
+                    .description("Suscripcion mensual Premium. Incluye IVA 19%. Precio: $35.700 COP/mes")
+                    .quantity(1)
+                    .unitPrice(precio)
+                    .currencyId("COP")
+                    .build();
+
+            PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+                    .success(callbackUrl + "/payments/subscription/success")
+                    .pending(callbackUrl + "/payments/subscription/pending")
+                    .failure(callbackUrl + "/payments/subscription/failure")
+                    .build();
+
+            PreferenceRequest request = PreferenceRequest.builder()
+                    .items(List.of(item))
+                    .backUrls(backUrls)
+                    .externalReference(externalReference)
+                    .autoReturn("approved")
+                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .build();
+
+            Preference preference = client.create(request);
+
+            log.info("[MP-SUBS] Preferencia creada — plan: {}, usuario: {}, monto: ${} COP, preferenceId: {}, extRef: {}",
+                    planType.name(), usuarioId, precio.toPlainString(), preference.getId(), externalReference);
+
+            return SubscriptionDTO.CheckoutResponse.builder()
+                    .initPoint(preference.getInitPoint())
+                    .preferenceId(preference.getId())
+                    .externalReference(externalReference)
+                    .plan(planType.name())
+                    .monto(precio)
+                    .moneda("COP")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Error al crear preferencia de suscripción MP para usuario {}: {}", usuarioId, e.getMessage(), e);
+            throw new PaymentException("No se pudo iniciar el proceso de pago: " + e.getMessage());
+        }
     }
 
     private String generateReferencia(Long servicioId) {
@@ -360,6 +448,70 @@ public class PaymentService {
                 pago.getCreatedAt(),
                 pago.getAprobadoAt()
         );
+    }
+
+    /**
+     * Valida la firma de un webhook de Mercado Pago.
+     * Formato del header x-signature: "ts=TIMESTAMP,v1=HMAC_HEX"
+     * Mensaje a firmar: "id:{dataId};request-id:{requestId};ts:{ts};"
+     *
+     * @param xSignature  valor del header x-signature
+     * @param requestId   valor del header x-request-id
+     * @param dataId      data.id del evento (payment ID)
+     * @return true si la firma es válida o si no hay secreto configurado
+     */
+    public boolean validarFirmaWebhookMP(String xSignature, String requestId, String dataId) {
+        if (mpWebhookSecret == null || mpWebhookSecret.isBlank()) {
+            log.warn("⚠️  MP webhook secret no configurado (sandbox) — validación de firma OMITIDA. Configura mercadopago.webhook-secret en producción.");
+            return true; // sin secreto configurado, se acepta (modo sandbox)
+        }
+        if (xSignature == null || xSignature.isBlank()) {
+            log.warn("Webhook MP sin header x-signature");
+            return false;
+        }
+        try {
+            // Parsear ts y v1 del header
+            String ts = null, v1 = null;
+            for (String part : xSignature.split(",")) {
+                String[] kv = part.trim().split("=", 2);
+                if (kv.length == 2) {
+                    if ("ts".equals(kv[0]))   ts = kv[1];
+                    if ("v1".equals(kv[0]))   v1 = kv[1];
+                }
+            }
+            if (ts == null || v1 == null) {
+                log.warn("x-signature de MP con formato inválido: {}", xSignature);
+                return false;
+            }
+            // Validación anti-replay: el timestamp no puede tener más de 5 minutos de antigüedad
+            long tsEpoch = Long.parseLong(ts);
+            long nowEpoch = Instant.now().getEpochSecond();
+            if (Math.abs(nowEpoch - tsEpoch) > 300) {
+                log.warn("Webhook MP rechazado: timestamp fuera de ventana — ts={}, now={}", tsEpoch, nowEpoch);
+                return false;
+            }
+            // Construir el manifiesto y calcular HMAC-SHA256
+            String manifest = "id:" + (dataId != null ? dataId : "") +
+                              ";request-id:" + (requestId != null ? requestId : "") +
+                              ";ts:" + ts + ";";
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(mpWebhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] computed = mac.doFinal(manifest.getBytes(StandardCharsets.UTF_8));
+            // Hex-encode el digest
+            StringBuilder hex = new StringBuilder(computed.length * 2);
+            for (byte b : computed) {
+                String h = Integer.toHexString(0xff & b);
+                if (h.length() == 1) hex.append('0');
+                hex.append(h);
+            }
+            // Comparación en tiempo constante
+            byte[] expected = hex.toString().getBytes(StandardCharsets.UTF_8);
+            byte[] provided = v1.getBytes(StandardCharsets.UTF_8);
+            return MessageDigest.isEqual(expected, provided);
+        } catch (Exception e) {
+            log.error("Error validando firma webhook MP: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -466,12 +618,5 @@ public class PaymentService {
                 pagosReembolsados,
                 BigDecimal.valueOf(tasaExito).setScale(2, RoundingMode.HALF_UP).doubleValue()
         );
-    }
-    
-    @Transactional
-    public String procesarPagoSuscripcion(Long usuarioId, BigDecimal monto, String referencia, String externoId) {
-        log.info("Procesando pago de suscripcion para usuario {}: {} (Ref: {})", usuarioId, monto, referencia);
-        // Logica simplificada para suscripciones migrada a MP
-        return externoId;
     }
 }

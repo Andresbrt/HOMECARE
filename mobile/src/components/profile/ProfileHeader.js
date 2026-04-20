@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../shared/GlassCard';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { computeLevel } from '../../utils/levelUtils';
+import { computeLevel, getQuarterLabel } from '../../utils/levelUtils';
 
 // ─── Tarjeta de estadística ───────────────────────────────────────────────────
 function StatCard({ icon, value, label, delay = 0 }) {
@@ -43,9 +43,10 @@ export default function ProfileHeader({ user, onEditPress }) {
   const nombre   = user?.nombre   || 'Usuario';
   const apellido = user?.apellido || '';
   const email    = user?.email    || '';
-  const services = user?.totalServicios ?? 0;
+  const services = user?.serviciosCompletados ?? user?.totalServicios ?? 0;
   const rating   = user?.calificacionPromedio ?? 0;
   const level    = computeLevel(services);
+  const quarterLabel = getQuarterLabel();
 
   // Iniciales del avatar
   const initials = [nombre, apellido]
@@ -124,11 +125,10 @@ export default function ProfileHeader({ user, onEditPress }) {
           <View style={styles.progressSection}>
             <View style={styles.progressLabelRow}>
               <Text style={styles.progressLabel}>
-                Progreso a{' '}
-                {level.label === 'Bronce' ? 'Plata' : level.label === 'Plata' ? 'Oro' : 'Platino'}
+                Progreso a {level.nextLabel}
               </Text>
               <Text style={styles.progressCount}>
-                {services} / {level.next} servicios
+                {services} / {level.next} servicios · {quarterLabel}
               </Text>
             </View>
             <View style={styles.progressTrack}>
@@ -143,8 +143,8 @@ export default function ProfileHeader({ user, onEditPress }) {
         )}
         {level.next === null && (
           <View style={styles.platinumBanner}>
-            <Ionicons name="diamond" size={14} color="#E5E4E2" />
-            <Text style={styles.platinumText}>Nivel maximo alcanzado — Platino</Text>
+            <Ionicons name="diamond" size={14} color={level.color} />
+            <Text style={styles.platinumText}>{level.motivo}</Text>
           </View>
         )}
       </GlassCard>
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: BORDER_RADIUS.full,
   },
-  // ── Platino banner ──
+  // ── Elite banner ──
   platinumBanner: {
     flexDirection: 'row',
     alignItems: 'center',

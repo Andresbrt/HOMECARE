@@ -306,9 +306,9 @@ export default function UserMapScreen({ navigation }) {
                 <View style={styles.menuDivider} />
                 <MenuOption index={3} icon="time-outline" label="Historial de solicitudes" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserHistory'); }} />
                 <MenuOption index={4} icon="notifications-outline" label="Notificaciones" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserNotifications'); }} />
-                <MenuOption index={5} icon="shield-checkmark-outline" label="Seguridad" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserProfile'); }} />
-                <MenuOption index={6} icon="help-circle-outline" label="Ayuda" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserProfile'); }} />
-                <MenuOption index={7} icon="chatbubble-outline" label="Soporte" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserProfile'); }} />
+                <MenuOption index={5} icon="shield-checkmark-outline" label="Seguridad" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserSecurity'); }} />
+                <MenuOption index={6} icon="help-circle-outline" label="Ayuda" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserHelpSupport'); }} />
+                <MenuOption index={7} icon="chatbubble-outline" label="Soporte" onPress={() => { setIsMenuOpen(false); navigation.navigate('UserHelpSupport'); }} />
               </ScrollView>
 
               <View style={styles.menuFooter}>

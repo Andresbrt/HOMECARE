@@ -1,27 +1,28 @@
+/**
+ * notificationService — DEPRECATED
+ *
+ * Este módulo es LEGACY y no debe importarse en código nuevo.
+ * El manejo de notificaciones push está completamente en:
+ *   src/hooks/usePushNotifications.js  ← canónico (FCM, canales, navegación)
+ *
+ * Se conserva solo para compatibilidad histórica.
+ * Ningún componente activo lo importa.
+ */
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import apiClient from './apiClient';
 
-// Configuración del manejador de notificaciones
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Solo loguear en desarrollo — no-op en producción
+const __DEV_LOG__ = __DEV__
+  ? (...args) => console.warn(...args)
+  : () => {};
 
 export const notificationService = {
-  /**
-   * Registra el dispositivo para recibir notificaciones push
-   */
   registerForPushNotifications: async () => {
-    let token;
-
     if (!Device.isDevice) {
-      console.log('Debes usar un dispositivo físico para notificaciones push');
+      __DEV_LOG__('[NotifService] Solo funciona en dispositivo físico.');
       return;
     }
 
@@ -34,20 +35,24 @@ export const notificationService = {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Fallo al obtener el token para notificaciones push');
+      __DEV_LOG__('[NotifService] Permisos denegados por el usuario.');
       return;
     }
 
-    token = (await Notifications.getExpoPushTokenAsync({
-      projectId: 'tu-project-id-de-expo', // Reemplazar con el ID del app.json
-    })).data;
+    // projectId desde app.json extra (no hardcodeado)
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId ??
+      'homecare-1582c';
+
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 
     if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
+      await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
+        lightColor: '#49C0BC',
       });
     }
 
@@ -58,46 +63,35 @@ export const notificationService = {
     return token;
   },
 
-  /**
-   * Envía el token al backend para asociarlo al usuario
-   */
   saveTokenToBackend: async (token) => {
     try {
-      const deviceInfo = {
+      await apiClient.post('/notifications/register-device', {
         tokenFcm: token,
-        plataforma: Platform.OS.toUpperCase(), // ANDROID o IOS
+        plataforma: Platform.OS.toUpperCase(),
         modeloDispositivo: Device.modelName,
         versionApp: '1.0.0',
-      };
-      await apiClient.post('/notifications/register-device', deviceInfo);
-      await AsyncStorage.setItem('fcm_token', token);
-      console.log('Token FCM guardado en el backend');
+      });
     } catch (error) {
-      console.error('Error al guardar token FCM:', error);
+      __DEV_LOG__('[NotifService] Error al guardar token FCM:', error);
     }
   },
 
-  /**
-   * Obtiene todas las notificaciones del usuario
-   */
   getNotifications: async () => {
     try {
       const response = await apiClient.get('/notifications');
       return response.data;
     } catch (error) {
-      console.error('Error al obtener notificaciones:', error);
+      __DEV_LOG__('[NotifService] Error al obtener notificaciones:', error);
       throw error;
     }
   },
 
-  /**
-   * Marca una notificación como leída
-   */
   markAsRead: async (notificationId) => {
     try {
       await apiClient.put(`/notifications/${notificationId}/read`);
     } catch (error) {
-      console.error('Error al marcar notificación:', error);
+      __DEV_LOG__('[NotifService] Error al marcar notificación:', error);
     }
-  }
+  },
 };
+
