@@ -6,53 +6,31 @@ spring:
   application:
     name: homecare-api
 
-  # Base de datos PostgreSQL
-  # Railway PostgreSQL plugin expone: PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
-  # Variables propias: DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USERNAME, DATABASE_PASSWORD
+  # Base de datos PostgreSQL - Render
   datasource:
-    # Soporte para DATABASE_URL directo (Railway) o variables por partes
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:${DATABASE_HOST:localhost}}:${PGPORT:${DATABASE_PORT:5432}}/${PGDATABASE:${DATABASE_NAME:homecare_db}}}
-    username: ${PGUSER:${DATABASE_USERNAME:homecare_user}}
-    password: ${PGPASSWORD:${DATABASE_PASSWORD:}}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
-    
-    # HikariCP
+
     hikari:
-      maximum-pool-size: ${DB_POOL_SIZE:10}
-      minimum-idle: ${DB_POOL_MIN:2}
+      initialization-fail-timeout: -1
+      maximum-pool-size: 10
+      minimum-idle: 2
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
       pool-name: HomeCareHikariPool
-      # initialization-fail-timeout=-1: no intenta conexión inicial al startup.
-      # La app arranca aunque la BD no esté disponible; falla al primer query real.
-      initialization-fail-timeout: -1
 
   # JPA / Hibernate
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      # none: no intenta crear/validar tablas al arrancar.
-      # Hibernate conecta DB solo cuando llega la primera query real.
-      ddl-auto: none
-      naming:
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      ddl-auto: update
+    show-sql: false
     properties:
       hibernate:
         format_sql: false
-        show_sql: false
-        use_sql_comments: false
-        jdbc:
-          batch_size: 20
-          fetch_size: 50
-        order_inserts: true
-        order_updates: true
-        query:
-          in_clause_parameter_padding: true
-          warn_on_collection_fetch: true
-        generate_statistics: false
-        # JCache/Hibernate L2 cache eliminado — requeriría dependencia hibernate-jcache
-        # que no está en pom.xml. Spring Cache (Redis) cubre el mismo caso de uso.
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   # Redis para cache y rate limiting
   # Railway Redis plugin expone: REDISHOST, REDISPORT, REDISPASSWORD
