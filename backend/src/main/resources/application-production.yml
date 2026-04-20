@@ -24,9 +24,9 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
       pool-name: HomeCareHikariPool
-      # initialization-fail-timeout=0: no falla el startup si DB no está lista aún.
-      # La primera query fallida loguea el error pero la app sigue corriendo.
-      initialization-fail-timeout: 0
+      # initialization-fail-timeout=-1: no intenta conexión inicial al startup.
+      # La app arranca aunque la BD no esté disponible; falla al primer query real.
+      initialization-fail-timeout: -1
 
   # JPA / Hibernate
   jpa:
