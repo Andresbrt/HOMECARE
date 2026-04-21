@@ -271,6 +271,37 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
   };
 
+  /**
+   * devLogin - Login rápido para desarrollo
+   * @param {string} role - 'SERVICE_PROVIDER' o 'CUSTOMER'
+   */
+  const devLogin = async (role) => {
+    if (!__DEV__) {
+      __DEV_LOG__('devLogin solo está disponible en modo desarrollo');
+      return { success: false, message: 'Función no disponible en producción' };
+    }
+
+    try {
+      // Credenciales de prueba
+      const devCredentials = {
+        SERVICE_PROVIDER: { email: 'profesional@test.com', password: 'test123' },
+        CUSTOMER: { email: 'usuario@test.com', password: 'test123' },
+      };
+
+      const credentials = devCredentials[role];
+      if (!credentials) {
+        return { success: false, message: 'Rol inválido' };
+      }
+
+      // Intentar login real
+      const result = await login(credentials.email, credentials.password);
+      return result;
+    } catch (error) {
+      __DEV_LOG__('Error en devLogin:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -288,6 +319,7 @@ export const AuthProvider = ({ children }) => {
         loginWithGoogle,
         loginWithOTPResponse,
         updateUser,
+        devLogin,
       }}
     >
       {children}

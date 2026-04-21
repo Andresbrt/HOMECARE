@@ -237,14 +237,17 @@ export default function LoginScreen({ navigation }) {
     if (!result.success) Alert.alert('Error al ingresar', result.message);
   };
 
-  const handleQuickLogin = (role) => {
+  const handleQuickLogin = async (role) => {
     setQuickLoading(role);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    devLogin(role === 'profesional' ? 'SERVICE_PROVIDER' : 'CUSTOMER');
+    const result = await devLogin(role === 'profesional' ? 'SERVICE_PROVIDER' : 'CUSTOMER');
     setQuickLoading(null);
+    if (!result.success) {
+      Alert.alert('Error DEV Login', result.message || 'No se pudo iniciar sesión de desarrollo');
+    }
   };
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render ───────────────────────────────────────────────────────────
   return (
     <LinearGradient colors={['#000F22', '#001B38', '#0a2a42']} style={{ flex: 1 }}>
       <KeyboardAvoidingView
@@ -272,7 +275,7 @@ export default function LoginScreen({ navigation }) {
           <Animated.View entering={FadeInDown.duration(600).delay(120).springify()} style={styles.card}>
             {/* Email */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Correo electrÃ³nico</Text>
+              <Text style={styles.label}>Correo electrónico</Text>
               <View style={styles.inputRow}>
                 <Ionicons name="mail-outline" size={18} color={PROF.textMuted} style={styles.inputIcon} />
                 <TextInput
@@ -288,14 +291,14 @@ export default function LoginScreen({ navigation }) {
               </View>
             </View>
 
-            {/* ContraseÃ±a */}
+            {/* Contraseña */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>ContraseÃ±a</Text>
+              <Text style={styles.label}>Contraseña</Text>
               <View style={styles.inputRow}>
                 <Ionicons name="lock-closed-outline" size={18} color={PROF.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   placeholderTextColor={PROF.textMuted}
                   value={password}
                   onChangeText={setPassword}
@@ -313,12 +316,12 @@ export default function LoginScreen({ navigation }) {
               </View>
             </View>
 
-            {/* OlvidÃ© contraseÃ±a */}
+            {/* Olvidé contraseña */}
             <TouchableOpacity
               onPress={() => navigation.navigate('ForgotPassword')}
               style={styles.forgotBtn}
             >
-              <Text style={styles.forgotText}>Â¿Olvidaste tu contraseÃ±a?</Text>
+              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
 
             {/* BotÃ³n principal */}
@@ -346,7 +349,7 @@ export default function LoginScreen({ navigation }) {
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.primaryBtnText}>Iniciar sesiÃ³n</Text>
+                    <Text style={styles.primaryBtnText}>Iniciar sesión</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
@@ -355,7 +358,7 @@ export default function LoginScreen({ navigation }) {
             {/* Divisor */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o continÃºa con</Text>
+              <Text style={styles.dividerText}>o continúa con</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -381,15 +384,15 @@ export default function LoginScreen({ navigation }) {
 
           {/* â”€â”€ Registro â”€â”€ */}
           <Animated.View entering={FadeInDown.duration(600).delay(240).springify()} style={styles.footer}>
-            <Text style={styles.footerText}>Â¿No tienes cuenta? </Text>
+            <Text style={styles.footerText}>¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
-              <Text style={styles.footerLink}>RegÃ­strate</Text>
+              <Text style={styles.footerLink}>Regístrate</Text>
             </TouchableOpacity>
           </Animated.View>
 
           {/* â”€â”€ DEV quick access â”€â”€ */}
           <Animated.View entering={FadeIn.duration(400).delay(400)} style={styles.devSection}>
-            <Text style={styles.devLabel}>âš¡ DEV</Text>
+            <Text style={styles.devLabel}>⚡ DEV</Text>
             <View style={styles.devRow}>
               <TouchableOpacity
                 style={[styles.devBtn, { backgroundColor: 'rgba(14,77,104,0.6)' }]}
@@ -399,7 +402,7 @@ export default function LoginScreen({ navigation }) {
                 {quickLoading === 'profesional' ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.devBtnText}>ðŸ‘· Profesional</Text>
+                  <Text style={styles.devBtnText}>👷 Profesional</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -410,7 +413,7 @@ export default function LoginScreen({ navigation }) {
                 {quickLoading === 'usuario' ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.devBtnText}>ðŸ‘¤ Usuario</Text>
+                  <Text style={styles.devBtnText}>👤 Usuario</Text>
                 )}
               </TouchableOpacity>
             </View>
