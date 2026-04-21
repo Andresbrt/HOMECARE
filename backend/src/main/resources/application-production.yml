@@ -6,21 +6,30 @@ spring:
   application:
     name: homecare-api
 
-  # Base de datos PostgreSQL - Render
+  # Base de datos PostgreSQL - Neon (Serverless)
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+    # HikariCP optimizado para Neon (serverless PostgreSQL)
     hikari:
       initialization-fail-timeout: -1
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      pool-name: HomeCareHikariPool
+      maximum-pool-size: 5          # Reducido para serverless (Neon escala automáticamente)
+      minimum-idle: 1                # Mínimo 1 para reducir conexiones idle
+      connection-timeout: 20000      # 20s - Neon es rápido en conectar
+      idle-timeout: 300000           # 5min - Liberar conexiones idle más rápido
+      max-lifetime: 1200000          # 20min - Rotación más frecuente para serverless
+      keepalive-time: 30000          # 30s - Mantener conexiones vivas
+      leak-detection-threshold: 60000 # 60s - Detectar conexiones no cerradas
+      pool-name: HomeCareNeonPool
+      
+      # Propiedades de conexión específicas para Neon
+      data-source-properties:
+        socketTimeout: 30
+        tcpKeepAlive: true
+        ApplicationName: homecare-api
 
   # JPA / Hibernate
   jpa:
