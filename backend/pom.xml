@@ -15,8 +15,8 @@
     <groupId>com.homecare</groupId>
     <artifactId>homecare-backend</artifactId>
     <version>1.0.0</version>
-    <name>HOMECARE Backend API</name>
-    <description>Plataforma de servicios de limpieza - Modelo inDriver</description>
+    <name>HOMECARE Colorimetría - Backend API</name>
+    <description>Plataforma de servicios de colorimetría y limpieza del hogar - Modelo inDriver</description>
     
     <properties>
         <java.version>17</java.version>

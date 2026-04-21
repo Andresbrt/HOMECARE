@@ -2,14 +2,15 @@
 SET JAVA_HOME=C:\Program Files\Java\jdk-20
 SET PATH=C:\tools\apache-maven-3.9.9\bin;%JAVA_HOME%\bin;%PATH%
 
-REM === Perfil y base de datos H2 en memoria ===
+echo ============================================
+echo  HOMECARE COLORIMETRIA Backend - Modo LOCAL
+echo  Java: %JAVA_HOME%
+echo ============================================
 SET SPRING_PROFILES_ACTIVE=test
 SET SPRING_DATASOURCE_URL=jdbc:h2:mem:homecare;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
 SET SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
 SET SPRING_DATASOURCE_USERNAME=sa
 SET SPRING_DATASOURCE_PASSWORD=
-SET SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.H2Dialect
-SET SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.H2Dialect
 SET SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
 SET SPRING_JPA_SHOW_SQL=false
 SET SPRING_FLYWAY_ENABLED=false

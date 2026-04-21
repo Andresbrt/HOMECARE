@@ -1,6 +1,6 @@
-# 🏠 HomeCare API - Backend
+# 🏠 HomeCare Colorimetría - Backend API
 
-API RESTful para plataforma de servicios del hogar (modelo tipo inDriver para limpieza, plomería, electricidad, etc.).
+API RESTful para plataforma de servicios de colorimetría y limpieza del hogar (modelo tipo inDriver para limpieza, plomería, electricidad, etc.).
 
 **Stack:** Spring Boot 3.5.0, Java 23, PostgreSQL 16, Redis, JWT
 

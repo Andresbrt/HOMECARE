@@ -125,6 +125,17 @@ public class EnvironmentValidator implements ApplicationListener<ApplicationRead
         // ✅ Todo correcto
         log.info("✅ Validación de variables de entorno completada");
         log.info("🚀 Entorno: {} | JWT: ✓ | Google Maps: ✓ | Firebase: ✓ | Wompi: ✓", environment);
+        log.info("");
+        log.info("╔═══════════════════════════════════════════════════════════╗");
+        log.info("║                                                           ║");
+        log.info("║        🏠 HOMECARE COLORIMETRÍA API INICIADA             ║");
+        log.info("║                                                           ║");
+        log.info("║  Modelo: inDriver (Ofertas Competitivas)                 ║");
+        log.info("║  Swagger: http://localhost:8090/swagger-ui/index.html   ║");
+        log.info("║  Health:  http://localhost:8090/api/test/health         ║");
+        log.info("║  H2 DB:   http://localhost:8090/h2-console              ║");
+        log.info("║                                                           ║");
+        log.info("╚═══════════════════════════════════════════════════════════╝");
     }
 
     private boolean isEmpty(String value) {
