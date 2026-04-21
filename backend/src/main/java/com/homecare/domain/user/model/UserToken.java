@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.net.InetAddress;
 import java.time.LocalDateTime;
 
 /**

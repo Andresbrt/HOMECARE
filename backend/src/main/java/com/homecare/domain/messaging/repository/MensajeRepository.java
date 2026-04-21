@@ -1,7 +1,6 @@
 package com.homecare.domain.messaging.repository;
 
 import com.homecare.model.Mensaje;
-import com.homecare.domain.solicitud.model.Solicitud;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

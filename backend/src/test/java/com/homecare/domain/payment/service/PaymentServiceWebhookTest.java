@@ -1,6 +1,4 @@
 package com.homecare.domain.payment.service;
-
-import com.homecare.domain.payment.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

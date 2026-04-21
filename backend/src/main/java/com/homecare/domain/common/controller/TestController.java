@@ -1,6 +1,5 @@
 package com.homecare.domain.common.controller;
 
-import com.homecare.dto.NotificationDTO;
 import com.homecare.domain.common.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
