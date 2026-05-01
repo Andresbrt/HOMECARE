@@ -1,10 +1,6 @@
 ﻿import React, { createContext, useState, useEffect, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { authService } from '../services/authService';
-import {
-  signInWithGoogle as googleSignIn,
-  signInWithGoogleCredential,
-} from '../services/firebaseAuthService';
 import useModeStore from '../store/modeStore';
 
 // Solo loguear en desarrollo — no-op en producción
@@ -28,196 +24,120 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Cargar sesión guardada al iniciar
   useEffect(() => {
-    _restoreSession();
+    const loadSession = async () => {
+      try {
+        const savedToken = await SecureStore.getItemAsync('token');
+        const savedUser = await SecureStore.getItemAsync('user');
+        
+        if (savedToken && savedUser) {
+          const userData = JSON.parse(savedUser);
+          setToken(savedToken);
+          setUser(userData);
+          setIsAuthenticated(true);
+          
+          // Detectar modo según rol
+          const roleMode = userData.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+          useModeStore.getState().setMode(roleMode);
+        }
+      } catch (error) {
+        __DEV_LOG__('Error cargando sesión:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSession();
   }, []);
 
-  const _restoreSession = async () => {
-    try {
-      const storedToken = await SecureStore.getItemAsync('token');
-      const storedUserStr = await SecureStore.getItemAsync('user');
-
-      if (storedToken && storedUserStr) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUserStr));
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      __DEV_LOG__('Error restaurando sesión:', error);
-      await _clearSession();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const _clearSession = async () => {
-    await SecureStore.deleteItemAsync('token').catch(() => {});
-    await SecureStore.deleteItemAsync('refreshToken').catch(() => {});
-    await SecureStore.deleteItemAsync('user').catch(() => {});
-    setToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
-  };
-
+  // ─── LOGIN ────────────────────────────────────────────────────────────────
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
       
-      const userData = { email, ...response };
-      
-      await SecureStore.setItemAsync('token', response.token);
-      await SecureStore.setItemAsync('user', JSON.stringify(userData));
-      
       setToken(response.token);
-      setUser(userData);
+      setUser(response);
       setIsAuthenticated(true);
+      
+      // Detectar modo según rol
+      const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+      useModeStore.getState().setMode(roleMode);
+      
       return { success: true };
     } catch (error) {
       __DEV_LOG__('Error en login:', error);
-      const msg = error.response?.data?.message || 
-                  error.response?.data?.mensaje || 
-                  error.response?.data || 
-                  error.message || 
-                  'Error al iniciar sesión';
-      return { success: false, message: msg };
+      return { success: false, message: _parseError(error) };
     }
   };
 
+  // ─── REGISTRO ─────────────────────────────────────────────────────────────
   const register = async (formData) => {
     try {
-      // Usar nuestro endpoint de registro directo al backend Java! 
-      await authService.register(formData);
-      return { success: true, message: 'Registro exitoso. Por favor verifica tu correo.' };
+      const { email, password, nombre, apellido, rol, telefono } = formData;
+      // Registrar usuario en el backend
+      await authService.register({ email, password, nombre, apellido, rol: rol || 'CUSTOMER', telefono });
+      
+      // Enviar código OTP de 4 dígitos al email
+      await authService.sendOTP(email);
+      
+      return {
+        success: true,
+        message: 'Registro exitoso. Revisa tu email para el código de verificación.',
+        requiresOTP: true,
+        email,
+      };
     } catch (error) {
       __DEV_LOG__('Error en registro:', error);
-      const msg = error.response?.data?.message || 
-                  error.response?.data?.mensaje || 
-                  error.response?.data || 
-                  error.message || 
-                  'Error en el registro';
-      return { success: false, message: msg };
+      return { success: false, message: _parseError(error) };
     }
   };
 
+  // ─── LOGOUT ───────────────────────────────────────────────────────────────
   const logout = async () => {
     try {
       await authService.logout();
-      await _clearSession();
+      
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+      
       return { success: true };
     } catch (error) {
       __DEV_LOG__('Error en logout:', error);
-      return { success: false, message: error.message };
+      return { success: false, message: _parseError(error) };
     }
   };
 
+  // ─── RECUPERACIÓN DE CONTRASEÑA ───────────────────────────────────────────
   const forgotPassword = async (email) => {
     try {
       await authService.forgotPassword(email);
       return { success: true };
     } catch (error) {
       __DEV_LOG__('Error en recuperar contraseña:', error);
-      return { success: false, message: error.message };
+      return { success: false, message: _parseError(error) };
     }
   };
 
-  /**
-   * loginWithGoogle
-   *
-   * Acepta dos modos de uso:
-   *  A) Sin parámetros  → llama signInWithGoogle() (nativo). Si lanza
-   *     'EXPO_GO_USE_HOOK', retorna { needsHook: true } para que la
-   *     pantalla active promptAsync() de expo-auth-session.
-   *  B) loginWithGoogle(firebaseIdToken, selectedRole?)
-   *     → recibe el token ya obtenido por el hook en Expo Go.
-   *
-   * Si el backend indica isNewUser === true y NO se pasó selectedRole,
-   * retorna { success: true, isNewUser: true, pendingFirebaseToken }
-   * para que la pantalla muestre el selector de rol.
-   */
-  const loginWithGoogle = async (firebaseIdToken = null, selectedRole = null) => {
-    try {
-      let firebaseToken = firebaseIdToken;
-
-      // ── A) Flujo nativo (sin token previo) ───────────────────────────
-      if (!firebaseToken) {
-        try {
-          firebaseToken = await googleSignIn();
-        } catch (nativeErr) {
-          if (nativeErr.code === 'EXPO_GO_USE_HOOK') {
-            // Señal para que LoginScreen active el hook expo-auth-session
-            return { success: false, needsHook: true };
-          }
-          throw nativeErr;
-        }
-      }
-
-      // ── Llamada al backend ────────────────────────────────────────────
-      // Primera llamada: sin rol para detectar si es usuario nuevo
-      const response = await authService.firebaseLogin(firebaseToken, {});
-
-      // Backend puede retornar isNewUser: true cuando crea la cuenta por primera vez
-      if (response.isNewUser === true && !selectedRole) {
-        // Pedir al usuario que elija su rol antes de completar el registro
-        return { success: true, isNewUser: true, pendingFirebaseToken: firebaseToken };
-      }
-
-      // Si hay rol pendiente, actualizar en backend (segunda llamada con rol)
-      if (selectedRole) {
-        await authService.firebaseLogin(firebaseToken, { rol: selectedRole }).catch(() => {});
-      }
-
-      const userData   = { ...response };
-      const roleMode   = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
-      useModeStore.getState().setMode(roleMode);
-
-      try {
-        await SecureStore.setItemAsync('token', response.token);
-        await SecureStore.setItemAsync('user', JSON.stringify(userData));
-      } catch (storageErr) {
-        __DEV_LOG__('loginWithGoogle: storage error (non-fatal):', storageErr);
-      }
-
-      setToken(response.token);
-      setUser(userData);
-      setIsAuthenticated(true);
-      return { success: true };
-    } catch (error) {
-      __DEV_LOG__('Error en Google Sign-In:', error);
-      const msg =
-        error.response?.data?.message ||
-        error.response?.data?.mensaje ||
-        error.message ||
-        'Error al iniciar sesión con Google';
-      return { success: false, message: msg };
-    }
-  };
-
-  // ─── Recuperación de contraseña con OTP ──────────────────────────────────
+  // Funciones OTP para recuperación de contraseña
   const sendForgotPasswordOTP = async (email) => {
     try {
       await authService.sendForgotPasswordOTP(email);
       return { success: true };
     } catch (error) {
-      const msg =
-        error.response?.data?.message ||
-        error.response?.data?.mensaje ||
-        error.message ||
-        'Error al enviar el código';
-      return { success: false, message: msg };
+      __DEV_LOG__('Error enviando OTP:', error);
+      return { success: false, message: _parseError(error) };
     }
   };
 
   const verifyForgotPasswordOTP = async (email, code) => {
     try {
-      const data = await authService.verifyForgotPasswordOTP(email, code);
-      return { success: true, data };
+      const response = await authService.verifyForgotPasswordOTP(email, code);
+      return { success: true, data: response };
     } catch (error) {
-      const msg =
-        error.response?.data?.message ||
-        error.response?.data?.mensaje ||
-        error.message ||
-        'Código inválido o expirado';
-      return { success: false, message: msg };
+      __DEV_LOG__('Error verificando OTP:', error);
+      return { success: false, message: _parseError(error) };
     }
   };
 
@@ -226,16 +146,49 @@ export const AuthProvider = ({ children }) => {
       await authService.resetPasswordWithOTP(email, code, newPassword);
       return { success: true };
     } catch (error) {
-      const msg =
-        error.response?.data?.message ||
-        error.response?.data?.mensaje ||
-        error.message ||
-        'Error al restablecer la contraseña';
-      return { success: false, message: msg };
+      __DEV_LOG__('Error reseteando contraseña:', error);
+      return { success: false, message: _parseError(error) };
     }
   };
 
-  // ─── Actualizar datos del usuario (refleja cambios sin re-login) ──────
+  // ─── GOOGLE SIGN-IN ───────────────────────────────────────────────────────
+  const loginWithGoogle = async () => {
+    // TODO: Implementar Google Sign-In con backend
+    return { success: false, message: 'Google Sign-In no disponible aún' };
+  };
+
+  // ─── VERIFICAR OTP ────────────────────────────────────────────────────────
+  const verifyOTP = async (email, codigo) => {
+    try {
+      const response = await authService.verifyOTP(email, codigo);
+      
+      setToken(response.token);
+      setUser(response);
+      setIsAuthenticated(true);
+      
+      // Detectar modo según rol
+      const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+      useModeStore.getState().setMode(roleMode);
+      
+      return { success: true, data: response };
+    } catch (error) {
+      __DEV_LOG__('Error verificando OTP:', error);
+      return { success: false, message: _parseError(error) };
+    }
+  };
+
+  // Resend OTP
+  const resendOTP = async (email) => {
+    try {
+      await authService.sendOTP(email);
+      return { success: true };
+    } catch (error) {
+      __DEV_LOG__('Error reenviando OTP:', error);
+      return { success: false, message: _parseError(error) };
+    }
+  };
+
+  // ─── UPDATE USER (refleja cambios sin re-login) ───────────────────────────
   const updateUser = async (updates) => {
     const merged = { ...user, ...updates };
     setUser(merged);
@@ -246,60 +199,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Stub mantenido para compatibilidad con pantallas que usan loginWithOTPResponse
   const loginWithOTPResponse = async (response) => {
-    // 1. Establecer modo SINCRÓNICAMENTE (Zustand fuera de React) antes de cualquier
-    //    re-render, evitando que profesionales vean UserMap durante la transición
     const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
     useModeStore.getState().setMode(roleMode);
 
-    // 2. Persistir sesión — no bloquea la autenticación si falla el storage
     try {
-      const userData = { ...response };
       await SecureStore.setItemAsync('token', response.token);
-      await SecureStore.setItemAsync('user', JSON.stringify(userData));
-      setToken(response.token);
-      setUser(userData);
-    } catch (storageErr) {
-      __DEV_LOG__('loginWithOTPResponse: storage error (non-fatal):', storageErr);
-      // Aun sin persistencia, el usuario puede operar en esta sesión
-      setToken(response.token);
-      setUser({ ...response });
-    }
+      await SecureStore.setItemAsync('user', JSON.stringify(response));
+    } catch (_) {}
 
-    // 3. Activar autenticación → AppNavigator re-renderiza automáticamente
-    //    al flujo correcto (Profesional → Drawer/Dashboard, Usuario → UserMap)
+    setToken(response.token);
+    setUser(response);
     setIsAuthenticated(true);
   };
 
-  /**
-   * devLogin - Login rápido para desarrollo
-   * @param {string} role - 'SERVICE_PROVIDER' o 'CUSTOMER'
-   */
+  // ─── DEV LOGIN ────────────────────────────────────────────────────────────
   const devLogin = async (role) => {
-    if (!__DEV__) {
-      __DEV_LOG__('devLogin solo está disponible en modo desarrollo');
-      return { success: false, message: 'Función no disponible en producción' };
-    }
+    if (!__DEV__) return { success: false, message: 'Función no disponible en producción' };
 
-    try {
-      // Credenciales de prueba
-      const devCredentials = {
-        SERVICE_PROVIDER: { email: 'profesional@test.com', password: 'test123' },
-        CUSTOMER: { email: 'usuario@test.com', password: 'test123' },
-      };
+    const devCredentials = {
+      SERVICE_PROVIDER: { email: 'profesional@test.com', password: 'Test123!' },
+      CUSTOMER: { email: 'usuario@test.com', password: 'Test123!' },
+    };
 
-      const credentials = devCredentials[role];
-      if (!credentials) {
-        return { success: false, message: 'Rol inválido' };
-      }
-
-      // Intentar login real
-      const result = await login(credentials.email, credentials.password);
-      return result;
-    } catch (error) {
-      __DEV_LOG__('Error en devLogin:', error);
-      return { success: false, message: error.message };
-    }
+    const credentials = devCredentials[role];
+    if (!credentials) return { success: false, message: 'Rol inválido' };
+    return login(credentials.email, credentials.password);
   };
 
   return (
@@ -316,6 +242,8 @@ export const AuthProvider = ({ children }) => {
         sendForgotPasswordOTP,
         verifyForgotPasswordOTP,
         resetPasswordWithOTP,
+        verifyOTP,
+        resendOTP,
         loginWithGoogle,
         loginWithOTPResponse,
         updateUser,
@@ -326,3 +254,15 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+function _parseError(error) {
+  return (
+    error?.message ||
+    error?.response?.data?.message ||
+    error?.response?.data?.mensaje ||
+    'Ha ocurrido un error. Intenta de nuevo.'
+  );
+}
+

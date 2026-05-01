@@ -38,10 +38,21 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(loginRequest.getEmail(), loginRequest.getPassword()));
     }
 
+    @PostMapping("/supabase-login")
+    @Operation(summary = "Autenticar con token JWT de Supabase Auth y obtener tokens del backend")
+    public ResponseEntity<AuthDTO.LoginResponse> supabaseLogin(@Valid @RequestBody AuthDTO.SupabaseLogin dto) {
+        return ResponseEntity.ok(authService.loginWithSupabaseToken(dto));
+    }
+
     @PostMapping("/firebase-login")
-    @Operation(summary = "Autenticar con Firebase (Google Sign-In) y obtener tokens JWT")
+    @Operation(summary = "[DEPRECADO] Usar /supabase-login. Mantenido por compatibilidad temporal.")
+    @Deprecated
     public ResponseEntity<AuthDTO.LoginResponse> firebaseLogin(@Valid @RequestBody AuthDTO.FirebaseLogin dto) {
-        return ResponseEntity.ok(authService.loginWithFirebase(dto));
+        // Redirigir al nuevo flujo usando el campo firebaseToken como supabaseToken
+        AuthDTO.SupabaseLogin supabaseDto = new AuthDTO.SupabaseLogin(
+            dto.getFirebaseToken(), dto.getNombre(), dto.getApellido(), dto.getTelefono(), dto.getRol()
+        );
+        return ResponseEntity.ok(authService.loginWithSupabaseToken(supabaseDto));
     }
 
     @PostMapping("/refresh")

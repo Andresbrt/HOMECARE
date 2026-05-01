@@ -16,6 +16,7 @@ import com.homecare.domain.solicitud.repository.SolicitudRepository;
 import com.homecare.domain.user.repository.UsuarioRepository;
 import com.homecare.domain.solicitud.service.SolicitudService;
 import com.homecare.domain.ai.service.AIService;
+import com.homecare.security.RequiereRol;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -41,14 +42,17 @@ public class OfertaService {
     private final ApplicationEventPublisher eventPublisher;
     private final AIService aiService;
 
+    /**
+     * Solo proveedores pueden enviar ofertas.
+     * @RequiereRol intercepta la llamada vía AOP antes de ejecutar el método.
+     */
     @Transactional
+    @RequiereRol(value = "PROVEEDOR", mensaje = "Solo los proveedores de servicio pueden enviar ofertas")
     public OfertaDTO.Response enviarOferta(Long proveedorId, OfertaDTO.Crear request) {
         Usuario proveedor = usuarioRepository.findById(proveedorId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
-        if (!proveedor.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_SERVICE_PROVIDER"))) {
-            throw new UnauthorizedException("Solo los proveedores pueden enviar ofertas");
-        }
+        // La validación por rol ya la hizo el aspecto — eliminamos la verificación manual duplicada
 
         Solicitud solicitud = solicitudRepository.findById(request.getSolicitudId())
                 .orElseThrow(() -> new NotFoundException("Solicitud no encontrada"));

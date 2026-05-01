@@ -117,7 +117,7 @@ class AuthControllerTest {
     @DisplayName("changePassword returns OK")
     void changePassword_success() {
         AuthDTO.CambiarPassword req = new AuthDTO.CambiarPassword("old", "new123");
-        CustomUserDetails userDetails = new CustomUserDetails(1L, "e@t.com", "p", "N", "A", true, true, null);
+        CustomUserDetails userDetails = new CustomUserDetails(1L, "e@t.com", "p", "N", "A", true, true, null, null);
 
         var resp = controller.changePassword(userDetails, req);
 
@@ -155,7 +155,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("getMe returns UsuarioInfo for authenticated user")
     void getMe_success() {
-        CustomUserDetails userDetails = new CustomUserDetails(1L, "e@t.com", "p", "N", "A", true, true, null);
+        CustomUserDetails userDetails = new CustomUserDetails(1L, "e@t.com", "p", "N", "A", true, true, null, null);
         AuthDTO.UsuarioInfo info = AuthDTO.UsuarioInfo.builder()
                 .id(1L).email("e@t.com").nombre("N").apellido("A").rol("ROLE_CUSTOMER").build();
         when(authService.obtenerInfoUsuario(1L)).thenReturn(info);

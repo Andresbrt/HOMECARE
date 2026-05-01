@@ -4,6 +4,7 @@ import com.homecare.dto.SolicitudDTO;
 import com.homecare.common.event.NotificationEvent;
 import com.homecare.common.exception.NotFoundException;
 import com.homecare.common.exception.UnauthorizedException;
+import com.homecare.security.RequiereRol;
 import com.homecare.domain.solicitud.model.Solicitud;
 import com.homecare.domain.solicitud.model.Solicitud.EstadoSolicitud;
 import com.homecare.domain.solicitud.model.Solicitud.TipoLimpieza;
@@ -36,13 +37,12 @@ public class SolicitudService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
+    @RequiereRol(value = "CLIENTE", mensaje = "Solo los clientes pueden crear solicitudes")
     public SolicitudDTO.Response crearSolicitud(Long clienteId, SolicitudDTO.Crear request) {
         Usuario cliente = usuarioRepository.findById(clienteId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
-        if (!cliente.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_CUSTOMER"))) {
-            throw new UnauthorizedException("Solo los clientes pueden crear solicitudes");
-        }
+        // La validación por rol ya la hizo RolValidacionAspect vía AOP
 
         Solicitud solicitud = new Solicitud();
         solicitud.setCliente(cliente);

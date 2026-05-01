@@ -1,3 +1,4 @@
+-- Active: 1776127581027@@dpg-d7ennm6rnols73ekt5b0-a.ohio-postgres.render.com@5432
 @echo off
 SET JAVA_HOME=C:\Program Files\Java\jdk-20
 SET PATH=C:\tools\apache-maven-3.9.9\bin;%JAVA_HOME%\bin;%PATH%
@@ -13,6 +14,7 @@ SET SPRING_DATASOURCE_USERNAME=sa
 SET SPRING_DATASOURCE_PASSWORD=
 SET SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
 SET SPRING_JPA_SHOW_SQL=false
+SET SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=true
 SET SPRING_FLYWAY_ENABLED=false
 
 REM === Redis: apunta a localhost pero no crash si no existe (fallback in-memory) ===

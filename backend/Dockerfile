@@ -21,7 +21,7 @@ RUN mvn clean package -DskipTests -B -q
 FROM eclipse-temurin:17-jre AS runtime
 WORKDIR /app
 
-ENV SPRING_PROFILES_ACTIVE=prod
+ENV SPRING_PROFILES_ACTIVE=production
 ENV SERVER_PORT=8080
 
 # Instalar curl para healthcheck

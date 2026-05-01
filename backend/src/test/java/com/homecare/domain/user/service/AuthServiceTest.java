@@ -2,13 +2,17 @@ package com.homecare.domain.user.service;
 
 import com.homecare.dto.AuthDTO;
 import com.homecare.common.exception.AuthException;
+import com.homecare.common.exception.DuplicateResourceException;
 import com.homecare.domain.user.model.Rol;
+import com.homecare.domain.user.model.UserToken;
+import com.homecare.domain.user.model.UserTokenType;
 import com.homecare.domain.user.model.Usuario;
 import com.homecare.domain.user.repository.RolRepository;
+import com.homecare.domain.user.repository.UserTokenRepository;
 import com.homecare.domain.user.repository.UsuarioRepository;
+import com.homecare.domain.user.validator.PasswordValidator;
 import com.homecare.security.CustomUserDetails;
 import com.homecare.security.JwtTokenProvider;
-import com.homecare.domain.common.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +41,8 @@ class AuthServiceTest {
     @Mock private RolRepository rolRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtTokenProvider jwtTokenProvider;
-    @Mock private NotificationService notificationService;
+    @Mock private UserTokenRepository userTokenRepository;
+    @Mock private PasswordValidator passwordValidator;
 
     @InjectMocks
     private AuthService authService;
@@ -153,8 +158,8 @@ class AuthServiceTest {
             when(usuarioRepository.existsByEmail(req.getEmail())).thenReturn(true);
 
             assertThatThrownBy(() -> authService.registro(req))
-                    .isInstanceOf(AuthException.class)
-                    .hasMessageContaining("email ya está registrado");
+                    .isInstanceOf(DuplicateResourceException.class)
+                    .hasMessageContaining("ya está registrado");
         }
 
         @Test
@@ -165,8 +170,8 @@ class AuthServiceTest {
             when(usuarioRepository.existsByTelefono(req.getTelefono())).thenReturn(true);
 
             assertThatThrownBy(() -> authService.registro(req))
-                    .isInstanceOf(AuthException.class)
-                    .hasMessageContaining("teléfono ya está registrado");
+                    .isInstanceOf(DuplicateResourceException.class)
+                    .hasMessageContaining("ya está asociado");
         }
 
         @Test
@@ -378,25 +383,31 @@ class AuthServiceTest {
         @Test
         @DisplayName("happy path — resets password")
         void resetPassword_success() {
-            when(jwtTokenProvider.validateToken("reset-token")).thenReturn(true);
-            when(jwtTokenProvider.getUserIdFromToken("reset-token")).thenReturn(1L);
+            UserToken mockToken = mock(UserToken.class);
             Usuario usuario = buildUsuario();
-            when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+            when(userTokenRepository.findByTokenHashAndTokenType("reset-uuid", UserTokenType.PASSWORD_RESET))
+                    .thenReturn(Optional.of(mockToken));
+            when(mockToken.getUsed()).thenReturn(false);
+            when(mockToken.isExpired()).thenReturn(false);
+            when(mockToken.getUsuario()).thenReturn(usuario);
             when(passwordEncoder.encode("brand-new")).thenReturn("enc-brand-new");
 
-            authService.resetearPassword("reset-token", "brand-new");
+            authService.resetearPassword("reset-uuid", "brand-new");
 
             assertThat(usuario.getPassword()).isEqualTo("enc-brand-new");
             verify(usuarioRepository).save(usuario);
+            verify(mockToken).setUsed(true);
         }
 
         @Test
         @DisplayName("throws when reset token is invalid")
         void resetPassword_invalidToken() {
-            when(jwtTokenProvider.validateToken("bad-token")).thenReturn(false);
+            when(userTokenRepository.findByTokenHashAndTokenType("bad-token", UserTokenType.PASSWORD_RESET))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> authService.resetearPassword("bad-token", "new"))
-                    .isInstanceOf(AuthException.class);
+                    .isInstanceOf(AuthException.class)
+                    .hasMessageContaining("inválido o expirado");
         }
     }
 

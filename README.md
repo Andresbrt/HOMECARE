@@ -29,7 +29,7 @@
 - Spring Security + JWT
 - WebSocket (Chat en tiempo real)
 - Swagger/OpenAPI 3
-- Integración Wompi (Pagos)
+- Integración Mercado Pago (Pagos)
 
 ### Mobile
 - **React Native + Expo**
@@ -77,7 +77,7 @@
 4. **Negociación**: Chat directo antes de aceptar
 5. **Elección**: Cliente revisa ofertas y elige manualmente
 6. **Servicio**: Tracking en tiempo real, estados del servicio
-7. **Pago**: Integración con Wompi
+7. **Pago**: Integración con Mercado Pago
 8. **Calificación**: Mutua entre cliente y proveedor
 
 ## 📱 Pantallas Principales

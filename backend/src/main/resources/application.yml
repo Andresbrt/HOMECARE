@@ -5,11 +5,27 @@ spring:
     import: optional:file:.env[.properties]
   
   datasource:
-    # SPRING_DATASOURCE_URL overrides everything (usar la External URL de Render en producción).
+    # SPRING_DATASOURCE_URL overrides everything.
+    # Supabase: usar Transaction Pooler (puerto 5432) o Direct Connection (puerto 5432).
+    # Ejemplo Supabase: jdbc:postgresql://db.XXXXXXXXXXXX.supabase.co:5432/postgres
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/homecare_db}
-    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:homecare_user}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Mínimo de conexiones inactivas en el pool
+      minimum-idle: ${HIKARI_MIN_IDLE:2}
+      # Máximo de conexiones simultáneas (Supabase Free: 60 conns totales; reservar ~15 para migraciones/admin)
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
+      # Tiempo máximo esperando una conexión del pool (ms)
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT:20000}
+      # Tiempo que una conexión inactiva puede permanecer en el pool (ms) — 10 minutos
+      idle-timeout: ${HIKARI_IDLE_TIMEOUT:600000}
+      # Tiempo de vida máximo de una conexión (ms) — 30 minutos
+      max-lifetime: ${HIKARI_MAX_LIFETIME:1800000}
+      # Ping periódico para mantener conexiones vivas en Supabase (PgBouncer mata inactivas a los 5 min)
+      keepalive-time: ${HIKARI_KEEPALIVE_TIME:60000}
+      connection-test-query: SELECT 1
     
   jpa:
     hibernate:
@@ -98,6 +114,22 @@ tracking:
 # File Configuration
 file:
   max-size: ${FILE_MAX_SIZE:10485760}
+
+# Supabase Integration
+# Obtener valores en: Supabase Dashboard → Settings → API
+supabase:
+  # URL del proyecto, ej: https://abcdefghij.supabase.co
+  url: ${SUPABASE_URL:https://placeholder.supabase.co}
+  # Clave pública (anon) — segura para exponer en cliente
+  anon-key: ${SUPABASE_ANON_KEY:}
+  # Clave de servicio — ¡NUNCA exponer en el cliente! Solo backend
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+  # JWT Secret del proyecto — Supabase Dashboard → Settings → API → JWT Secret
+  jwt-secret: ${SUPABASE_JWT_SECRET:}
+  storage:
+    # Timeouts para operaciones de Storage (subida de imágenes)
+    upload-timeout-seconds: ${SUPABASE_STORAGE_UPLOAD_TIMEOUT:30}
+    max-retries: ${SUPABASE_STORAGE_MAX_RETRIES:2}
   allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/jpg,application/pdf}
   storage-type: ${FILE_STORAGE_TYPE:s3} # s3, local
 

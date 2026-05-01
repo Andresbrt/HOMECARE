@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -56,6 +58,25 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleFileStorage(FileStorageException ex) {
         log.error("Error de almacenamiento: {}", ex.getMessage());
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
+
+    /** Supabase Storage / API devolvió un código de error HTTP (4xx/5xx). */
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<Map<String, Object>> handleWebClientResponse(WebClientResponseException ex) {
+        log.error("Error Supabase API — status={} body={}", ex.getStatusCode(), ex.getResponseBodyAsString());
+        HttpStatus status = ex.getStatusCode().value() == 403
+                ? HttpStatus.FORBIDDEN
+                : HttpStatus.BAD_GATEWAY;
+        return buildResponse(status,
+                "Error en servicio externo (Supabase): " + ex.getStatusCode());
+    }
+
+    /** Timeout o fallo de conexión con Supabase (Storage, Auth, etc.). */
+    @ExceptionHandler(WebClientRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleWebClientRequest(WebClientRequestException ex) {
+        log.error("Error de conexión con Supabase: {}", ex.getMessage());
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE,
+                "No se pudo conectar con el servicio de almacenamiento. Intenta de nuevo.");
     }
 
     @ExceptionHandler(NotificationException.class)

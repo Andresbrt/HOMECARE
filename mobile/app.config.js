@@ -25,11 +25,11 @@ export default ({ config }) => {
       apiUrl:
         process.env.EXPO_PUBLIC_API_URL ||
         config.extra?.apiUrl ||
-        'https://homecare-backend.up.railway.app/api',
+        'https://homecare-backend.fly.dev/api',
       wsUrl:
         process.env.EXPO_PUBLIC_WS_URL ||
         config.extra?.wsUrl ||
-        'wss://homecare-backend.up.railway.app/ws',
+        'wss://homecare-backend.fly.dev/ws',
       mpSandbox: isSandbox,
       mpKeyProd: process.env.EXPO_PUBLIC_MP_KEY_PROD || null,
       eas: {

@@ -1,0 +1,41 @@
+# fly.toml — Homecare Backend
+# Generado para Fly.io (reemplaza Railway)
+
+app = "homecare-backend"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SPRING_PROFILES_ACTIVE = "production"
+  SERVER_PORT = "8080"
+  PORT = "8080"
+  JAVA_TOOL_OPTIONS = "-Xms128m -Xmx580m -XX:MaxMetaspaceSize=196m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Xss256k -Djava.security.egd=file:/dev/./urandom"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+[checks]
+  [checks.health]
+    grace_period = "60s"
+    interval = "30s"
+    method = "GET"
+    path = "/actuator/health"
+    port = 8080
+    timeout = "5s"
+    type = "http"

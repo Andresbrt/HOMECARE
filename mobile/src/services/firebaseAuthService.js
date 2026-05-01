@@ -18,8 +18,17 @@ import {
   signInWithCredential,
 } from 'firebase/auth';
 import Constants from 'expo-constants';
-import { auth } from '../config/firebase';
+import { auth, firebaseEnabled } from '../config/firebase';
 import { GOOGLE_CLIENT_ID } from '../config/api';
+
+const ensureAuth = () => {
+  if (!firebaseEnabled || !auth) {
+    throw new Error(
+      'Firebase no está inicializado. Comprueba que la configuración de Firebase en app.json > expo.extra esté completa.'
+    );
+  }
+  return auth;
+};
 
 // ─── Detección de entorno ─────────────────────────────────────────────────
 export const isExpoGo = () => Constants.appOwnership === 'expo';
@@ -57,8 +66,9 @@ export const GOOGLE_IDS = {
  * Usado en el flujo Expo Go (el hook vive en LoginScreen.js).
  */
 export const signInWithGoogleCredential = async (accessToken, idToken = null) => {
-  const credential    = GoogleAuthProvider.credential(idToken, accessToken);
-  const userCredential = await signInWithCredential(auth, credential);
+  const currentAuth = ensureAuth();
+  const credential = GoogleAuthProvider.credential(idToken, accessToken);
+  const userCredential = await signInWithCredential(currentAuth, credential);
   return userCredential.user.getIdToken();
 };
 
@@ -91,24 +101,33 @@ export const signInWithGoogle = async () => {
 // ─── Utilidades Firebase generales ───────────────────────────────────────
 
 export const firebaseSignUp = async (email, password, displayName) => {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const currentAuth = ensureAuth();
+  const credential = await createUserWithEmailAndPassword(currentAuth, email, password);
   if (displayName) await updateProfile(credential.user, { displayName });
   return credential.user;
 };
 
 export const firebaseSignIn = async (email, password) => {
-  const credential = await signInWithEmailAndPassword(auth, email, password);
+  const currentAuth = ensureAuth();
+  const credential = await signInWithEmailAndPassword(currentAuth, email, password);
   return credential.user;
 };
 
 export const getFirebaseIdToken = async (forceRefresh = false) => {
-  const user = auth.currentUser;
+  const currentAuth = ensureAuth();
+  const user = currentAuth.currentUser;
   if (!user) throw new Error('No hay usuario autenticado en Firebase');
   return user.getIdToken(forceRefresh);
 };
 
-export const firebaseSignOut = async () => signOut(auth);
+export const firebaseSignOut = async () => {
+  const currentAuth = ensureAuth();
+  return signOut(currentAuth);
+};
 
-export const firebaseSendPasswordReset = async (email) => sendPasswordResetEmail(auth, email);
+export const firebaseSendPasswordReset = async (email) => {
+  const currentAuth = ensureAuth();
+  return sendPasswordResetEmail(currentAuth, email);
+};
 
-export const getCurrentFirebaseUser = () => auth.currentUser;
+export const getCurrentFirebaseUser = () => auth?.currentUser;

@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   useWindowDimensions,
   Platform,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -318,7 +319,14 @@ export default function UserMapScreen({ navigation }) {
                 >
                   <Text style={styles.driverModeText}>Modo profesional</Text>
                 </TouchableOpacity>
-                <View style={styles.socialRow}><Ionicons name="logo-facebook" size={24} color="#1877F2" /><Ionicons name="logo-instagram" size={24} color="#E4405F" /></View>
+                <View style={styles.socialRow}>
+                  <TouchableOpacity onPress={() => Linking.openURL('https://homecare.works')} activeOpacity={0.8}>
+                    <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => Linking.openURL('https://homecare.works')} activeOpacity={0.8}>
+                    <Ionicons name="logo-instagram" size={24} color="#E4405F" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </SafeAreaView>
           </Animated.View>

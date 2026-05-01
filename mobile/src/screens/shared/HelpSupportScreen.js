@@ -169,11 +169,11 @@ export default function HelpSupportScreen({ navigation }) {
         {/* ── Centro de ayuda ───────────────────────────── */}
         <Text style={styles.section}>Centro de ayuda</Text>
         <GlassCard variant="default">
-          <LinkRow icon="document-text-outline" label="Términos y condiciones" onPress={() => Linking.openURL('https://homecare.app/terminos')} delay={160} />
+          <LinkRow icon="document-text-outline" label="Términos y condiciones" onPress={() => Linking.openURL('https://homecare.works/terminos')} delay={160} />
           <View style={styles.sep} />
-          <LinkRow icon="shield-outline" label="Política de privacidad" onPress={() => Linking.openURL('https://homecare.app/privacidad')} delay={200} />
+          <LinkRow icon="shield-outline" label="Política de privacidad" onPress={() => Linking.openURL('https://homecare.works/privacidad')} delay={200} />
           <View style={styles.sep} />
-          <LinkRow icon="play-circle-outline" label="Tutorial de uso" onPress={() => Linking.openURL('https://homecare.app/tutorial')} delay={240} />
+          <LinkRow icon="play-circle-outline" label="Tutorial de uso" onPress={() => Linking.openURL('https://homecare.works/tutorial')} delay={240} />
           <View style={styles.sep} />
           <LinkRow icon="star-outline" label="Calificar la app" onPress={() => Linking.openURL('https://play.google.com/store')} delay={280} />
         </GlassCard>

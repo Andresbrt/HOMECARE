@@ -1,15 +1,22 @@
-# Perfil LOCAL de desarrollo — PostgreSQL en Render (external)
+# Perfil LOCAL de desarrollo
+# Por defecto usa H2 en memoria (sin necesidad de BD externa).
+# Para conectar a Supabase localmente, descomentar las variables en .env
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://dpg-d76tpmogjchc73dkl4v0-a.ohio-postgres.render.com:5432/homecare_db_xym7}
-    username: ${SPRING_DATASOURCE_USERNAME:homecare_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:9peh0USodVBNOsNCVsIGjs374rAqJ511}
-    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:homecare;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;NON_KEYWORDS=VALUE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    # database-platform: auto-detectado desde la URL
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
@@ -58,6 +65,7 @@ logging:
   level:
     com.homecare: DEBUG
     org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Mercado Pago — SANDBOX (PRUEBAS)
@@ -72,4 +80,3 @@ mercadopago:
   callback-url: ${MP_CALLBACK_URL:http://192.168.1.17:8090/api}
   webhook-secret: ${MP_WEBHOOK_SECRET:}
   commission-rate: ${MP_COMMISSION_RATE:0.10}
-    org.hibernate.SQL: DEBUG

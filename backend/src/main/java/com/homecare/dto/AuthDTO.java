@@ -222,22 +222,37 @@ public class AuthDTO {
     }
 
     /**
-     * Login/registro usando Firebase ID Token
-     * El token se obtiene en el cliente después de autenticarse con Firebase Auth
+     * Login usando Supabase JWT (access_token emitido por Supabase Auth).
+     * Reemplaza completamente FirebaseLogin.
      */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class FirebaseLogin {
-        @NotBlank(message = "El firebaseToken es obligatorio")
-        private String firebaseToken;
+    public static class SupabaseLogin {
+        @NotBlank(message = "El supabaseToken es obligatorio")
+        private String supabaseToken;
 
-        // Campos requeridos sólo al crear el usuario (primer login)
+        // Campos opcionales para crear el perfil si el trigger no lo hizo aún
         private String nombre;
         private String apellido;
         private String telefono;
 
         /** CUSTOMER o SERVICE_PROVIDER */
+        private String rol;
+    }
+
+    /**
+     * @deprecated Usar SupabaseLogin. Mantenido para compatibilidad temporal.
+     */
+    @Deprecated
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FirebaseLogin {
+        private String firebaseToken;
+        private String nombre;
+        private String apellido;
+        private String telefono;
         private String rol;
     }
 

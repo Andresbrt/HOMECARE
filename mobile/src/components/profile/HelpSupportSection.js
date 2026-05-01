@@ -226,11 +226,11 @@ export default function HelpSupportSection({ navigation }) {
       <Animated.View entering={FadeInDown.delay(260).springify()}>
         <GlassCard variant="elevated" animated={false} padding={16}>
           <Text style={styles.faqTitle}>Centro de ayuda</Text>
-          <HelpLink icon="document-text-outline"  label="Terminos y condiciones"   url="https://homecare.app/terminos" />
+          <HelpLink icon="document-text-outline"  label="Terminos y condiciones"   url="https://homecare.works/terminos" />
           <View style={styles.faqDivider} />
-          <HelpLink icon="shield-outline"         label="Politica de privacidad"   url="https://homecare.app/privacidad" />
+          <HelpLink icon="shield-outline"         label="Politica de privacidad"   url="https://homecare.works/privacidad" />
           <View style={styles.faqDivider} />
-          <HelpLink icon="play-circle-outline"    label="Tutorial: primeros pasos" url="https://homecare.app/tutorial" />
+          <HelpLink icon="play-circle-outline"    label="Tutorial: primeros pasos" url="https://homecare.works/tutorial" />
           <View style={styles.faqDivider} />
           <HelpLink icon="star-outline"           label="Calificanos en la tienda"  url="https://play.google.com/store" />
         </GlassCard>

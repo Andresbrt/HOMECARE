@@ -5,6 +5,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Scripts con credenciales sensibles
+backend/fly-deploy.ps1
+EMAIL_TROUBLESHOOTING.md
+**/fly-deploy.ps1
+**/*.err
+
 # Runtime data
 pids
 *.pid

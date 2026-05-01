@@ -26,6 +26,8 @@ public class CustomUserDetails implements UserDetails {
     private String apellido;
     private Boolean activo;
     private Boolean verificado;
+    // UUID de Supabase Auth (auth.users.id), puede ser null para usuarios pre-migración
+    private String supabaseUid;
     private Collection<? extends GrantedAuthority> authorities;
 
     /**
@@ -39,6 +41,7 @@ public class CustomUserDetails implements UserDetails {
         this.apellido = usuario.getApellido();
         this.activo = usuario.getActivo();
         this.verificado = usuario.getVerificado();
+        this.supabaseUid = usuario.getSupabaseUid();
         this.authorities = usuario.getRoles().stream()
                 .map(rol -> new SimpleGrantedAuthority(rol.getNombre()))
                 .collect(Collectors.toList());
@@ -63,6 +66,7 @@ public class CustomUserDetails implements UserDetails {
                 usuario.getApellido(),
                 usuario.getActivo(),
                 usuario.getVerificado(),
+                usuario.getSupabaseUid(),
                 authorities
         );
     }

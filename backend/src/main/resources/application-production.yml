@@ -6,14 +6,16 @@ spring:
   application:
     name: homecare-api
 
-  # Base de datos PostgreSQL - Neon (Serverless)
+  # Base de datos PostgreSQL - Supabase (gestionado)
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    # Ejemplo de URL para Supabase:
+    # url: jdbc:postgresql://<project>.db.supabase.co:5432/<database>
 
-    # HikariCP optimizado para Neon (serverless PostgreSQL)
+    # HikariCP optimizado para Supabase (PostgreSQL gestionado)
     hikari:
       initialization-fail-timeout: -1
       maximum-pool-size: 5          # Reducido para serverless (Neon escala automáticamente)
@@ -34,13 +36,14 @@ spring:
   # JPA / Hibernate
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false
     open-in-view: false
     properties:
       hibernate:
         format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        # dialect recomendado para Supabase
 
   # Redis para cache y rate limiting
   # Railway Redis plugin expone: REDISHOST, REDISPORT, REDISPASSWORD
@@ -64,10 +67,10 @@ spring:
 
   # Mail configuration (SMTP)
   mail:
-    host: ${SMTP_HOST:smtp.gmail.com}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:noreply@homecare.local}
-    password: ${SMTP_PASSWORD:}
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreply@homecare.local}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -134,8 +137,7 @@ management:
     readinessstate:
       enabled: true
     diskspace:
-      enabled: true
-      threshold: 10GB
+      enabled: false
   metrics:
     export:
       prometheus:

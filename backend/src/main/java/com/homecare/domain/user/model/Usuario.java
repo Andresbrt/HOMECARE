@@ -89,6 +89,10 @@ public class Usuario {
     @Column(name = "ultimo_acceso")
     private LocalDateTime ultimoAcceso;
 
+    // Supabase Auth — UUID del registro en auth.users (null si creado antes de la migración)
+    @Column(name = "supabase_uid", length = 36, unique = true)
+    private String supabaseUid;
+
     // Estado
     @Builder.Default
     private Boolean activo = true;

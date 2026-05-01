@@ -111,13 +111,11 @@ export default function RegisterScreen({ route, navigation }) {
     setLoading(false);
 
     if (result.success) {
-      if (isProvider) {
-        navigation.navigate('PendingVerification');
-      } else {
-        try {
-          await authService.sendOTP(form.email.trim());
-        } catch (_) { /* no bloquear si hay error */ }
+      if (result.requiresOTP) {
+        // Backend ya envió el código OTP, navegar a pantalla de verificación
         navigation.navigate('VerifyOTP', { email: form.email.trim() });
+      } else if (isProvider) {
+        navigation.navigate('PendingVerification');
       }
     } else {
       Alert.alert('Error en el registro', result.message);
