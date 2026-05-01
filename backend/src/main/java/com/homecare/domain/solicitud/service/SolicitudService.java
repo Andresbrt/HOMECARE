@@ -46,7 +46,8 @@ public class SolicitudService {
 
         Solicitud solicitud = new Solicitud();
         solicitud.setCliente(cliente);
-        
+        solicitud.setTitulo(request.getTitulo());
+
         // Convertir string a enum TipoLimpieza
         try {
             Solicitud.TipoLimpieza tipo = Solicitud.TipoLimpieza.valueOf(request.getTipoLimpieza().toUpperCase());
@@ -54,15 +55,19 @@ public class SolicitudService {
         } catch (IllegalArgumentException e) {
             solicitud.setTipoLimpieza(Solicitud.TipoLimpieza.BASICA); // Default
         }
-        
+
         solicitud.setDescripcion(request.getDescripcion());
         solicitud.setDireccion(request.getDireccion());
+        solicitud.setReferenciaDireccion(request.getReferenciaDireccion());
         solicitud.setLatitud(request.getLatitud());
         solicitud.setLongitud(request.getLongitud());
         solicitud.setFechaServicio(request.getFechaServicio());
         solicitud.setHoraInicioEstimada(request.getHoraInicioEstimada());
         solicitud.setDuracionEstimadaHoras(request.getDuracionEstimadaHoras());
         solicitud.setMetrosCuadrados(request.getMetrosCuadrados());
+        solicitud.setCantidadHabitaciones(request.getCantidadHabitaciones());
+        solicitud.setCantidadBanos(request.getCantidadBanos());
+        solicitud.setTieneMascotas(request.getTieneMascotas() != null ? request.getTieneMascotas() : false);
         solicitud.setPrecioMaximo(request.getPrecioMaximo());
         solicitud.setInstruccionesEspeciales(request.getInstruccionesEspeciales());
         solicitud.setEstado(EstadoSolicitud.ABIERTA);
