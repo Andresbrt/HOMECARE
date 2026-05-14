@@ -115,13 +115,13 @@ export async function activarChat({
     creadoEn: serverTimestamp(),
   });
 
-  // Notificar al usuario que el profesional aceptó
+  // Notificar al profesional que el usuario aceptó su oferta
   if (usuarioPushToken) {
     await enviarPushNotificacion({
       token: usuarioPushToken,
       titulo: '✅ ¡Oferta aceptada!',
-      cuerpo: `${profesionalNombre} aceptó tu solicitud. Abre el chat para coordinar.`,
-      data: { screen: 'UserChat', solicitudId: String(solicitudId), destinatarioId: String(profesionalId) },
+      cuerpo: `Tu oferta fue aceptada. Abre el chat para coordinar con el cliente.`,
+      data: { screen: 'Chat', solicitudId: String(solicitudId), destinatarioId: String(usuarioId) },
     });
   }
 

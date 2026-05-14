@@ -76,9 +76,16 @@ export const AuthProvider = ({ children }) => {
   // ─── REGISTRO ─────────────────────────────────────────────────────────────
   const register = async (formData) => {
     try {
-      const { email, password, nombre, apellido, rol, telefono } = formData;
-      // Registrar usuario en el backend
-      await authService.register({ email, password, nombre, apellido, rol: rol || 'CUSTOMER', telefono });
+      const { email, password, nombre, apellido, rol, telefono,
+              fotoSelfieVerificacion, fotoCedulaFrontal, fotoCedulaPosterior, archivoAntecedentes } = formData;
+      // Registrar usuario en el backend (documentos incluidos para verificación de proveedores)
+      await authService.register({
+        email, password, nombre, apellido, rol: rol || 'CUSTOMER', telefono,
+        ...(fotoSelfieVerificacion && { fotoSelfieVerificacion }),
+        ...(fotoCedulaFrontal && { fotoCedulaFrontal }),
+        ...(fotoCedulaPosterior && { fotoCedulaPosterior }),
+        ...(archivoAntecedentes && { archivoAntecedentes }),
+      });
       
       // Enviar código OTP de 4 dígitos al email
       await authService.sendOTP(email);

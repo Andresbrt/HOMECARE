@@ -59,7 +59,7 @@ function ServiceCard({ item, onRate, onPress, isProfessional }) {
           </Text>
         </View>
         <Text style={styles.price}>
-          COL$ {item.precioAcordado != null ? Number(item.precioAcordado).toLocaleString('es-CO') : 'â€”'}
+          COL$ {item.precioAcordado != null ? Number(item.precioAcordado).toLocaleString('es-CO') : '—'}
         </Text>
       </View>
 
