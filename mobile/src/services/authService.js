@@ -33,6 +33,16 @@ export const authService = {
         return response.data;
     },
 
+    supabaseLogin: async ({ supabaseToken, nombre, apellido, telefono, rol }) => {
+        const response = await api.post('/supabase-login', { supabaseToken, nombre, apellido, telefono, rol });
+        if (response.data.token) {
+            await SecureStore.setItemAsync('token', response.data.token);
+            await SecureStore.setItemAsync('user', JSON.stringify(response.data));
+        }
+        return response.data;
+    },
+
+    /** @deprecated Usar supabaseLogin. Mantenido por compatibilidad. */
     firebaseLogin: async (firebaseToken, extraData = {}) => {
         const response = await api.post('/firebase-login', { firebaseToken, ...extraData });
         if (response.data.token) {

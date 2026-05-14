@@ -93,9 +93,9 @@ export default function RegisterScreen({ route, navigation }) {
       return;
     }
 
-    if (isProvider && (!form.fotoSelfieVerificacion || !form.fotoCedulaFrontal || !form.fotoCedulaPosterior)) {
+    if (isProvider && (!form.fotoSelfieVerificacion || !form.fotoCedulaFrontal || !form.fotoCedulaPosterior || !form.archivoAntecedentes)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert('Verificación requerida', 'Debes subir tu selfie y fotos de la cédula.');
+      Alert.alert('Verificación requerida', 'Debes subir tu selfie, fotos de la cédula y el certificado de antecedentes judiciales.');
       return;
     }
 
@@ -314,7 +314,7 @@ export default function RegisterScreen({ route, navigation }) {
               {renderDocUpload('Selfie con rostro *', 'fotoSelfieVerificacion', true)}
               {renderDocUpload('Cédula – Frontal *', 'fotoCedulaFrontal')}
               {renderDocUpload('Cédula – Posterior *', 'fotoCedulaPosterior')}
-              {renderDocUpload('Antecedentes judiciales (opcional)', 'archivoAntecedentes')}
+              {renderDocUpload('Antecedentes judiciales *', 'archivoAntecedentes')}
             </Animated.View>
           )}
 

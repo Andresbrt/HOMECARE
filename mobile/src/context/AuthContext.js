@@ -1,6 +1,8 @@
 ﻿import React, { createContext, useState, useEffect, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { authService } from '../services/authService';
+import { supabase } from '../config/supabase';
+import { getGoogleIdTokenNative } from '../services/firebaseAuthService';
 import useModeStore from '../store/modeStore';
 
 // Solo loguear en desarrollo — no-op en producción
@@ -151,10 +153,84 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ─── GOOGLE SIGN-IN ───────────────────────────────────────────────────────
-  const loginWithGoogle = async () => {
-    // TODO: Implementar Google Sign-In con backend
-    return { success: false, message: 'Google Sign-In no disponible aún' };
+  /**
+   * @param {string|undefined} supabaseOrGoogleToken - Supabase access_token (OAuth web flow)
+   *   OR Google idToken (native). If omitted, tries native Google sign-in.
+   * @param {string|undefined} selectedRole - 'CUSTOMER' | 'SERVICE_PROVIDER'.
+   */
+  const loginWithGoogle = async (supabaseOrGoogleToken, selectedRole) => {
+    try {
+      let session = null;
+
+      if (supabaseOrGoogleToken) {
+        // Check if it's already a Supabase session access_token (JWT issued by Supabase)
+        // Try to get the current session first — if onAuthStateChange already set it, use it.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token === supabaseOrGoogleToken) {
+          session = sessionData.session;
+        } else {
+          // It's a Google idToken → sign in with Supabase
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: supabaseOrGoogleToken,
+          });
+          if (error) throw error;
+          session = data?.session;
+        }
+      } else {
+        // Native Google sign-in → get Google idToken
+        let idToken;
+        try {
+          idToken = await getGoogleIdTokenNative();
+        } catch (e) {
+          if (e.code === 'EXPO_GO_USE_HOOK') {
+            return { success: false, needsHook: true };
+          }
+          return { success: false, message: e.message || 'Error en Google Sign-In' };
+        }
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: idToken,
+        });
+        if (error) throw error;
+        session = data?.session;
+      }
+
+      if (!session) throw new Error('No se obtuvo sesion de Supabase');
+
+      // Detect new user
+      const { data: { user: sbUser } } = await supabase.auth.getUser();
+      const createdAt = new Date(sbUser?.created_at || 0).getTime();
+      const lastSignIn = new Date(sbUser?.last_sign_in_at || 0).getTime();
+      const isNewUser = Math.abs(lastSignIn - createdAt) < 30_000;
+
+      if (isNewUser && !selectedRole) {
+        return { success: true, isNewUser: true, pendingFirebaseToken: session.access_token };
+      }
+
+      const meta = sbUser?.user_metadata || {};
+      const nombre = meta.given_name || meta.full_name?.split(' ')[0] || meta.name?.split(' ')[0] || '';
+      const apellido = meta.family_name || (meta.full_name?.split(' ').slice(1).join(' ')) || '';
+
+      const backendResponse = await authService.supabaseLogin({
+        supabaseToken: session.access_token,
+        nombre,
+        apellido,
+        rol: selectedRole || 'CUSTOMER',
+      });
+
+      setToken(backendResponse.token);
+      setUser(backendResponse);
+      setIsAuthenticated(true);
+
+      const roleMode = backendResponse.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+      useModeStore.getState().setMode(roleMode);
+
+      return { success: true };
+    } catch (error) {
+      __DEV_LOG__('Error en Google Sign-In:', error);
+      return { success: false, message: _parseError(error) };
+    }
   };
 
   // ─── VERIFICAR OTP ────────────────────────────────────────────────────────

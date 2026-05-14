@@ -28,7 +28,7 @@ if (Platform.OS !== 'web') {
   PROVIDER_GOOGLE = 'google';
 }
 
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocation } from '../../context/LocationContext';
 import apiClient from '../../services/apiClient';
@@ -39,6 +39,11 @@ import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS, PROF } from '../..
 const __DEV_LOG__ = __DEV__
   ? (...args) => console.warn(...args)
   : () => {};
+
+const TIPOS_PROPIEDAD = [
+  { id: 'APARTAMENTO', label: 'Apartamento', icon: 'office-building-outline', defaultM2: 60 },
+  { id: 'CASA',        label: 'Casa',        icon: 'home-outline',            defaultM2: 100 },
+];
 
 const SERVICIOS = [
   { id: 'general', label: 'Limpieza\nGeneral',  tipo: 'BASICA',   icon: 'sparkles-outline' },
@@ -55,7 +60,10 @@ export default function CreateRequestScreen({ navigation, route }) {
     titulo: '',
     descripcion: '',
     tipoLimpieza: '',
+    ciudad: '',
+    barrio: '',
     direccion: '',
+    tipoPropiedad: 'APARTAMENTO',
     metrosCuadrados: '60',
     cantidadHabitaciones: '2',
     cantidadBanos: '1',
@@ -91,12 +99,31 @@ export default function CreateRequestScreen({ navigation, route }) {
   }, [selectedService]);
 
   const [isConfirmingLocation, setIsConfirmingLocation] = useState(false);
+  const [geocodedCoords, setGeocodedCoords] = useState(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  const geocodeAddress = async () => {
+    if (!form.direccion.trim() || !form.ciudad.trim()) return;
+    setIsGeocoding(true);
+    try {
+      const { default: Location } = await import('expo-location');
+      const fullAddress = [form.direccion.trim(), form.barrio.trim(), form.ciudad.trim()].filter(Boolean).join(', ');
+      const results = await Location.geocodeAsync(fullAddress);
+      if (results && results.length > 0) {
+        setGeocodedCoords({ latitude: results[0].latitude, longitude: results[0].longitude });
+      }
+    } catch (_) {
+      // silently fail — GPS coords will be used as fallback
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async () => {
-    if (!form.titulo.trim() || !form.servicioId || !form.direccion.trim()) {
-      Alert.alert('Campos requeridos', 'Completa título, tipo de servicio y dirección.');
+    if (!form.titulo.trim() || !form.servicioId || !form.ciudad.trim() || !form.direccion.trim()) {
+      Alert.alert('Campos requeridos', 'Completa título, tipo de servicio, ciudad y dirección.');
       return;
     }
 
@@ -142,10 +169,10 @@ export default function CreateRequestScreen({ navigation, route }) {
         titulo: form.titulo.trim(),
         descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza}`,
         tipoLimpieza: form.tipoLimpieza,
-        direccion: form.direccion.trim(),
-        latitud: location?.coords?.latitude ? parseFloat(location.coords.latitude.toFixed(6)) : 4.6097,
-        longitud: location?.coords?.longitude ? parseFloat(location.coords.longitude.toFixed(6)) : -74.0817,
-        metrosCuadrados: form.metrosCuadrados ? parseFloat(form.metrosCuadrados) : 60,
+        direccion: [form.direccion.trim(), form.barrio.trim(), form.ciudad.trim()].filter(Boolean).join(', '),
+        latitud: geocodedCoords?.latitude ?? (location?.coords?.latitude ? parseFloat(location.coords.latitude.toFixed(6)) : 4.6097),
+        longitud: geocodedCoords?.longitude ?? (location?.coords?.longitude ? parseFloat(location.coords.longitude.toFixed(6)) : -74.0817),
+        metrosCuadrados: form.metrosCuadrados ? parseFloat(form.metrosCuadrados) : (form.tipoPropiedad === 'CASA' ? 100 : 60),
         cantidadHabitaciones: form.cantidadHabitaciones ? parseInt(form.cantidadHabitaciones, 10) : 2,
         cantidadBanos: form.cantidadBanos ? parseInt(form.cantidadBanos, 10) : 1,
         tieneMascotas: form.tieneMascotas,
@@ -154,8 +181,8 @@ export default function CreateRequestScreen({ navigation, route }) {
         horaInicio: futureDate.toTimeString().split(' ')[0].substring(0, 5),
         duracionEstimada: duracion,
         instruccionesEspeciales: esHoras
-          ? `Servicio por horas: ${form.cantidadHoras}h × $${parseInt(form.precioPorHora).toLocaleString('es-CO')}/h. ${form.instruccionesEspeciales?.trim() || ''}`.trim()
-          : (form.instruccionesEspeciales?.trim() || 'Sin instrucciones adicionales'),
+          ? `[${form.tipoPropiedad}] Servicio por horas: ${form.cantidadHoras}h × $${parseInt(form.precioPorHora).toLocaleString('es-CO')}/h. ${form.instruccionesEspeciales?.trim() || ''}`.trim()
+          : `[${form.tipoPropiedad}] ${form.instruccionesEspeciales?.trim() || 'Sin instrucciones adicionales'}`.trim(),
       };
 
       // 1. Crear solicitud en el backend REST
@@ -298,52 +325,114 @@ export default function CreateRequestScreen({ navigation, route }) {
           />
 
           {/* Dirección */}
-          <Text style={styles.label}>Dirección *</Text>
+          <Text style={styles.label}>Ciudad *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Calle, número, barrio, ciudad"
+            placeholder="Ej: Bogotá"
             placeholderTextColor={COLORS.textDisabled}
-            value={form.direccion}
-            onChangeText={v => updateField('direccion', v)}
+            value={form.ciudad}
+            onChangeText={v => { updateField('ciudad', v); setGeocodedCoords(null); }}
           />
+          <Text style={styles.label}>Barrio</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Chapinero"
+            placeholderTextColor={COLORS.textDisabled}
+            value={form.barrio}
+            onChangeText={v => { updateField('barrio', v); setGeocodedCoords(null); }}
+          />
+          <Text style={styles.label}>Dirección específica *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Calle 45 # 12-34, apto 501"
+              placeholderTextColor={COLORS.textDisabled}
+              value={form.direccion}
+              onChangeText={v => { updateField('direccion', v); setGeocodedCoords(null); }}
+              onBlur={geocodeAddress}
+              returnKeyType="done"
+              onSubmitEditing={geocodeAddress}
+            />
+            <TouchableOpacity onPress={geocodeAddress} style={{ padding: 8 }}>
+              {isGeocoding
+                ? <ActivityIndicator size="small" color={COLORS.accent} />
+                : <Ionicons name="location-outline" size={22} color={geocodedCoords ? COLORS.accent : COLORS.textDisabled} />
+              }
+            </TouchableOpacity>
+          </View>
+          {geocodedCoords && (
+            <Text style={{ color: COLORS.accent, fontSize: 12, marginTop: -8, marginBottom: 8 }}>
+              Ubicación encontrada ✓
+            </Text>
+          )}
 
           {/* Detalles del espacio */}
           <Text style={styles.sectionTitle}>Detalles del espacio</Text>
-          <View style={styles.row}>
-            <View style={styles.halfField}>
-              <Text style={styles.miniLabel}>m²</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="50"
-                placeholderTextColor={COLORS.textDisabled}
-                value={form.metrosCuadrados}
-                onChangeText={v => updateField('metrosCuadrados', v)}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.halfField}>
-              <Text style={styles.miniLabel}>Habitaciones</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="2"
-                placeholderTextColor={COLORS.textDisabled}
-                value={form.cantidadHabitaciones}
-                onChangeText={v => updateField('cantidadHabitaciones', v)}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.halfField}>
-              <Text style={styles.miniLabel}>Baños</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="1"
-                placeholderTextColor={COLORS.textDisabled}
-                value={form.cantidadBanos}
-                onChangeText={v => updateField('cantidadBanos', v)}
-                keyboardType="numeric"
-              />
-            </View>
+
+          {/* Tipo de propiedad */}
+          <Text style={styles.label}>Tipo de propiedad</Text>
+          <View style={styles.propGrid}>
+            {TIPOS_PROPIEDAD.map(t => {
+              const active = form.tipoPropiedad === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.propCard, active && styles.propCardActive]}
+                  onPress={() => {
+                    updateField('tipoPropiedad', t.id);
+                    updateField('metrosCuadrados', t.defaultM2.toString());
+                    Haptics.selectionAsync();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons
+                    name={t.icon}
+                    size={28}
+                    color={active ? COLORS.white : COLORS.accent}
+                  />
+                  <Text style={[styles.propLabel, active && styles.propLabelActive]}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+
+          {/* Habitaciones */}
+          <Text style={styles.label}>Habitaciones</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}
+            contentContainerStyle={styles.chipRow}>
+            {Array.from({ length: 11 }, (_, i) => i).map(n => {
+              const active = parseInt(form.cantidadHabitaciones) === n;
+              return (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => { updateField('cantidadHabitaciones', n.toString()); Haptics.selectionAsync(); }}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{n}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Baños */}
+          <Text style={styles.label}>Baños</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}
+            contentContainerStyle={styles.chipRow}>
+            {Array.from({ length: 11 }, (_, i) => i).map(n => {
+              const active = parseInt(form.cantidadBanos) === n;
+              return (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => { updateField('cantidadBanos', n.toString()); Haptics.selectionAsync(); }}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{n}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
           {/* Mascotas toggle */}
           <TouchableOpacity
@@ -573,5 +662,67 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: '#666',
     fontWeight: '600',
+  },
+
+  // ── Tipo de propiedad ──────────────────────────────────────────────────────
+  propGrid: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  propCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    gap: 6,
+  },
+  propCardActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  propLabel: {
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  propLabelActive: {
+    color: COLORS.white,
+  },
+
+  // ── Pickers de número ──────────────────────────────────────────────────────
+  chipScroll: {
+    marginBottom: SPACING.md,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingVertical: 4,
+  },
+  chip: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  chipText: {
+    fontSize: TYPOGRAPHY.md,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  chipTextActive: {
+    color: COLORS.white,
   },
 });

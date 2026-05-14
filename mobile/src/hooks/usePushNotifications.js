@@ -240,8 +240,8 @@ export function usePushNotifications() {
 
     return () => {
       mounted = false;
-      notifListener.current    && Notifications.removeNotificationSubscription(notifListener.current);
-      responseListener.current && Notifications.removeNotificationSubscription(responseListener.current);
+      notifListener.current?.remove?.();
+      responseListener.current?.remove?.();
       appStateSub.remove();
     };
   }, [user?.id, registerDevice, handleResponse, resetBadge]);

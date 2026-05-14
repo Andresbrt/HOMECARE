@@ -98,6 +98,27 @@ export const signInWithGoogle = async () => {
   return userCredential.user.getIdToken();
 };
 
+/**
+ * Igual que signInWithGoogle pero devuelve el Google idToken directamente
+ * (sin intercambiarlo por un Firebase ID token).
+ * Usado por el flujo Supabase en AuthContext.
+ */
+export const getGoogleIdTokenNative = async () => {
+  if (!_googleNativeReady || !_GoogleSignin) {
+    throw Object.assign(new Error('EXPO_GO_USE_HOOK'), { code: 'EXPO_GO_USE_HOOK' });
+  }
+  _GoogleSignin.configure({
+    webClientId : GOOGLE_CLIENT_ID,
+    offlineAccess: false,
+  });
+  await _GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  const response = await _GoogleSignin.signIn();
+  if (!_isSuccessResponse(response)) {
+    throw new Error('Inicio de sesión con Google cancelado');
+  }
+  return response.data.idToken;
+};
+
 // ─── Utilidades Firebase generales ───────────────────────────────────────
 
 export const firebaseSignUp = async (email, password, displayName) => {

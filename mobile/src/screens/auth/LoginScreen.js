@@ -25,13 +25,12 @@ import Animated, {
   withTiming,
   interpolate,
 } from 'react-native-reanimated';
+import { Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { useAuth } from '../../context/AuthContext';
-import { signInWithGoogleCredential } from '../../services/firebaseAuthService';
-import { GOOGLE_IDS } from '../../services/firebaseAuthService';
+import { supabase } from '../../config/supabase';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 // Necesario para que expo-web-browser cierre la sesiÃ³n correctamente al retornar
@@ -141,72 +140,62 @@ export default function LoginScreen({ navigation }) {
     elevation:     interpolate(btnGlow.value, [0, 1], [3, 10]),
   }));
 
-  // â”€â”€â”€ Hook expo-auth-session / Google (Expo Go flow) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId    : GOOGLE_IDS.webClientId,
-    iosClientId    : GOOGLE_IDS.iosClientId,
-    // androidClientId: aÃ±adir cuando tengas el SHA-1 en Firebase Console
-  });
-
-  // Maneja la respuesta del browser OAuth2 (solo en Expo Go)
+  // --- Retorno del OAuth de Supabase (Expo Go / nativo via WebBrowser) ---
   useEffect(() => {
-    if (response?.type !== 'success') return;
-
-    const finishGoogleLogin = async () => {
-      setGoogleLoading(true);
-      try {
-        const { authentication } = response;
-        // Si Google devuelve id_token lo usamos; si no, usamos access_token
-        const firebaseIdToken = await signInWithGoogleCredential(
-          authentication.accessToken,
-          authentication.idToken ?? null,
-        );
-        const result = await loginWithGoogle(firebaseIdToken);
-        if (result.isNewUser) {
-          // Nuevo usuario â†’ pedir rol antes de completar el login
-          setPendingGToken(firebaseIdToken);
-          setRoleModal(true);
-        } else if (!result.success) {
-          Alert.alert('Error', result.message || 'Error al iniciar sesiÃ³n con Google');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        setGoogleLoading(true);
+        try {
+          const result = await loginWithGoogle(session.access_token);
+          if (result.isNewUser) {
+            setPendingGToken(session.access_token);
+            setRoleModal(true);
+          } else if (!result.success) {
+            Alert.alert('Error', result.message || 'Error al iniciar sesion con Google');
+          }
+        } catch (err) {
+          Alert.alert('Error', err.message || 'Error al iniciar sesion con Google');
+        } finally {
+          setGoogleLoading(false);
         }
-      } catch (err) {
-        Alert.alert('Error', err.message || 'Error al iniciar sesiÃ³n con Google');
-      } finally {
-        setGoogleLoading(false);
       }
-    };
+    });
+    return () => subscription.unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    finishGoogleLogin();
-  }, [response]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // â”€â”€â”€ BotÃ³n "Continuar con Google" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Boton "Continuar con Google" ---
   const handleGoogleLogin = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setGoogleLoading(true);
+    try {
+      const redirectTo = 'homecare://auth/callback';
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error('No se obtuvo URL de autenticacion');
 
-    // Intento 1: flujo nativo (@react-native-google-signin)
-    const result = await loginWithGoogle();
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
-    if (result.needsHook) {
-      // Expo Go â†’ activar el hook expo-auth-session
-      await promptAsync();
-      // googleLoading se desactiva cuando el useEffect termine
-      return;
+      if (result.type === 'success' && result.url) {
+        const fragment = result.url.split('#')[1] || '';
+        const params = new URLSearchParams(fragment);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' });
+          return;
+        }
+      }
+      if (result.type !== 'success') {
+        setGoogleLoading(false);
+      }
+    } catch (err) {
+      setGoogleLoading(false);
+      Alert.alert('Error', err.message || 'Error al iniciar sesion con Google');
     }
-
-    setGoogleLoading(false);
-
-    if (result.isNewUser) {
-      // Nuevo usuario nativo â†’ pedir rol
-      setPendingGToken(result.pendingFirebaseToken);
-      setRoleModal(true);
-      return;
-    }
-
-    if (!result.success) {
-      Alert.alert('Error', result.message || 'Error al iniciar sesiÃ³n con Google');
-    }
-  }, [loginWithGoogle, promptAsync]);
+  }, [loginWithGoogle]);
 
   // â”€â”€â”€ Confirmar selecciÃ³n de rol (usuarios nuevos Google) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleRoleSelected = useCallback(async (selectedRole) => {
@@ -264,10 +253,11 @@ export default function LoginScreen({ navigation }) {
         >
           {/* â”€â”€ Logo â”€â”€ */}
           <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="home" size={28} color={PROF.accent} />
-            </View>
-            <Text style={styles.logoText}>HOMECARE</Text>
+            <Image
+              source={require('../../../assets/icon.png')}
+              style={styles.logoImg}
+              resizeMode="contain"
+            />
             <Text style={styles.tagline}>Servicios a tu alcance</Text>
           </Animated.View>
 
@@ -364,9 +354,9 @@ export default function LoginScreen({ navigation }) {
 
             {/* Google */}
             <TouchableOpacity
-              style={[styles.googleBtn, (googleLoading || !request) && styles.btnDisabled]}
+              style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
               onPress={handleGoogleLogin}
-              disabled={googleLoading || !request}
+              disabled={googleLoading}
               activeOpacity={0.85}
             >
               {googleLoading ? (
@@ -449,22 +439,13 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
     marginTop: SPACING.md,
   },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: PROF.accentDim,
-    borderWidth: 1.5,
-    borderColor: PROF.accentGlow,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImg: {
+    width: 120,
+    height: 120,
     marginBottom: 14,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: PROF.textPrimary,
-    letterSpacing: 4,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(73,192,188,0.35)',
   },
   tagline: {
     fontSize: TYPOGRAPHY.sm,
