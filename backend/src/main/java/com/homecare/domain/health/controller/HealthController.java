@@ -19,12 +19,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Controlador para health checks y mÃ©tricas de la aplicaciÃ³n
+ * Controlador para health checks y métricas de la aplicación
  */
 @RestController
 @RequestMapping("/api/health")
 @RequiredArgsConstructor
-@Tag(name = "Health Check", description = "Endpoints para verificar el estado de la aplicaciÃ³n")
+@Tag(name = "Health Check", description = "Endpoints para verificar el estado de la aplicación")
 @Slf4j
 public class HealthController {
 
@@ -34,17 +34,17 @@ public class HealthController {
     private final Optional<BuildProperties> buildProperties;
 
     /**
-     * Health check bÃ¡sico
+     * Health check básico
      */
     @GetMapping
-    @Operation(summary = "Health check bÃ¡sico de la aplicaciÃ³n")
+    @Operation(summary = "Health check básico de la aplicación")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         Map<String, Object> response = new HashMap<>();
         
         try {
             response.put("status", "UP");
             response.put("timestamp", LocalDateTime.now());
-            response.put("service", "HomeCarÃ© API");
+            response.put("service", "HomeCaré API");
             response.put("version", buildProperties.map(BuildProperties::getVersion).orElse("dev"));
             response.put("environment", environment.getProperty("spring.profiles.active", "default"));
             
@@ -96,7 +96,7 @@ public class HealthController {
                 allServicesUp = false;
             }
             
-            // AWS S3 health (si estÃ¡ configurado)
+            // AWS S3 health (si está configurado)
             try {
                 Map<String, Object> s3Health = externalServicesHealthService.checkS3Health();
                 services.put("s3Storage", s3Health);
@@ -124,10 +124,10 @@ public class HealthController {
     }
 
     /**
-     * MÃ©tricas bÃ¡sicas de la aplicaciÃ³n
+     * Métricas básicas de la aplicación
      */
     @GetMapping("/metrics")
-    @Operation(summary = "MÃ©tricas bÃ¡sicas de la aplicaciÃ³n")
+    @Operation(summary = "Métricas básicas de la aplicación")
     public ResponseEntity<Map<String, Object>> getMetrics() {
         Map<String, Object> metrics = new HashMap<>();
         
@@ -163,7 +163,7 @@ public class HealthController {
             return ResponseEntity.ok(metrics);
             
         } catch (Exception e) {
-            log.error("Error obteniendo mÃ©tricas: {}", e.getMessage(), e);
+            log.error("Error obteniendo métricas: {}", e.getMessage(), e);
             metrics.put("error", e.getMessage());
             return ResponseEntity.status(500).body(metrics);
         }

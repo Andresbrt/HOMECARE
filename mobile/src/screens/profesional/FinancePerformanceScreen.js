@@ -3,10 +3,10 @@
  * Tabs internos: Finanzas | Rendimiento
  * Evita navegación excesiva — todo en una sola pantalla.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  StatusBar, SafeAreaView, useWindowDimensions,
+  StatusBar, SafeAreaView, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -17,43 +17,39 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
+import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../config/api';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
 
-// ─── Datos mock Finanzas ──────────────────────────────────────────────────────
-const BALANCE = 328630;
-const FIN_STATS = [
-  { label: 'Hoy',    amount: '185.000', delta: '+12%' },
-  { label: 'Semana', amount: '780.000', delta: '+8%'  },
-  { label: 'Mes',    amount: '2.340.000', delta: '+22%' },
-];
-const TRANSACTIONS = [
-  { id: '1', type: 'income', title: 'Colorimetría Interior', client: 'María G.', amount: 85000,  date: 'Hoy, 10:30 AM', icon: 'color-palette' },
-  { id: '2', type: 'income', title: 'Análisis de Fachada',   client: 'Ana L.',   amount: 60000,  date: 'Hoy, 8:00 AM',  icon: 'home-outline' },
-  { id: '3', type: 'withdrawal', title: 'Retiro a Bancolombia', client: null, amount: -120000, date: 'Ayer, 4:00 PM', icon: 'card-outline' },
-  { id: '4', type: 'income', title: 'Diagnóstico Cromático', client: 'Laura M.', amount: 60000,  date: 'Ayer, 2:30 PM', icon: 'eye-outline' },
-  { id: '5', type: 'bonus',  title: 'Bono Nivel Pro',    client: null, amount: 25000,  date: 'Lun, 9:00 AM',  icon: 'star' },
-];
-
-// ─── Datos mock Rendimiento ──────────────────────────────────────────────────
-const WEEKLY = [
-  { day: 'L', value: 0.6, svcs: 4 }, { day: 'M', value: 0.85, svcs: 6 },
-  { day: 'X', value: 0.45, svcs: 3 }, { day: 'J', value: 1.0, svcs: 7 },
-  { day: 'V', value: 0.75, svcs: 5 }, { day: 'S', value: 0.9, svcs: 6 },
-  { day: 'D', value: 0.55, svcs: 4 },
-];
+// ─── Constantes UI ────────────────────────────────────────────────────────────
 const BAR_MAX = 80;
-const METRICS = [
-  { icon: 'star', label: 'Calificación', value: '4.9', sub: 'Promedio', color: '#F5A623' },
-  { icon: 'checkmark-circle', label: 'Completados', value: '127', sub: 'Servicios', color: PROF.accent },
-  { icon: 'trending-up', label: 'Tasa Éxito', value: '98%', sub: 'Confirmados', color: '#4CAF50' },
-  { icon: 'time', label: 'Hrs Activo', value: '164', sub: 'Este mes', color: '#9C27B0' },
-];
-const REVIEWS = [
-  { author: 'María García', text: 'Excelente servicio, muy profesional y puntual.', rating: 5, time: 'Hace 2 días' },
-  { author: 'Laura Martínez', text: 'Llegó a tiempo y el trabajo fue de alta calidad.', rating: 5, time: 'Hace 4 días' },
-  { author: 'Sandra Patiño', text: 'Buen servicio, aunque llegó un poco tarde.', rating: 4, time: 'Hace 1 semana' },
-];
+
+// Mapea el método de pago del backend a texto legible
+function mapMetodo(m) {
+  if (!m) return 'Pago recibido';
+  if (m.includes('TARJETA_CREDITO')) return 'Pago con tarjeta crédito';
+  if (m.includes('TARJETA_DEBITO'))  return 'Pago con tarjeta débito';
+  if (m.includes('EFECTIVO'))        return 'Pago en efectivo';
+  if (m.includes('MERCADO_PAGO'))    return 'Pago con Mercado Pago';
+  return 'Pago recibido';
+}
+
+// Formatea fecha relativa
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 60)  return `Hace ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24)    return `Hace ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1)   return 'Ayer';
+  if (diffD < 7)     return `Hace ${diffD} días`;
+  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+}
 
 // ─── Componente: Tab Switcher ────────────────────────────────────────────────
 function TabSwitcher({ activeTab, setActiveTab }) {
@@ -222,7 +218,111 @@ function ReviewItem({ review, index }) {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function FinancePerformanceScreen({ navigation }) {
   const { width } = useWindowDimensions();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
+
+  // ── Estado de datos reales ────────────────────────────────────────────────
+  const [payments, setPayments]   = useState([]);
+  const [stats, setStats]         = useState(null);
+  const [reviews, setReviews]     = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setDataLoading(true);
+      const [pmtRes, statsRes] = await Promise.all([
+        apiFetch('/payments/me'),
+        apiFetch('/usuarios/estadisticas'),
+      ]);
+      if (cancelled) return;
+      if (pmtRes.ok)   setPayments(pmtRes.data ?? []);
+      if (statsRes.ok) setStats(statsRes.data);
+
+      // Cargar reseñas si tenemos ID de usuario
+      if (user?.id) {
+        const revRes = await apiFetch(`/calificaciones/usuario/${user.id}`);
+        if (!cancelled && revRes.ok) setReviews(revRes.data ?? []);
+      }
+      setDataLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  // ── Datos computados ─────────────────────────────────────────────────────
+  const approvedPayments = useMemo(
+    () => payments.filter(p => p.estado === 'APROBADO'),
+    [payments],
+  );
+
+  const balance = useMemo(
+    () => approvedPayments.reduce((s, p) => s + parseFloat(p.montoProveedor ?? 0), 0),
+    [approvedPayments],
+  );
+
+  const finStats = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek  = new Date(startOfToday.getTime() - 6 * 86400000);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sum = (list) => list.reduce((s, p) => s + parseFloat(p.montoProveedor ?? 0), 0);
+    const fmt = (n) => n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+    const todayPmts = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfToday);
+    const weekPmts  = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfWeek);
+    const monthPmts = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfMonth);
+    return [
+      { label: 'Hoy',    amount: fmt(sum(todayPmts)), delta: `${todayPmts.length} serv.` },
+      { label: 'Semana', amount: fmt(sum(weekPmts)),  delta: `${weekPmts.length} serv.`  },
+      { label: 'Mes',    amount: fmt(sum(monthPmts)), delta: `${monthPmts.length} serv.` },
+    ];
+  }, [approvedPayments]);
+
+  const transactions = useMemo(
+    () => payments.slice(0, 10).map(p => ({
+      id: String(p.id),
+      type: p.estado === 'APROBADO' ? 'income' : 'income',
+      title: mapMetodo(p.metodoPago),
+      client: null,
+      amount: p.estado === 'APROBADO'
+        ? parseFloat(p.montoProveedor ?? 0)
+        : -parseFloat(p.monto ?? 0),
+      date: fmtDate(p.aprobadoAt ?? p.createdAt),
+      icon: (p.metodoPago ?? '').includes('TARJETA') ? 'card-outline' : 'cash-outline',
+    })),
+    [payments],
+  );
+
+  const weekly = useMemo(() => {
+    const DAY_LABELS = ['D','L','M','X','J','V','S'];
+    const counts = [0,0,0,0,0,0,0];
+    const now = new Date();
+    approvedPayments.forEach(p => {
+      const d = new Date(p.aprobadoAt ?? p.createdAt);
+      const diffDays = Math.floor((now - d) / 86400000);
+      if (diffDays < 7) counts[d.getDay()]++;
+    });
+    const maxC = Math.max(...counts, 1);
+    return DAY_LABELS.map((day, i) => ({ day, value: counts[i] / maxC, svcs: counts[i] }));
+  }, [approvedPayments]);
+
+  const metrics = useMemo(() => [
+    { icon: 'star',            label: 'Calificación', value: stats?.calificacionPromedio != null ? Number(stats.calificacionPromedio).toFixed(1) : '–', sub: 'Promedio',   color: '#F5A623' },
+    { icon: 'checkmark-circle',label: 'Completados',  value: String(stats?.serviciosCompletados ?? 0),                                                    sub: 'Servicios', color: PROF.accent },
+    { icon: 'trending-up',     label: 'Total ganado', value: stats?.totalGanado != null ? `$${(Number(stats.totalGanado)/1000).toFixed(0)}K` : '–',       sub: 'COP',        color: '#4CAF50'  },
+    { icon: 'people-outline',  label: 'Reseñas',      value: String(stats?.totalCalificaciones ?? reviews.length),                                         sub: 'Recibidas',  color: '#9C27B0'  },
+  ], [stats, reviews]);
+
+  const uiReviews = useMemo(
+    () => reviews.slice(0, 5).map(r => ({
+      author: r.calificadorNombre ?? 'Cliente',
+      text:   r.comentario ?? '',
+      rating: r.puntuacion ?? 5,
+      time:   fmtDate(r.createdAt),
+    })),
+    [reviews],
+  );
+
+  const serviciosCompletados = stats?.serviciosCompletados ?? 0;
 
   // Animación del balance
   const balScale = useSharedValue(0.9);
@@ -253,7 +353,7 @@ export default function FinancePerformanceScreen({ navigation }) {
 
   // ── Tab: Finanzas ──
   const FinanzasTab = () => {
-    const finLevel = computeLevel(user?.serviciosCompletados ?? 0);
+    const finLevel = computeLevel(serviciosCompletados);
     return (
     <View>
       {/* Saldo principal */}
@@ -269,7 +369,7 @@ export default function FinancePerformanceScreen({ navigation }) {
         </View>
         <Animated.View style={balStyle}>
           <Text style={[fp.balAmount, { fontSize: Math.min(40, width * 0.1) }]}>
-            COL$ {(BALANCE / 100).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
+            COL$ {(balance / 100).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
           </Text>
         </Animated.View>
         <View style={fp.balDelta}>
@@ -296,7 +396,7 @@ export default function FinancePerformanceScreen({ navigation }) {
 
       {/* Stats rápidos */}
       <View style={fp.finStatsRow}>
-        {FIN_STATS.map((s, i) => (
+        {finStats.map((s, i) => (
           <Animated.View key={s.label} entering={FadeInDown.delay(i * 80).duration(250)} style={fp.finStatFlex}>
             <GlassCard variant="accent" animated={false} padding={SPACING.md}>
               <Text style={fp.finStatLabel}>{s.label}</Text>
@@ -335,19 +435,29 @@ export default function FinancePerformanceScreen({ navigation }) {
 
       {/* Movimientos */}
       <Text style={fp.sectionTitle}>Movimientos recientes</Text>
-      {TRANSACTIONS.map((tx, i) => <TxItem key={tx.id} item={tx} index={i} />)}
+      {dataLoading ? (
+        <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+          <ActivityIndicator color={PROF.accent} />
+        </View>
+      ) : transactions.length === 0 ? (
+        <GlassCard><Text style={{ color: PROF.textMuted, textAlign: 'center', padding: 16 }}>Sin movimientos aún</Text></GlassCard>
+      ) : (
+        transactions.map((tx, i) => <TxItem key={tx.id} item={tx} index={i} />)
+      )}
     </View>
     );
   };
 
   // ── Tab: Rendimiento ──
   const RendimientoTab = () => {
-    const serviciosTrimestre = user?.serviciosCompletados ?? 20;
-    const rndLevel = computeLevel(serviciosTrimestre);
+    const rndLevel = computeLevel(serviciosCompletados);
     const quarterLabel = getQuarterLabel();
     const progressW = useSharedValue(0);
     useEffect(() => { progressW.value = withTiming(rndLevel.progress * 100, { duration: 1000, easing: Easing.out(Easing.cubic) }); }, [rndLevel.progress]);
     const progStyle = useAnimatedStyle(() => ({ width: `${progressW.value}%` }));
+
+    const rating = stats?.calificacionPromedio != null ? Number(stats.calificacionPromedio) : 0;
+    const totalCals = stats?.totalCalificaciones ?? 0;
 
     return (
       <View>
@@ -355,9 +465,9 @@ export default function FinancePerformanceScreen({ navigation }) {
         <GlassCard style={fp.scoreCard}>
           <LinearGradient colors={['rgba(73,192,188,0.15)', 'rgba(14,77,104,0.2)']} style={fp.scoreGrad}>
             <View style={fp.scoreLeft}>
-              <Text style={fp.scoreNum}>4.9</Text>
-              <View style={fp.scoreStars}>{[1,2,3,4,5].map(s => <Ionicons key={s} name="star" size={18} color={PROF.accent} />)}</View>
-              <Text style={fp.scoreSub}>Basado en 127 servicios</Text>
+              <Text style={fp.scoreNum}>{rating > 0 ? rating.toFixed(1) : '–'}</Text>
+              <View style={fp.scoreStars}>{[1,2,3,4,5].map(s => <Ionicons key={s} name={s <= Math.round(rating) ? 'star' : 'star-outline'} size={18} color={PROF.accent} />)}</View>
+              <Text style={fp.scoreSub}>Basado en {totalCals} {totalCals === 1 ? 'servicio' : 'servicios'}</Text>
             </View>
             <View style={fp.scoreRight}>
               {[5,4,3,2,1].map((r, i) => (
@@ -374,20 +484,20 @@ export default function FinancePerformanceScreen({ navigation }) {
 
         {/* Métricas 2x2 */}
         <View style={fp.metricsGrid}>
-          {METRICS.map((m, i) => <MetricCard key={m.label} {...m} index={i} />)}
+          {metrics.map((m, i) => <MetricCard key={m.label} {...m} index={i} />)}
         </View>
 
         {/* Gráfico semanal */}
         <View style={fp.secHead}>
           <Text style={fp.secHeadTitle}>Servicios esta semana</Text>
-          <View style={fp.weekBadge}><Text style={fp.weekBadgeText}>35 total</Text></View>
+          <View style={fp.weekBadge}><Text style={fp.weekBadgeText}>{weekly.reduce((s,d)=>s+d.svcs,0)} total</Text></View>
         </View>
         <GlassCard style={fp.chartCard}>
           <View style={fp.chartHead}>
             <Text style={fp.chartTitle}>Actividad diaria</Text>
           </View>
           <View style={fp.chartContainer}>
-            {WEEKLY.map((d, i) => <BarItem key={d.day} data={d} index={i} isToday={i === 6} />)}
+            {weekly.map((d, i) => <BarItem key={d.day} data={d} index={i} isToday={i === new Date().getDay()} />)}
           </View>
         </GlassCard>
 
@@ -412,7 +522,7 @@ export default function FinancePerformanceScreen({ navigation }) {
               </Animated.View>
             </View>
             <View style={fp.levelStats}>
-              <View style={fp.levelStat}><Text style={fp.levelStatVal}>{serviciosTrimestre}</Text><Text style={fp.levelStatLabel}>Este trimestre</Text></View>
+              <View style={fp.levelStat}><Text style={fp.levelStatVal}>{serviciosCompletados}</Text><Text style={fp.levelStatLabel}>Este trimestre</Text></View>
               <View style={fp.levelDivider} />
               <View style={fp.levelStat}><Text style={fp.levelStatVal}>{rndLevel.next ?? '∞'}</Text><Text style={fp.levelStatLabel}>Meta siguiente</Text></View>
               <View style={fp.levelDivider} />
@@ -427,7 +537,13 @@ export default function FinancePerformanceScreen({ navigation }) {
           <Text style={fp.secHeadTitle}>Reseñas recientes</Text>
           <TouchableOpacity><Text style={fp.secLink}>Ver todas</Text></TouchableOpacity>
         </View>
-        {REVIEWS.map((r, i) => <ReviewItem key={r.author} review={r} index={i} />)}
+        {dataLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 16 }}><ActivityIndicator color={PROF.accent} /></View>
+        ) : uiReviews.length === 0 ? (
+          <GlassCard><Text style={{ color: PROF.textMuted, textAlign: 'center', padding: 16 }}>Sin reseñas aún</Text></GlassCard>
+        ) : (
+          uiReviews.map((r, i) => <ReviewItem key={r.author + i} review={r} index={i} />)
+        )}
       </View>
     );
   };

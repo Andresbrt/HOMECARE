@@ -14,10 +14,10 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
     // Notificaciones del usuario
     List<Notificacion> findByUsuarioIdOrderByCreatedAtDesc(Long usuarioId);
 
-    // Notificaciones no leÃ­das
+    // Notificaciones no leídas
     List<Notificacion> findByUsuarioIdAndLeidaFalseOrderByCreatedAtDesc(Long usuarioId);
 
-    // Contar notificaciones no leÃ­das
+    // Contar notificaciones no leídas
     long countByUsuarioIdAndLeidaFalse(Long usuarioId);
 
     // Notificaciones por tipo
@@ -31,7 +31,7 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
         """)
     List<Notificacion> findNotificacionesNoEnviadas();
 
-    // Marcar todas como leÃ­das
+    // Marcar todas como leídas
     @Query("""
         UPDATE Notificacion n
         SET n.leida = true, n.leidaAt = CURRENT_TIMESTAMP

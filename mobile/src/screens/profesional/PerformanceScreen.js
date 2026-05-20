@@ -2,7 +2,7 @@
  * Professional PerformanceScreen — Desempeño y Estadísticas
  * Métricas premium: calificaciones, horas activas, gráfico semanal
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import GlassCard from '../../components/shared/GlassCard';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
+import { apiFetch } from '../../config/api';
 
 // Datos del gráfico semanal (porcentaje de actividad)
 const WEEKLY_DATA = [
@@ -179,9 +180,21 @@ function ReviewItem({ text, rating, author, time, index }) {
 
 export default function ProfPerformanceScreen({ navigation }) {
   const headerAnim = useSharedValue(0);
+  const [serviciosTrimestre, setServiciosTrimestre] = useState(0);
 
   useEffect(() => {
     headerAnim.value = withTiming(1, { duration: 500 });
+    // Carga servicios del trimestre desde el backend
+    const now = new Date();
+    const month = now.getMonth();
+    const quarter = Math.floor(month / 3);
+    const quarterStart = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
+    apiFetch(`/usuarios/estadisticas?desde=${quarterStart}`)
+      .then((data) => {
+        const count = data?.serviciosCompletados ?? data?.totalServicios ?? data?.servicios ?? 0;
+        setServiciosTrimestre(Number(count));
+      })
+      .catch(() => { /* mantiene 0 si falla */ });
   }, []);
 
   const headerStyle = useAnimatedStyle(() => ({
@@ -196,8 +209,7 @@ export default function ProfPerformanceScreen({ navigation }) {
     { icon: 'time', label: 'Hrs Activo', value: '164', sub: 'Este mes', color: '#9C27B0', index: 3 },
   ];
 
-  // Servicios del trimestre (mock — en producción: filtrar por fecha del trimestre desde backend)
-  const serviciosTrimestre = 20;
+  // Servicios del trimestre desde API
   const quarterLabel = getQuarterLabel();
   const level = computeLevel(serviciosTrimestre);
 

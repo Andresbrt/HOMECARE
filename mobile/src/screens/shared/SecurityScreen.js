@@ -2,7 +2,7 @@
  * SecurityScreen — Seguridad Homecare 2026
  * Contraseña, 2FA, dispositivos conectados, historial de actividad
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,20 +34,20 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../config/api';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
-const MOCK_DEVICES = [
-  { id: '1', name: 'iPhone 14 Pro',     os: 'iOS 17.4',     lastSeen: 'Ahora',       current: true  },
-  { id: '2', name: 'Samsung Galaxy S23',os: 'Android 14',   lastSeen: 'Hace 2h',     current: false },
-  { id: '3', name: 'MacBook Pro',        os: 'macOS 14',     lastSeen: 'Hace 1 dia',  current: false },
-];
-
-const MOCK_ACTIVITY = [
-  { id: '1', icon: 'log-in-outline',        text: 'Inicio de sesion',         time: 'Hace 5 min',    risk: 'safe'    },
-  { id: '2', icon: 'key-outline',           text: 'Cambio de contrasena',     time: 'Hace 3 dias',   risk: 'warning' },
-  { id: '3', icon: 'shield-checkmark',      text: 'Verificacion OTP exitosa', time: 'Hace 3 dias',   risk: 'safe'    },
-  { id: '4', icon: 'phone-portrait-outline',text: 'Nuevo dispositivo',        time: 'Hace 1 semana', risk: 'warning' },
-];
+// Detecta el nombre del dispositivo actual según la plataforma
+function getCurrentDeviceName() {
+  if (Platform.OS === 'ios') return 'iPhone (iOS)';
+  if (Platform.OS === 'android') return 'Android';
+  return 'Dispositivo';
+}
+function getCurrentDeviceOS() {
+  return Platform.OS === 'ios'
+    ? `iOS ${Platform.Version}`
+    : `Android ${Platform.Version}`;
+}
 
 // ─── Row de acción ────────────────────────────────────────────────────────────
 function ActionRow({ icon, title, subtitle, onPress, rightNode, delay = 0, danger = false }) {
@@ -85,16 +86,22 @@ function ChangePasswordModal({ visible, onClose }) {
   const [showB,   setShowB]   = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!current || !next || !confirm) { Alert.alert('Campos requeridos', 'Completa todos los campos.'); return; }
-    if (next.length < 8)               { Alert.alert('Contrasena debil', 'Debe tener al menos 8 caracteres.'); return; }
-    if (next !== confirm)              { Alert.alert('No coinciden', 'Las contrasenas nuevas no coinciden.'); return; }
+    if (next.length < 8)               { Alert.alert('Contraseña débil', 'Debe tener al menos 8 caracteres.'); return; }
+    if (next !== confirm)              { Alert.alert('No coinciden', 'Las contraseñas nuevas no coinciden.'); return; }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert('Exito', 'Contrasena actualizada correctamente.');
+    const result = await apiFetch('/auth/cambiar-password', {
+      method: 'POST',
+      body: JSON.stringify({ passwordActual: current, passwordNueva: next }),
+    });
+    setLoading(false);
+    if (result.ok) {
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente.');
       onClose();
-    }, 1200);
+    } else {
+      Alert.alert('Error', result.error ?? 'No se pudo actualizar la contraseña. Verifica tu contraseña actual.');
+    }
   };
 
   const Field = ({ label, value, onChangeText, show, setShow, placeholder }) => (
@@ -139,17 +146,25 @@ function ChangePasswordModal({ visible, onClose }) {
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 export default function SecurityScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [twoFA, setTwoFA] = useState(false);
-  const [devices, setDevices] = useState(MOCK_DEVICES);
+  const [sessionStarted] = useState(() => new Date());
 
-  const handleRevokeDevice = useCallback((id) => {
-    Alert.alert('Revocar dispositivo', '¿Cerrar sesión en este dispositivo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Revocar', style: 'destructive', onPress: () => setDevices(d => d.filter(x => x.id !== id)) },
-    ]);
-  }, []);
+  // Dispositivo actual — información real del dispositivo
+  const currentDevice = {
+    id: 'current',
+    name: getCurrentDeviceName(),
+    os: getCurrentDeviceOS(),
+    lastSeen: 'Ahora',
+    current: true,
+  };
+
+  // Actividad de sesión actual (datos reales del usuario autenticado)
+  const sessionActivity = [
+    { id: '1', icon: 'log-in-outline',   text: 'Sesión iniciada',           time: 'Ahora',     risk: 'safe' },
+    ...(user?.email ? [{ id: '2', icon: 'person-outline', text: `Cuenta: ${user.email}`, time: 'Sesión activa', risk: 'safe' }] : []),
+  ];
 
   const handleLogoutAll = useCallback(() => {
     Alert.alert('Cerrar todas las sesiones', '¿Estás seguro? Se cerrará sesión en todos los dispositivos.', [
@@ -220,13 +235,13 @@ export default function SecurityScreen({ navigation }) {
         <Animated.View entering={FadeInDown.delay(160).springify().damping(16)}>
           <GlassCard variant="default" style={styles.card}>
             <Text style={styles.cardTitle}>Dispositivos conectados</Text>
-            {devices.map((dev, i) => (
+            {[currentDevice].map((dev, i) => (
               <View key={dev.id}>
                 {i > 0 && <View style={styles.separator} />}
                 <View style={styles.deviceRow}>
                   <View style={styles.deviceIcon}>
                     <Ionicons
-                      name={dev.os.includes('iOS') || dev.os.includes('macOS') ? 'logo-apple' : 'phone-portrait-outline'}
+                      name={Platform.OS === 'ios' ? 'logo-apple' : 'phone-portrait-outline'}
                       size={18}
                       color={dev.current ? PROF.accent : PROF.textMuted}
                     />
@@ -236,11 +251,7 @@ export default function SecurityScreen({ navigation }) {
                     <Text style={styles.deviceSub}>{dev.os} · {dev.lastSeen}</Text>
                     {dev.current && <Text style={styles.deviceCurrent}>Dispositivo actual</Text>}
                   </View>
-                  {!dev.current && (
-                    <TouchableOpacity style={styles.revokeBtn} onPress={() => handleRevokeDevice(dev.id)}>
-                      <Text style={styles.revokeTxt}>Revocar</Text>
-                    </TouchableOpacity>
-                  )}
+                  {/* Dispositivo actual: solo cerrar sesión global */}
                 </View>
               </View>
             ))}
@@ -251,7 +262,7 @@ export default function SecurityScreen({ navigation }) {
         <Animated.View entering={FadeInDown.delay(240).springify().damping(16)}>
           <GlassCard variant="default" style={styles.card}>
             <Text style={styles.cardTitle}>Actividad reciente</Text>
-            {MOCK_ACTIVITY.map((act, i) => (
+            {sessionActivity.map((act, i) => (
               <View key={act.id}>
                 {i > 0 && <View style={styles.separator} />}
                 <View style={styles.activityRow}>

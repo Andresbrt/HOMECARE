@@ -25,7 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/solicitudes")
 @RequiredArgsConstructor
-@Tag(name = "Solicitudes", description = "GestiÃ³n de solicitudes de servicio (Modelo inDriver)")
+@Tag(name = "Solicitudes", description = "Gestión de solicitudes de servicio (Modelo inDriver)")
 @SecurityRequirement(name = "bearerAuth")
 public class SolicitudController {
 

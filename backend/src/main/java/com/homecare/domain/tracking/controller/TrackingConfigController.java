@@ -12,61 +12,61 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 /**
- * Controlador REST para gestiÃ³n de configuraciÃ³n del tracking
+ * Controlador REST para gestión de configuración del tracking
  */
 @RestController
 @RequestMapping("/api/tracking/config")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Tracking Configuration", description = "GestiÃ³n de configuraciÃ³n del sistema de tracking")
+@Tag(name = "Tracking Configuration", description = "Gestión de configuración del sistema de tracking")
 public class TrackingConfigController {
 
     private final TrackingConfigService trackingConfigService;
 
     @GetMapping
-    @Operation(summary = "Obtener configuraciÃ³n actual", 
-               description = "Retorna la configuraciÃ³n actual del sistema de tracking, estado de APIs y estadÃ­sticas de uso")
+    @Operation(summary = "Obtener configuración actual", 
+               description = "Retorna la configuración actual del sistema de tracking, estado de APIs y estadísticas de uso")
     public ResponseEntity<TrackingConfigDTO.ConfigResponse> obtenerConfiguracion() {
         try {
-            log.debug("Obteniendo configuraciÃ³n del sistema de tracking");
+            log.debug("Obteniendo configuración del sistema de tracking");
             
             TrackingConfigDTO.ConfigResponse config = trackingConfigService.obtenerConfiguracion();
             
-            log.info("ConfiguraciÃ³n obtenida exitosamente: intervalo {}s, Google Maps: {}", 
+            log.info("Configuración obtenida exitosamente: intervalo {}s, Google Maps: {}", 
                     config.getUpdateIntervalSeconds(), config.isGoogleMapsEnabled());
             
             return ResponseEntity.ok(config);
         } catch (Exception e) {
-            log.error("Error al obtener configuraciÃ³n del tracking", e);
+            log.error("Error al obtener configuración del tracking", e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     @GetMapping("/performance")
-    @Operation(summary = "Obtener estadÃ­sticas de rendimiento", 
-               description = "Retorna estadÃ­sticas detalladas sobre el rendimiento del sistema de tracking")
+    @Operation(summary = "Obtener estadísticas de rendimiento", 
+               description = "Retorna estadísticas detalladas sobre el rendimiento del sistema de tracking")
     public ResponseEntity<TrackingConfigDTO.PerformanceStats> obtenerEstadisticas() {
         try {
-            log.debug("Obteniendo estadÃ­sticas de rendimiento del tracking");
+            log.debug("Obteniendo estadísticas de rendimiento del tracking");
             
             TrackingConfigDTO.PerformanceStats stats = trackingConfigService.obtenerEstadisticasRendimiento();
             
-            log.info("EstadÃ­sticas obtenidas: {} trackings activos, {} requests/dÃ­a", 
+            log.info("Estadísticas obtenidas: {} trackings activos, {} requests/día", 
                     stats.getActiveTracking(), stats.getRequestsPerDay());
             
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
-            log.error("Error al obtener estadÃ­sticas de rendimiento", e);
+            log.error("Error al obtener estadísticas de rendimiento", e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     @GetMapping("/recommendations")
-    @Operation(summary = "Obtener recomendaciones de optimizaciÃ³n", 
-               description = "Analiza la configuraciÃ³n actual y sugiere optimizaciones para baterÃ­a, costos y rendimiento")
+    @Operation(summary = "Obtener recomendaciones de optimización", 
+               description = "Analiza la configuración actual y sugiere optimizaciones para batería, costos y rendimiento")
     public ResponseEntity<TrackingConfigDTO.OptimizationRecommendation> obtenerRecomendaciones() {
         try {
-            log.debug("Generando recomendaciones de optimizaciÃ³n");
+            log.debug("Generando recomendaciones de optimización");
             
             TrackingConfigDTO.OptimizationRecommendation recommendations = 
                     trackingConfigService.obtenerRecomendaciones();
@@ -82,26 +82,26 @@ public class TrackingConfigController {
     }
 
     @PutMapping("/update")
-    @Operation(summary = "Actualizar configuraciÃ³n de tracking", 
-               description = "Actualiza los parÃ¡metros de configuraciÃ³n del sistema de tracking en tiempo real")
+    @Operation(summary = "Actualizar configuración de tracking", 
+               description = "Actualiza los parámetros de configuración del sistema de tracking en tiempo real")
     public ResponseEntity<TrackingConfigDTO.ConfigResponse> actualizarConfiguracion(
             @Valid @RequestBody TrackingConfigDTO.UpdateConfig updateConfig) {
         try {
-            log.info("Solicitada actualizaciÃ³n de configuraciÃ³n: intervalo {}s, mÃ©todo ETA: {}", 
+            log.info("Solicitada actualización de configuración: intervalo {}s, método ETA: {}", 
                     updateConfig.getUpdateIntervalSeconds(), updateConfig.getEtaCalculationMethod());
             
-            // TODO: Implementar actualizaciÃ³n dinÃ¡mica de configuraciÃ³n
-            // Por ahora retornamos la configuraciÃ³n actual con mensaje informativo
+            // TODO: Implementar actualización dinámica de configuración
+            // Por ahora retornamos la configuración actual con mensaje informativo
             TrackingConfigDTO.ConfigResponse currentConfig = trackingConfigService.obtenerConfiguracion();
             
-            log.warn("ActualizaciÃ³n de configuraciÃ³n pendiente de implementaciÃ³n. " +
-                     "ConfiguraciÃ³n actual mantenida: intervalo {}s", 
+            log.warn("Actualización de configuración pendiente de implementación. " +
+                     "Configuración actual mantenida: intervalo {}s", 
                      currentConfig.getUpdateIntervalSeconds());
             
             return ResponseEntity.ok(currentConfig);
             
         } catch (Exception e) {
-            log.error("Error al actualizar configuraciÃ³n del tracking", e);
+            log.error("Error al actualizar configuración del tracking", e);
             return ResponseEntity.internalServerError().build();
         }
     }

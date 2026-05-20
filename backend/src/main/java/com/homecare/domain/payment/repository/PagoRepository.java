@@ -25,7 +25,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     // Pagos del proveedor
     List<Pago> findByProveedorIdOrderByCreatedAtDesc(Long proveedorId);
 
-    // Pago por transacciÃ³n de Wompi
+    // Pago por transacción de Wompi
     Optional<Pago> findByTransaccionId(String transaccionId);
 
     Optional<Pago> findByReferencia(String referencia);
@@ -81,7 +81,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
         """)
     long countPagosPendientes();
 
-    // MÃ©todos para reportes - retornan lista vacÃ­a por defecto
+    // Métodos para reportes - retornan lista vacía por defecto
     default List<com.homecare.dto.ReportDTO.PagoReporte> findPagosParaReporte(
             java.time.LocalDate fechaInicio, 
             java.time.LocalDate fechaFin) {

@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 
 /**
- * Controlador para geolocalizaciÃ³n en tiempo real del proveedor
- * Combina REST API para operaciones estÃ¡ndar y WebSocket para actualizaciones en tiempo real
+ * Controlador para geolocalización en tiempo real del proveedor
+ * Combina REST API para operaciones estándar y WebSocket para actualizaciones en tiempo real
  */
 @RestController
 @RequestMapping("/api/tracking")
@@ -38,10 +38,10 @@ public class UbicacionController {
 
     /**
      * POST /api/tracking/actualizar
-     * Actualiza la ubicaciÃ³n del proveedor (tambiÃ©n puede usarse vÃ­a REST)
+     * Actualiza la ubicación del proveedor (también puede usarse vía REST)
      */
     @PostMapping("/actualizar")
-    @Operation(summary = "Actualizar ubicaciÃ³n del proveedor", description = "Guarda ubicaciÃ³n actual y notifica a suscriptores de tracking")
+    @Operation(summary = "Actualizar ubicación del proveedor", description = "Guarda ubicación actual y notifica a suscriptores de tracking")
     public ResponseEntity<UbicacionDTO.UbicacionResponse> actualizarUbicacion(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody UbicacionDTO.ActualizarUbicacion dto) {
@@ -57,10 +57,10 @@ public class UbicacionController {
 
     /**
      * GET /api/tracking/solicitud/{solicitudId}/ultima
-     * Obtiene la Ãºltima ubicaciÃ³n conocida del proveedor para una solicitud
+     * Obtiene la última ubicación conocida del proveedor para una solicitud
      */
     @GetMapping("/solicitud/{solicitudId}/ultima")
-    @Operation(summary = "Obtener Ãºltima ubicaciÃ³n", description = "Retorna el Ãºltimo punto reportado por el proveedor para la solicitud")
+    @Operation(summary = "Obtener última ubicación", description = "Retorna el último punto reportado por el proveedor para la solicitud")
     public ResponseEntity<UbicacionDTO.UbicacionResponse> obtenerUltimaUbicacion(
             @PathVariable Long solicitudId,
             @RequestParam Long proveedorId) {
@@ -76,7 +76,7 @@ public class UbicacionController {
 
     /**
      * GET /api/tracking/solicitud/{solicitudId}/trayectoria
-     * Obtiene la trayectoria completa (ruta histÃ³rica) del proveedor
+     * Obtiene la trayectoria completa (ruta histórica) del proveedor
      */
     @GetMapping("/solicitud/{solicitudId}/trayectoria")
     @Operation(summary = "Obtener trayectoria completa", description = "Devuelve historial de puntos del recorrido del proveedor")
@@ -92,10 +92,10 @@ public class UbicacionController {
 
     /**
      * GET /api/tracking/solicitud/{solicitudId}/estadisticas
-     * Obtiene estadÃ­sticas del tracking (velocidad promedio, distancia recorrida, etc.)
+     * Obtiene estadísticas del tracking (velocidad promedio, distancia recorrida, etc.)
      */
     @GetMapping("/solicitud/{solicitudId}/estadisticas")
-    @Operation(summary = "Obtener estadÃ­sticas de tracking", description = "Calcula mÃ©tricas de ruta, velocidad y tiempos del servicio")
+    @Operation(summary = "Obtener estadísticas de tracking", description = "Calcula métricas de ruta, velocidad y tiempos del servicio")
     public ResponseEntity<UbicacionDTO.EstadisticasTracking> obtenerEstadisticas(
             @PathVariable Long solicitudId) {
         
@@ -144,11 +144,11 @@ public class UbicacionController {
 
     /**
      * GET /api/tracking/ruta
-     * Obtiene la ruta Ã³ptima usando Google Maps Directions API
-     * Incluye ETA con trÃ¡fico en tiempo real y pasos de navegaciÃ³n
+     * Obtiene la ruta óptima usando Google Maps Directions API
+     * Incluye ETA con tráfico en tiempo real y pasos de navegación
      */
     @GetMapping("/ruta")
-    @Operation(summary = "Calcular ruta Ã³ptima", description = "Usa Google Maps para devolver distancia, tiempo estimado y pasos de ruta")
+    @Operation(summary = "Calcular ruta óptima", description = "Usa Google Maps para devolver distancia, tiempo estimado y pasos de ruta")
     public ResponseEntity<GoogleMapsService.RutaInfo> obtenerRuta(
             @RequestParam Double latOrigen,
             @RequestParam Double lonOrigen,
@@ -167,14 +167,14 @@ public class UbicacionController {
 
     /**
      * GET /api/tracking/geocode
-     * Convierte una direcciÃ³n de texto a coordenadas GPS
+     * Convierte una dirección de texto a coordenadas GPS
      */
     @GetMapping("/geocode")
-    @Operation(summary = "Geocodificar direcciÃ³n", description = "Convierte una direcciÃ³n textual en coordenadas geogrÃ¡ficas")
+    @Operation(summary = "Geocodificar dirección", description = "Convierte una dirección textual en coordenadas geográficas")
     public ResponseEntity<GoogleMapsService.Coordenadas> geocodificar(
             @RequestParam String direccion) {
         
-        log.info("GET /api/tracking/geocode - DirecciÃ³n: {}", direccion);
+        log.info("GET /api/tracking/geocode - Dirección: {}", direccion);
 
         GoogleMapsService.Coordenadas coords = googleMapsService.geocodificarDireccion(direccion);
 
@@ -189,10 +189,10 @@ public class UbicacionController {
 
     /**
      * WebSocket: /app/tracking/actualizar
-     * Actualiza ubicaciÃ³n en tiempo real vÃ­a WebSocket
-     * El proveedor envÃ­a su ubicaciÃ³n cada 5-10 segundos
+     * Actualiza ubicación en tiempo real vía WebSocket
+     * El proveedor envía su ubicación cada 5-10 segundos
      * 
-     * Broadcast automÃ¡tico a: /topic/tracking/{solicitudId}
+     * Broadcast automático a: /topic/tracking/{solicitudId}
      */
     @MessageMapping("/tracking/actualizar")
     public void actualizarUbicacionWebSocket(
@@ -203,16 +203,16 @@ public class UbicacionController {
                 ((org.springframework.security.authentication.UsernamePasswordAuthenticationToken) principal)
                         .getPrincipal();
 
-        log.debug("WebSocket - ActualizaciÃ³n de ubicaciÃ³n: Proveedor {}, Solicitud {}", 
+        log.debug("WebSocket - Actualización de ubicación: Proveedor {}, Solicitud {}", 
                   userDetails.getId(), dto.getSolicitudId());
 
-        // El servicio se encarga de guardar y transmitir vÃ­a WebSocket
+        // El servicio se encarga de guardar y transmitir vía WebSocket
         ubicacionService.actualizarUbicacion(userDetails.getId(), dto);
     }
 
     /**
      * WebSocket: /topic/tracking/{solicitudId}
-     * Los clientes se suscriben para recibir actualizaciones de ubicaciÃ³n en tiempo real
+     * Los clientes se suscriben para recibir actualizaciones de ubicación en tiempo real
      * 
      * Uso desde frontend:
      * stompClient.subscribe('/topic/tracking/123', (message) => {
@@ -227,14 +227,14 @@ public class UbicacionController {
         
         log.info("Cliente suscrito a tracking de solicitud: {}", solicitudId);
 
-        // Retornar Ãºltima ubicaciÃ³n conocida al suscribirse
+        // Retornar última ubicación conocida al suscribirse
         try {
-            // Obtener la Ãºltima ubicaciÃ³n de cualquier proveedor en esta solicitud
+            // Obtener la última ubicación de cualquier proveedor en esta solicitud
             // Para eso necesitamos obtener el proveedorId de la solicitud
-            // Por simplicidad, retornamos null y el cliente harÃ¡ un GET a /api/tracking/solicitud/{id}/ultima
+            // Por simplicidad, retornamos null y el cliente hará un GET a /api/tracking/solicitud/{id}/ultima
             return null;
         } catch (Exception e) {
-            log.warn("No hay ubicaciÃ³n previa para solicitud {}: {}", solicitudId, e.getMessage());
+            log.warn("No hay ubicación previa para solicitud {}: {}", solicitudId, e.getMessage());
             return null;
         }
     }
@@ -243,16 +243,16 @@ public class UbicacionController {
      * WebSocket: /topic/tracking/{solicitudId}/alertas
      * Los clientes se suscriben para recibir alertas de proximidad
      * 
-     * Alertas automÃ¡ticas cuando el proveedor:
-     * - EstÃ¡ a menos de 1 km
-     * - EstÃ¡ a menos de 500 m
-     * - EstÃ¡ a menos de 100 m
+     * Alertas automáticas cuando el proveedor:
+     * - Está a menos de 1 km
+     * - Está a menos de 500 m
+     * - Está a menos de 100 m
      * - Ha llegado al destino
      */
     @SubscribeMapping("/tracking/{solicitudId}/alertas")
     public void suscribirseAAlertas(@DestinationVariable Long solicitudId) {
         log.info("Cliente suscrito a alertas de proximidad para solicitud: {}", solicitudId);
-        // No retornamos nada, solo confirmamos la suscripciÃ³n
+        // No retornamos nada, solo confirmamos la suscripción
     }
 
     // ==================== ENDPOINTS ADICIONALES ====================

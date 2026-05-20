@@ -18,10 +18,10 @@ public interface CalificacionRepository extends JpaRepository<Calificacion, Long
     // Calificaciones hechas por un usuario
     List<Calificacion> findByCalificadorIdOrderByCreatedAtDesc(Long calificadorId);
 
-    // CalificaciÃ³n de un servicio especÃ­fico
+    // Calificación de un servicio específico
     Optional<Calificacion> findByServicioIdAndCalificadorId(Long servicioId, Long calificadorId);
 
-    // Verificar si ya existe calificaciÃ³n
+    // Verificar si ya existe calificación
     boolean existsByServicioIdAndCalificadorId(Long servicioId, Long calificadorId);
 
     // Contar calificaciones recibidas por un usuario
@@ -43,7 +43,7 @@ public interface CalificacionRepository extends JpaRepository<Calificacion, Long
         """)
     List<Calificacion> findCalificacionesProveedor(@Param("proveedorId") Long proveedorId);
 
-    // DistribuciÃ³n de calificaciones
+    // Distribución de calificaciones
     @Query("""
         SELECT c.puntuacion, COUNT(c)
         FROM Calificacion c

@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/calificaciones")
 @RequiredArgsConstructor
-@Tag(name = "Calificaciones", description = "Sistema de calificaciÃ³n mutua")
+@Tag(name = "Calificaciones", description = "Sistema de calificación mutua")
 @SecurityRequirement(name = "bearerAuth")
 public class CalificacionController {
 
@@ -27,7 +27,7 @@ public class CalificacionController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Calificar a un usuario despuÃ©s del servicio")
+    @Operation(summary = "Calificar a un usuario después del servicio")
     public ResponseEntity<CalificacionDTO.Response> calificar(
             @Valid @RequestBody CalificacionDTO.Crear request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -49,7 +49,7 @@ public class CalificacionController {
 
     @GetMapping("/estadisticas/{usuarioId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Obtener estadÃ­sticas de distribuciÃ³n de calificaciones")
+    @Operation(summary = "Obtener estadísticas de distribución de calificaciones")
     public ResponseEntity<CalificacionDTO.EstadisticasDistribucion> obtenerEstadisticas(
             @PathVariable Long usuarioId) {
 

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositorio para gestiÃ³n de referidos
+ * Repositorio para gestión de referidos
  */
 @Repository
 public interface ReferralRepository extends JpaRepository<Referral, Long> {
@@ -22,12 +22,12 @@ public interface ReferralRepository extends JpaRepository<Referral, Long> {
     Optional<Referral> findByReferrerId(Long referrerId);
 
     /**
-     * Busca referido por cÃ³digo
+     * Busca referido por código
      */
     Optional<Referral> findByCodigo(String codigo);
 
     /**
-     * Verifica si existe un cÃ³digo especÃ­fico
+     * Verifica si existe un código específico
      */
     boolean existsByCodigo(String codigo);
 
@@ -55,7 +55,7 @@ public interface ReferralRepository extends JpaRepository<Referral, Long> {
     Integer getTotalBonusGanado(@Param("referrerId") Long referrerId);
 
     /**
-     * Busca cÃ³digos mÃ¡s usados
+     * Busca códigos más usados
      */
     @Query("SELECT r FROM Referral r WHERE r.activo = true " +
            "ORDER BY r.usos DESC")
@@ -69,7 +69,7 @@ public interface ReferralRepository extends JpaRepository<Referral, Long> {
     List<Referral> findReferidosRecientes(@Param("desde") LocalDateTime desde);
 
     /**
-     * Obtiene estadÃ­sticas generales
+     * Obtiene estadísticas generales
      */
     @Query("SELECT COUNT(r), SUM(r.usos), SUM(r.bonusGanado) FROM Referral r " +
            "WHERE r.activo = true")

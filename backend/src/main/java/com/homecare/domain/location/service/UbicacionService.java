@@ -48,14 +48,14 @@ public class UbicacionService {
     private static final int ALERTA_DISTANCIA_LLEGADO = 50;
 
     /**
-     * Actualiza la ubicaciÃ³n del proveedor y transmite vÃ­a WebSocket
+     * Actualiza la ubicación del proveedor y transmite vía WebSocket
      */
     @Transactional
     public UbicacionDTO.UbicacionResponse actualizarUbicacion(
             Long proveedorId, 
             UbicacionDTO.ActualizarUbicacion dto) {
         
-        log.info("Actualizando ubicaciÃ³n del proveedor {} para solicitud {}", 
+        log.info("Actualizando ubicación del proveedor {} para solicitud {}", 
                  proveedorId, dto.getSolicitudId());
 
         // Validar solicitud y proveedor
@@ -65,16 +65,16 @@ public class UbicacionService {
         Usuario proveedor = usuarioRepository.findById(proveedorId)
                 .orElseThrow(() -> new NotFoundException("Proveedor no encontrado"));
 
-        // Verificar que el proveedor estÃ¡ asignado a esta solicitud
+        // Verificar que el proveedor está asignado a esta solicitud
         boolean esProveedorDeSolicitud = solicitud.getOfertas().stream()
                 .anyMatch(o -> o.getProveedor().getId().equals(proveedorId) && 
                               o.getEstado() == com.homecare.domain.offer.model.Oferta.EstadoOferta.ACEPTADA);
 
         if (!esProveedorDeSolicitud) {
-            throw new UnauthorizedException("El proveedor no estÃ¡ asignado a esta solicitud");
+            throw new UnauthorizedException("El proveedor no está asignado a esta solicitud");
         }
 
-        // Crear nueva ubicaciÃ³n
+        // Crear nueva ubicación
         UbicacionProveedor ubicacion = UbicacionProveedor.builder()
                 .solicitud(solicitud)
                 .proveedor(proveedor)
@@ -102,20 +102,20 @@ public class UbicacionService {
         // Convertir a DTO de respuesta
         UbicacionDTO.UbicacionResponse response = UbicacionDTO.toResponse(ubicacion);
 
-        // Transmitir vÃ­a WebSocket al cliente
+        // Transmitir vía WebSocket al cliente
         transmitirUbicacionViasWebSocket(ubicacion);
 
         // Enviar alertas de proximidad si corresponde
         enviarAlertaProximidad(ubicacion, solicitud);
 
-        log.info("UbicaciÃ³n actualizada. ETA: {} min, Distancia: {} m", 
+        log.info("Ubicación actualizada. ETA: {} min, Distancia: {} m", 
                  ubicacion.getEtaMinutos(), ubicacion.getDistanciaRestanteMetros());
 
         return response;
     }
 
     /**
-     * Obtiene la Ãºltima ubicaciÃ³n del proveedor para una solicitud
+     * Obtiene la última ubicación del proveedor para una solicitud
      */
     @Transactional(readOnly = true)
     public UbicacionDTO.UbicacionResponse obtenerUltimaUbicacion(Long solicitudId, Long proveedorId) {
@@ -139,7 +139,7 @@ public class UbicacionService {
             throw new NotFoundException("No hay trayectoria registrada para esta solicitud");
         }
 
-        // Calcular estadÃ­sticas
+        // Calcular estadísticas
         LocalDateTime inicio = ubicaciones.get(0).getTimestamp();
         LocalDateTime fin = ubicaciones.get(ubicaciones.size() - 1).getTimestamp();
         long duracionMinutos = ChronoUnit.MINUTES.between(inicio, fin);
@@ -178,7 +178,7 @@ public class UbicacionService {
     }
 
     /**
-     * Obtiene estadÃ­sticas del tracking
+     * Obtiene estadísticas del tracking
      */
     @Transactional(readOnly = true)
     public UbicacionDTO.EstadisticasTracking obtenerEstadisticas(Long solicitudId) {
@@ -228,9 +228,9 @@ public class UbicacionService {
         Usuario proveedor = usuarioRepository.findById(proveedorId)
                 .orElseThrow(() -> new NotFoundException("Proveedor no encontrado"));
 
-        // Enviar notificaciÃ³n push al cliente
-        String titulo = "El proveedor estÃ¡ en camino";
-        String mensaje = String.format("%s %s ha comenzado el viaje hacia tu ubicaciÃ³n",
+        // Enviar notificación push al cliente
+        String titulo = "El proveedor está en camino";
+        String mensaje = String.format("%s %s ha comenzado el viaje hacia tu ubicación",
                 proveedor.getNombre(), proveedor.getApellido());
 
         Map<String, String> data = new HashMap<>();
@@ -246,7 +246,7 @@ public class UbicacionService {
                 null
         );
 
-        // Notificar vÃ­a WebSocket
+        // Notificar vía WebSocket
         UbicacionDTO.AlertaProximidad alerta = UbicacionDTO.AlertaProximidad.builder()
                 .solicitudId(solicitudId)
                 .proveedorId(proveedorId)
@@ -277,9 +277,9 @@ public class UbicacionService {
         Usuario proveedor = usuarioRepository.findById(proveedorId)
                 .orElseThrow(() -> new NotFoundException("Proveedor no encontrado"));
 
-        // NotificaciÃ³n de llegada
+        // Notificación de llegada
         String titulo = "El proveedor ha llegado";
-        String mensaje = String.format("%s %s ha llegado a tu ubicaciÃ³n",
+        String mensaje = String.format("%s %s ha llegado a tu ubicación",
                 proveedor.getNombre(), proveedor.getApellido());
 
         Map<String, String> data = new HashMap<>();
@@ -295,7 +295,7 @@ public class UbicacionService {
                 null
         );
 
-        // Alerta vÃ­a WebSocket
+        // Alerta vía WebSocket
         UbicacionDTO.AlertaProximidad alerta = UbicacionDTO.AlertaProximidad.builder()
                 .solicitudId(solicitudId)
                 .proveedorId(proveedorId)
@@ -319,7 +319,7 @@ public class UbicacionService {
     // ==================== MÃ‰TODOS PRIVADOS ====================
 
     /**
-     * Transmite ubicaciÃ³n vÃ­a WebSocket a todos los suscriptores
+     * Transmite ubicación vía WebSocket a todos los suscriptores
      */
     private void transmitirUbicacionViasWebSocket(UbicacionProveedor ubicacion) {
         try {
@@ -331,22 +331,22 @@ public class UbicacionService {
                     wsDto
             );
 
-            // Canal especÃ­fico para el cliente
+            // Canal específico para el cliente
             messagingTemplate.convertAndSendToUser(
                     ubicacion.getSolicitud().getCliente().getId().toString(),
                     "/queue/tracking",
                     wsDto
             );
 
-            log.debug("UbicaciÃ³n transmitida vÃ­a WebSocket para solicitud {}", 
+            log.debug("Ubicación transmitida vía WebSocket para solicitud {}", 
                      ubicacion.getSolicitud().getId());
         } catch (Exception e) {
-            log.error("Error al transmitir ubicaciÃ³n vÃ­a WebSocket: {}", e.getMessage());
+            log.error("Error al transmitir ubicación vía WebSocket: {}", e.getMessage());
         }
     }
 
     /**
-     * EnvÃ­a alertas de proximidad segÃºn la distancia
+     * Envía alertas de proximidad según la distancia
      */
     private void enviarAlertaProximidad(UbicacionProveedor ubicacion, Solicitud solicitud) {
         Double distancia = ubicacion.getDistanciaRestanteMetros();
@@ -358,29 +358,29 @@ public class UbicacionService {
         UbicacionDTO.AlertaProximidad.TipoAlerta tipoAlerta = null;
         String mensaje = null;
 
-        // Determinar tipo de alerta segÃºn distancia
+        // Determinar tipo de alerta según distancia
         if (distancia < ALERTA_DISTANCIA_LLEGADO) {
             tipoAlerta = UbicacionDTO.AlertaProximidad.TipoAlerta.LLEGADO;
-            mensaje = String.format("%s %s ha llegado a tu ubicaciÃ³n", 
+            mensaje = String.format("%s %s ha llegado a tu ubicación", 
                                    proveedor.getNombre(), proveedor.getApellido());
         } else if (distancia < ALERTA_DISTANCIA_100M) {
             tipoAlerta = UbicacionDTO.AlertaProximidad.TipoAlerta.LLEGANDO_100M;
-            mensaje = String.format("%s %s estÃ¡ a menos de 100 metros", 
+            mensaje = String.format("%s %s está a menos de 100 metros", 
                                    proveedor.getNombre(), proveedor.getApellido());
         } else if (distancia < ALERTA_DISTANCIA_500M) {
             tipoAlerta = UbicacionDTO.AlertaProximidad.TipoAlerta.CERCA_500M;
-            mensaje = String.format("%s %s estÃ¡ a menos de 500 metros", 
+            mensaje = String.format("%s %s está a menos de 500 metros", 
                                    proveedor.getNombre(), proveedor.getApellido());
         } else if (distancia < ALERTA_DISTANCIA_1KM) {
             tipoAlerta = UbicacionDTO.AlertaProximidad.TipoAlerta.CERCA_1KM;
-            mensaje = String.format("%s %s estÃ¡ a menos de 1 kilÃ³metro", 
+            mensaje = String.format("%s %s está a menos de 1 kilómetro", 
                                    proveedor.getNombre(), proveedor.getApellido());
         }
 
         // Enviar alerta si corresponde
         if (tipoAlerta != null && mensaje != null) {
-            // Verificar si ya se enviÃ³ esta alerta antes (evitar spam)
-            // TODO: implementar cachÃ© de alertas enviadas
+            // Verificar si ya se envió esta alerta antes (evitar spam)
+            // TODO: implementar caché de alertas enviadas
 
             UbicacionDTO.AlertaProximidad alerta = UbicacionDTO.AlertaProximidad.builder()
                     .solicitudId(solicitud.getId())
@@ -400,7 +400,7 @@ public class UbicacionService {
                     alerta
             );
 
-            // Enviar notificaciÃ³n push para alertas importantes
+            // Enviar notificación push para alertas importantes
             if (tipoAlerta == UbicacionDTO.AlertaProximidad.TipoAlerta.LLEGADO ||
                 tipoAlerta == UbicacionDTO.AlertaProximidad.TipoAlerta.LLEGANDO_100M) {
                 
@@ -442,11 +442,11 @@ public class UbicacionService {
             distanciaTotal += distancia;
         }
 
-        return distanciaTotal / 1000.0; // Convertir a kilÃ³metros
+        return distanciaTotal / 1000.0; // Convertir a kilómetros
     }
 
     /**
-     * FÃ³rmula de Haversine para calcular distancia entre dos puntos GPS
+     * Fórmula de Haversine para calcular distancia entre dos puntos GPS
      * @return distancia en metros
      */
     private double calcularDistanciaHaversine(double lat1, double lon1, double lat2, double lon2) {
@@ -463,8 +463,8 @@ public class UbicacionService {
     }
 
     /**
-     * Calcula distancia y ETA usando Google Maps API si estÃ¡ configurado,
-     * sino usa cÃ¡lculo con Haversine como fallback
+     * Calcula distancia y ETA usando Google Maps API si está configurado,
+     * sino usa cálculo con Haversine como fallback
      */
     private void calcularDistanciaYEtaConGoogleMaps(
             UbicacionProveedor ubicacion,
@@ -472,7 +472,7 @@ public class UbicacionService {
             double lonDestino,
             String tipoTransporte) {
         
-        // Si estÃ¡ configurado para usar Google Maps, intentar primero
+        // Si está configurado para usar Google Maps, intentar primero
         if ("google".equalsIgnoreCase(etaCalculationMethod)) {
             try {
                 GoogleMapsService.DistanciaInfo info = googleMapsService.calcularDistanciaYTiempo(
@@ -490,7 +490,7 @@ public class UbicacionService {
                     // Actualizar estado basado en distancia
                     actualizarEstadoPorDistancia(ubicacion);
 
-                    log.debug("ETA calculado con Google Maps: {} min (con trÃ¡fico), {} m",
+                    log.debug("ETA calculado con Google Maps: {} min (con tráfico), {} m",
                             info.duracionConTraficoMinutos(), info.distanciaMetros());
                     return;
                 }
@@ -499,14 +499,14 @@ public class UbicacionService {
             }
         }
 
-        // Fallback: usar cÃ¡lculo con Haversine (mÃ©todo original)
+        // Fallback: usar cálculo con Haversine (método original)
         ubicacion.calcularDistanciaYEta(latDestino, lonDestino);
         log.debug("ETA calculado con Haversine: {} min, {} m",
                 ubicacion.getEtaMinutos(), ubicacion.getDistanciaRestanteMetros());
     }
 
     /**
-     * Actualiza el estado del proveedor segÃºn la distancia al destino
+     * Actualiza el estado del proveedor según la distancia al destino
      */
     private void actualizarEstadoPorDistancia(UbicacionProveedor ubicacion) {
         Double distancia = ubicacion.getDistanciaRestanteMetros();

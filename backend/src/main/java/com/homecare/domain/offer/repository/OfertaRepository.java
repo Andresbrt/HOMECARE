@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface OfertaRepository extends JpaRepository<Oferta, Long> {
 
-    // Ofertas de una solicitud especÃ­fica
+    // Ofertas de una solicitud específica
     List<Oferta> findBySolicitudIdOrderByPrecioOfrecidoAsc(Long solicitudId);
 
     // Ofertas pendientes de una solicitud
@@ -34,16 +34,16 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     // Ofertas por proveedor y estado
     List<Oferta> findByProveedorIdAndEstadoOrderByCreatedAtDesc(Long proveedorId, Oferta.EstadoOferta estado);
 
-    // Verificar si el proveedor ya ofertÃ³ en una solicitud
+    // Verificar si el proveedor ya ofertó en una solicitud
     boolean existsBySolicitudIdAndProveedorId(Long solicitudId, Long proveedorId);
 
-    // Obtener oferta especÃ­fica
+    // Obtener oferta específica
     Optional<Oferta> findBySolicitudIdAndProveedorId(Long solicitudId, Long proveedorId);
 
     // Contar ofertas de una solicitud
     long countBySolicitudId(Long solicitudId);
 
-    // EstadÃ­sticas de ofertas del proveedor
+    // Estadísticas de ofertas del proveedor
     @Query("""
         SELECT COUNT(o) FROM Oferta o
         WHERE o.proveedor.id = :proveedorId
@@ -62,14 +62,11 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
         """)
     BigDecimal getPromedioPreciosAceptadosByProveedor(@Param("proveedorId") Long proveedorId);
 
-    // Ofertas no vistas por el cliente
+    // Precio promedio global de ofertas aceptadas (para detección de fraude)
     @Query("""
-        SELECT o FROM Oferta o
-        WHERE o.solicitud.cliente.id = :clienteId
-        AND o.vistaPorCliente = false
-        AND o.estado = 'PENDIENTE'
-        ORDER BY o.createdAt DESC
+        SELECT AVG(o.precioOfrecido) FROM Oferta o
+        WHERE o.estado = 'ACEPTADA'
         """)
-    List<Oferta> findOfertasNoVistasByCliente(@Param("clienteId") Long clienteId);
+    BigDecimal getPromedioPreciosAceptadosGlobal();
 }
 

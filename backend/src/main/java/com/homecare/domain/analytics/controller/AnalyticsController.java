@@ -17,7 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
-@Tag(name = "Analytics", description = "MÃ©tricas y anÃ¡lisis del negocio")
+@Tag(name = "Analytics", description = "Métricas y análisis del negocio")
 @SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class AnalyticsController {
@@ -25,7 +25,7 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
 
     @GetMapping("/metricas-indriver")
-    @Operation(summary = "MÃ©tricas especÃ­ficas del modelo inDriver")
+    @Operation(summary = "Métricas específicas del modelo inDriver")
     public ResponseEntity<AnalyticsDTO.MetricasInDriver> getMetricasInDriver(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
@@ -35,7 +35,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/conversion-funnel")
-    @Operation(summary = "Embudo de conversiÃ³n: solicitudes â†’ ofertas â†’ aceptadas â†’ completadas")
+    @Operation(summary = "Embudo de conversión: solicitudes â†’ ofertas â†’ aceptadas â†’ completadas")
     public ResponseEntity<AnalyticsDTO.ConversionFunnel> getConversionFunnel(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {

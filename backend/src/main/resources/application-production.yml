@@ -6,6 +6,9 @@ spring:
   application:
     name: homecare-api
 
+  main:
+    lazy-initialization: true   # Reduce tiempo de arranque — beans se crean bajo demanda
+
   # Base de datos PostgreSQL - Supabase (gestionado)
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -105,9 +108,9 @@ server:
     include-exception: false
     include-binding-errors: never
 
-# JWT Configuration
+# JWT Configuration — JWT_SECRET es OBLIGATORIO en producción (mínimo 64 caracteres)
 jwt:
-  secret: ${JWT_SECRET:homecare-default-secret-change-in-production-min-64-chars-long-value}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 

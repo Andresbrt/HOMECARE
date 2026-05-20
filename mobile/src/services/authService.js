@@ -23,12 +23,44 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Interceptor de respuesta: refresca el token automáticamente ante 401
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            try {
+                const refreshToken = await SecureStore.getItemAsync('refreshToken');
+                if (!refreshToken) return Promise.reject(error);
+                const res = await axios.post(`${API_URL}/refresh`, { refreshToken });
+                const newToken = res.data.token;
+                await SecureStore.setItemAsync('token', newToken);
+                if (res.data.refreshToken) {
+                    await SecureStore.setItemAsync('refreshToken', res.data.refreshToken);
+                }
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return api(originalRequest);
+            } catch (_refreshError) {
+                // Refresh falló — limpiar sesión
+                await SecureStore.deleteItemAsync('token');
+                await SecureStore.deleteItemAsync('refreshToken');
+                await SecureStore.deleteItemAsync('user');
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const authService = {
     login: async (email, password) => {
-        const response = await api.post('/login', { email, password });
+        const response = await api.post('/login', { email: email.trim().toLowerCase(), password });
         if (response.data.token) {
             await SecureStore.setItemAsync('token', response.data.token);
             await SecureStore.setItemAsync('user', JSON.stringify(response.data));
+            if (response.data.refreshToken) {
+                await SecureStore.setItemAsync('refreshToken', response.data.refreshToken);
+            }
         }
         return response.data;
     },
@@ -38,6 +70,9 @@ export const authService = {
         if (response.data.token) {
             await SecureStore.setItemAsync('token', response.data.token);
             await SecureStore.setItemAsync('user', JSON.stringify(response.data));
+            if (response.data.refreshToken) {
+                await SecureStore.setItemAsync('refreshToken', response.data.refreshToken);
+            }
         }
         return response.data;
     },
@@ -105,6 +140,7 @@ export const authService = {
 
     logout: async () => {
         await SecureStore.deleteItemAsync('token');
+        await SecureStore.deleteItemAsync('refreshToken');
         await SecureStore.deleteItemAsync('user');
     },
 };

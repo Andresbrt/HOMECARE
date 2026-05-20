@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Servicio para gestionar configuraciÃ³n del tracking en tiempo real
+ * Servicio para gestionar configuración del tracking en tiempo real
  */
 @Service
 @RequiredArgsConstructor
@@ -33,14 +33,14 @@ public class TrackingConfigService {
     private final UbicacionProveedorRepository ubicacionRepository;
 
     /**
-     * Obtiene la configuraciÃ³n actual del tracking
+     * Obtiene la configuración actual del tracking
      */
     public TrackingConfigDTO.ConfigResponse obtenerConfiguracion() {
         // Verificar estado de Google Maps
         String googleMapsStatus = determinarEstadoGoogleMaps();
         boolean googleMapsEnabled = !googleMapsApiKey.isEmpty();
 
-        // Calcular estadÃ­sticas de uso (simulado - implementar con cache Redis en producciÃ³n)
+        // Calcular estadísticas de uso (simulado - implementar con cache Redis en producción)
         Long requestsToday = calcularRequestsToday();
         Long requestsThisMonth = calcularRequestsThisMonth();
         Double estimatedMonthlyCost = calcularCostoMensualEstimado();
@@ -59,7 +59,7 @@ public class TrackingConfigService {
     }
 
     /**
-     * Obtiene estadÃ­sticas de rendimiento basadas en el intervalo actual
+     * Obtiene estadísticas de rendimiento basadas en el intervalo actual
      */
     public TrackingConfigDTO.PerformanceStats obtenerEstadisticasRendimiento() {
         // Solicitudes activas con tracking
@@ -90,7 +90,7 @@ public class TrackingConfigService {
     }
 
     /**
-     * Genera recomendaciones de optimizaciÃ³n
+     * Genera recomendaciones de optimización
      */
     public TrackingConfigDTO.OptimizationRecommendation obtenerRecomendaciones() {
         TrackingConfigDTO.PerformanceStats stats = obtenerEstadisticasRendimiento();
@@ -104,21 +104,21 @@ public class TrackingConfigService {
         if (updateIntervalSeconds <= 15) {
             // Muy frecuente, recomendar 30 segundos
             recommendedSetting = "30 segundos";
-            reason = "Reducir consumo de baterÃ­a y costos sin afectar significativamente la precisiÃ³n";
+            reason = "Reducir consumo de batería y costos sin afectar significativamente la precisión";
             costSavings = stats.getCostUSDPerMonth() * 0.5; // 50% de ahorro
             batterySavings = 40.0; // 40% menos consumo
             impact = "low";
         } else if (updateIntervalSeconds == 30) {
             // Ã“ptimo actual
             recommendedSetting = "30 segundos (actual)";
-            reason = "ConfiguraciÃ³n Ã³ptima: balance entre precisiÃ³n, baterÃ­a y costos";
+            reason = "Configuración óptima: balance entre precisión, batería y costos";
             costSavings = 0.0;
             batterySavings = 0.0;
             impact = "optimal";
         } else {
             // Muy lento, recomendar 30 segundos para mejor UX
             recommendedSetting = "30 segundos";
-            reason = "Mejorar precisiÃ³n del tracking para mejor experiencia de usuario";
+            reason = "Mejorar precisión del tracking para mejor experiencia de usuario";
             costSavings = -20.0; // Ligero aumento de costo
             batterySavings = -15.0; // Ligero aumento de consumo
             impact = "medium";
@@ -147,8 +147,8 @@ public class TrackingConfigService {
     }
 
     private Long calcularRequestsToday() {
-        // Implementar con cache Redis en producciÃ³n
-        // Por ahora retornamos estimaciÃ³n basada en tracking activo
+        // Implementar con cache Redis en producción
+        // Por ahora retornamos estimación basada en tracking activo
         LocalDateTime hoy = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         LocalDateTime ahora = LocalDateTime.now();
         long horasTranscurridas = java.time.Duration.between(hoy, ahora).toHours();
@@ -160,11 +160,11 @@ public class TrackingConfigService {
     }
 
     private Long calcularRequestsThisMonth() {
-        // Implementar con cache Redis en producciÃ³n
+        // Implementar con cache Redis en producción
         LocalDateTime inicioMes = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
         List<Long> solicitudesEsteMes = ubicacionRepository.findSolicitudesConTrackingActivo(inicioMes);
         
-        // EstimaciÃ³n: promedio de 2 horas de tracking por solicitud
+        // Estimación: promedio de 2 horas de tracking por solicitud
         long horasPromedioTracking = 2;
         int requestsPerHour = 3600 / updateIntervalSeconds;
         
@@ -186,7 +186,7 @@ public class TrackingConfigService {
     }
 
     private Double calcularImpactoBateria() {
-        // Escala 1-10: 1=mÃ­nimo, 10=mÃ¡ximo
+        // Escala 1-10: 1=mínimo, 10=máximo
         if (updateIntervalSeconds >= 60) return 2.0;
         if (updateIntervalSeconds >= 30) return 4.0;
         if (updateIntervalSeconds >= 15) return 7.0;
@@ -194,8 +194,8 @@ public class TrackingConfigService {
     }
 
     private Double calcularUsoDataMB() {
-        // EstimaciÃ³n de MB por hora de tracking
-        // GPS + HTTP request + WebSocket â‰ˆ 1KB por actualizaciÃ³n
+        // Estimación de MB por hora de tracking
+        // GPS + HTTP request + WebSocket â‰ˆ 1KB por actualización
         double kbPorHora = (3600.0 / updateIntervalSeconds) * 1.0; // KB
         return kbPorHora / 1024.0; // MB por hora
     }

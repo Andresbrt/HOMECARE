@@ -32,20 +32,20 @@ public class PromotionService {
     @Transactional
     public PromotionDTO.Response validarPromocion(String codigo, Long usuarioId) {
         Promotion promocion = promotionRepository.findByCodigo(codigo)
-                .orElseThrow(() -> new NotFoundException("PromociÃ³n no encontrada"));
+                .orElseThrow(() -> new NotFoundException("Promoción no encontrada"));
 
         LocalDate hoy = LocalDate.now();
 
         if (!promocion.getActiva()) {
-            throw new BadRequestException("La promociÃ³n no estÃ¡ activa");
+            throw new BadRequestException("La promoción no está activa");
         }
 
         if (hoy.isBefore(promocion.getFechaInicio()) || hoy.isAfter(promocion.getFechaFin())) {
-            throw new BadRequestException("La promociÃ³n no es vÃ¡lida en estas fechas");
+            throw new BadRequestException("La promoción no es válida en estas fechas");
         }
 
         if (promocion.getUsoActual() >= promocion.getUsoMaximo()) {
-            throw new BadRequestException("La promociÃ³n ha alcanzado su uso mÃ¡ximo");
+            throw new BadRequestException("La promoción ha alcanzado su uso máximo");
         }
 
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -60,12 +60,12 @@ public class PromotionService {
         };
 
         if (!tieneRolAplicable) {
-            throw new BadRequestException("Esta promociÃ³n no aplica para tu tipo de cuenta");
+            throw new BadRequestException("Esta promoción no aplica para tu tipo de cuenta");
         }
 
         if (couponRepository.existsByPromocionIdAndUsuarioIdAndUsadoTrue(
                 promocion.getId(), usuarioId)) {
-            throw new BadRequestException("Ya has usado esta promociÃ³n");
+            throw new BadRequestException("Ya has usado esta promoción");
         }
 
         return mapToResponse(promocion);
@@ -74,7 +74,7 @@ public class PromotionService {
     @Transactional
     public BigDecimal aplicarDescuento(Long promocionId, Long usuarioId, BigDecimal montoOriginal) {
         Promotion promocion = promotionRepository.findById(promocionId)
-                .orElseThrow(() -> new NotFoundException("PromociÃ³n no encontrada"));
+                .orElseThrow(() -> new NotFoundException("Promoción no encontrada"));
 
         BigDecimal descuento;
         if (promocion.getDescuentoPorcentaje() != null) {
@@ -83,7 +83,7 @@ public class PromotionService {
         } else if (promocion.getDescuentoFijo() != null) {
             descuento = promocion.getDescuentoFijo();
         } else {
-            throw new BadRequestException("PromociÃ³n sin descuento configurado");
+            throw new BadRequestException("Promoción sin descuento configurado");
         }
 
         BigDecimal montoFinal = montoOriginal.subtract(descuento);
@@ -109,7 +109,7 @@ public class PromotionService {
         coupon.setUsadoAt(LocalDateTime.now());
         couponRepository.save(coupon);
 
-        log.info("Descuento aplicado: {} -> {} para usuario {} con promociÃ³n {}",
+        log.info("Descuento aplicado: {} -> {} para usuario {} con promoción {}",
                 montoOriginal, montoFinal, usuarioId, promocion.getCodigo());
 
         return montoFinal;
@@ -118,7 +118,7 @@ public class PromotionService {
     @Transactional
     public PromotionDTO.Response crearPromocion(PromotionDTO.Crear request) {
         if (promotionRepository.existsByCodigo(request.getCodigo())) {
-            throw new BadRequestException("Ya existe una promociÃ³n con ese cÃ³digo");
+            throw new BadRequestException("Ya existe una promoción con ese código");
         }
 
         Promotion promocion = new Promotion();
@@ -133,7 +133,7 @@ public class PromotionService {
         promocion.setActiva(true);
 
         promocion = promotionRepository.save(promocion);
-        log.info("PromociÃ³n creada: {} - {}", promocion.getCodigo(), promocion.getDescripcion());
+        log.info("Promoción creada: {} - {}", promocion.getCodigo(), promocion.getDescripcion());
         return mapToResponse(promocion);
     }
 

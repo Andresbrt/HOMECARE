@@ -205,12 +205,12 @@ public class FileStorageService {
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new FileStorageException("El archivo estÃ¡ vacÃ­o");
+            throw new FileStorageException("El archivo está vacío");
         }
 
         if (file.getSize() > maxFileSize) {
             throw new FileStorageException(
-                    String.format("El archivo excede el tamaÃ±o mÃ¡ximo permitido (%d MB)",
+                    String.format("El archivo excede el tamaño máximo permitido (%d MB)",
                             maxFileSize / 1048576)
             );
         }
@@ -229,7 +229,7 @@ public class FileStorageService {
 
         if (currentStorage + fileSize > MAX_STORAGE_PER_USER) {
             throw new FileStorageException(
-                    String.format("LÃ­mite de almacenamiento excedido. MÃ¡ximo: %d MB",
+                    String.format("Límite de almacenamiento excedido. Máximo: %d MB",
                             MAX_STORAGE_PER_USER / 1048576)
             );
         }
@@ -288,7 +288,7 @@ public class FileStorageService {
             return url;
         } catch (Exception e) {
             log.error("Error al guardar archivo base64 en S3: {}", e.getMessage());
-            return null; // En registro, preferimos continuar aunque falle una foto no crÃ­tica
+            return null; // En registro, preferimos continuar aunque falle una foto no crítica
         }
     }
 

@@ -71,17 +71,17 @@ public class CalificacionService {
         actualizarPromedioCalificacion(calificado.getId());
 
         String mensaje = esCliente ? 
-                "Has recibido una nueva calificaciÃ³n de un cliente" :
-                "Has recibido una nueva calificaciÃ³n de un proveedor";
+                "Has recibido una nueva calificación de un cliente" :
+                "Has recibido una nueva calificación de un proveedor";
         notificationService.enviarNotificacion(
                 calificado.getId(),
-                "Nueva CalificaciÃ³n",
+                "Nueva Calificación",
                 mensaje,
                 Map.of("tipo", "NUEVA_CALIFICACION", "puntuacion", request.getPuntuacion().toString()),
                 null
         );
 
-        log.info("CalificaciÃ³n creada: {} calificÃ³ a {} con {} estrellas",
+        log.info("Calificación creada: {} calificó a {} con {} estrellas",
                 calificadorId, calificado.getId(), request.getPuntuacion());
 
         return mapToResponse(calificacion);
@@ -117,7 +117,7 @@ public class CalificacionService {
     private void actualizarPromedioCalificacion(Long usuarioId) {
         BigDecimal promedio = calcularPromedio(usuarioId);
         usuarioRepository.updateCalificacionPromedio(usuarioId, promedio);
-        log.info("Promedio de calificaciÃ³n actualizado para usuario {}: {}", usuarioId, promedio);
+        log.info("Promedio de calificación actualizado para usuario {}: {}", usuarioId, promedio);
     }
 
     private BigDecimal calcularPromedio(Long usuarioId) {

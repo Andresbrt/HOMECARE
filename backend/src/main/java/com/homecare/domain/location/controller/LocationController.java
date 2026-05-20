@@ -22,7 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/location")
 @RequiredArgsConstructor
-@Tag(name = "Location & Tracking", description = "GeolocalizaciÃ³n y tracking en tiempo real")
+@Tag(name = "Location & Tracking", description = "Geolocalización y tracking en tiempo real")
 @SecurityRequirement(name = "bearerAuth")
 public class LocationController {
 
@@ -31,18 +31,18 @@ public class LocationController {
 
     @PutMapping("/update")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Actualizar ubicaciÃ³n del usuario")
+    @Operation(summary = "Actualizar ubicación del usuario")
     public ResponseEntity<String> updateLocation(
             @Valid @RequestBody LocationDTO.UpdateLocation request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         locationService.actualizarUbicacionUsuario(userDetails.getId(), request);
-        return ResponseEntity.ok("UbicaciÃ³n actualizada");
+        return ResponseEntity.ok("Ubicación actualizada");
     }
 
     @GetMapping("/me")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Obtener mi ubicaciÃ³n actual")
+    @Operation(summary = "Obtener mi ubicación actual")
     public ResponseEntity<LocationDTO.LocationResponse> getMyLocation(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 

@@ -13,13 +13,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositorio para gestiÃ³n de suscripciones
+ * Repositorio para gestión de suscripciones
  */
 @Repository
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
     /**
-     * Busca la suscripciÃ³n activa de un usuario
+     * Busca la suscripción activa de un usuario
      */
     Optional<Subscription> findByUsuarioIdAndEstado(Long usuarioId, Estado estado);
 
@@ -29,7 +29,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findByUsuarioIdOrderByFechaInicioDesc(Long usuarioId);
 
     /**
-     * Busca suscripciones que vencen en una fecha especÃ­fica y tienen auto-renovaciÃ³n
+     * Busca suscripciones que vencen en una fecha específica y tienen auto-renovación
      */
     List<Subscription> findByEstadoAndFechaFinAndAutoRenovar(Estado estado, LocalDate fechaFin, Boolean autoRenovar);
 
@@ -57,7 +57,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findByPlanAndEstado(PlanType plan, Estado estado);
 
     /**
-     * Verifica si un usuario tiene una suscripciÃ³n activa
+     * Verifica si un usuario tiene una suscripción activa
      */
     boolean existsByUsuarioIdAndEstado(Long usuarioId, Estado estado);
 
@@ -84,7 +84,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     Optional<Subscription> findByTransactionId(String transactionId);
 
     /**
-     * Obtiene estadÃ­sticas de retenciÃ³n por plan
+     * Obtiene estadísticas de retención por plan
      */
     @Query("SELECT s.plan, " +
            "COUNT(CASE WHEN s.estado = 'ACTIVA' THEN 1 END) as activas, " +

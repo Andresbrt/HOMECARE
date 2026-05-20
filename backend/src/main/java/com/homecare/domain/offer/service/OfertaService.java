@@ -71,7 +71,7 @@ public class OfertaService {
 
         if (solicitud.getPrecioMaximo() != null &&
             request.getPrecioOfrecido().compareTo(solicitud.getPrecioMaximo()) > 0) {
-            log.warn("Proveedor {} ofrece ${} pero precio mÃ¡ximo es ${}",
+            log.warn("Proveedor {} ofrece ${} pero precio máximo es ${}",
                     proveedorId, request.getPrecioOfrecido(), solicitud.getPrecioMaximo());
         }
 
@@ -178,7 +178,7 @@ public class OfertaService {
         }
 
         if (!oferta.getEstado().equals(EstadoOferta.PENDIENTE)) {
-            throw new IllegalStateException("Esta oferta ya no estÃ¡ disponible");
+            throw new IllegalStateException("Esta oferta ya no está disponible");
         }
 
         if (!solicitud.puedeRecibirOfertas()) {
@@ -210,7 +210,7 @@ public class OfertaService {
 
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .usuarioId(oferta.getProveedor().getId())
-                .titulo("Â¡Tu oferta ha sido aceptada!")
+                .titulo("¡Tu oferta ha sido aceptada!")
                 .cuerpo("El cliente " + solicitud.getCliente().getNombre() + " ha aceptado tu oferta para el servicio de " + solicitud.getTitulo())
                 .tipo("OFERTA_ACEPTADA")
                 .build());

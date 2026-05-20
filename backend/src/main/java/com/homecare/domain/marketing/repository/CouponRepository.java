@@ -11,13 +11,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositorio para gestiÃ³n de cupones
+ * Repositorio para gestión de cupones
  */
 @Repository
 public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     /**
-     * Busca un cupÃ³n por promociÃ³n y usuario
+     * Busca un cupón por promoción y usuario
      */
     Optional<Coupon> findByPromocionIdAndUsuarioId(Long promocionId, Long usuarioId);
 
@@ -37,7 +37,7 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     List<Coupon> findByUsuarioIdAndUsadoFalse(Long usuarioId);
 
     /**
-     * Cuenta cupones usados por promociÃ³n
+     * Cuenta cupones usados por promoción
      */
     Long countByPromocionIdAndUsadoTrue(Long promocionId);
 
@@ -47,19 +47,19 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     List<Coupon> findByUsadoTrueAndUsadoAtBetween(LocalDateTime inicio, LocalDateTime fin);
 
     /**
-     * Verifica si un usuario ya usÃ³ una promociÃ³n especÃ­fica
+     * Verifica si un usuario ya usó una promoción específica
      */
     boolean existsByPromocionIdAndUsuarioIdAndUsadoTrue(Long promocionId, Long usuarioId);
 
     /**
-     * Obtiene estadÃ­sticas de uso por usuario
+     * Obtiene estadísticas de uso por usuario
      */
     @Query("SELECT c.usuario.id, COUNT(c) FROM Coupon c " +
            "WHERE c.usado = true GROUP BY c.usuario.id ORDER BY COUNT(c) DESC")
     List<Object[]> getEstadisticasUsoPorUsuario();
 
     /**
-     * Busca cupones por promociÃ³n
+     * Busca cupones por promoción
      */
     List<Coupon> findByPromocionId(Long promocionId);
 

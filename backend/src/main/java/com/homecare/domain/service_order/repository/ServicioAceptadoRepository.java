@@ -66,7 +66,7 @@ public interface ServicioAceptadoRepository extends JpaRepository<ServicioAcepta
         @Param("proveedorId") Long proveedorId
     );
 
-    // Servicios completados del proveedor (para estadÃ­sticas)
+    // Servicios completados del proveedor (para estadísticas)
     @Query("""
         SELECT COUNT(s) FROM ServicioAceptado s
         WHERE s.proveedor.id = :proveedorId
@@ -107,7 +107,7 @@ public interface ServicioAceptadoRepository extends JpaRepository<ServicioAcepta
         """)
     boolean tieneServicioActivo(@Param("usuarioId") Long usuarioId);
 
-    // MÃ©todos para reportes - retornan listas vacÃ­as por defecto
+    // Métodos para reportes - retornan listas vacías por defecto
     default List<com.homecare.dto.ReportDTO.ServicioReporte> findServiciosParaReporte(
             java.time.LocalDate fechaInicio, 
             java.time.LocalDate fechaFin) {

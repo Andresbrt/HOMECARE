@@ -31,7 +31,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
         @Param("usuario2Id") Long usuario2Id
     );
 
-    // Mensajes no leÃ­dos para un usuario
+    // Mensajes no leídos para un usuario
     @Query("""
         SELECT m FROM Mensaje m
         WHERE m.destinatario.id = :usuarioId
@@ -40,13 +40,13 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
         """)
     List<Mensaje> findMensajesNoLeidosByUsuario(@Param("usuarioId") Long usuarioId);
 
-    // Contar mensajes no leÃ­dos
+    // Contar mensajes no leídos
     long countByDestinatarioIdAndLeidoFalse(Long destinatarioId);
 
-    // Contar mensajes por destinatario y estado leÃ­do
+    // Contar mensajes por destinatario y estado leído
     long countByDestinatarioIdAndLeido(Long destinatarioId, boolean leido);
 
-    // Marcar todos los mensajes como leÃ­dos
+    // Marcar todos los mensajes como leídos
     @org.springframework.data.jpa.repository.Modifying
     @Query("""
         UPDATE Mensaje m SET m.leido = true, m.leidoAt = CURRENT_TIMESTAMP
@@ -59,7 +59,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
         @Param("destinatarioId") Long destinatarioId
     );
 
-    // Contar mensajes no leÃ­dos de una solicitud
+    // Contar mensajes no leídos de una solicitud
     @Query("""
         SELECT COUNT(m) FROM Mensaje m
         WHERE m.solicitud.id = :solicitudId
@@ -88,7 +88,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
         """)
     List<com.homecare.domain.solicitud.model.Solicitud> findSolicitudesConMensajes(@Param("usuarioId") Long usuarioId);
 
-    // Obtener el Ãºltimo mensaje de una solicitud
+    // Obtener el último mensaje de una solicitud
     @Query("""
         SELECT m FROM Mensaje m
         WHERE m.solicitud.id = :solicitudId
@@ -97,7 +97,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
         """)
     java.util.Optional<Mensaje> findTopBySolicitudIdOrderByCreatedAtDesc(@Param("solicitudId") Long solicitudId);
 
-    // Contar mensajes no leÃ­dos por solicitud y destinatario
+    // Contar mensajes no leídos por solicitud y destinatario
     long countBySolicitudIdAndDestinatarioIdAndLeido(Long solicitudId, Long destinatarioId, boolean leido);
 }
 

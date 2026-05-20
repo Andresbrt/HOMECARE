@@ -11,7 +11,7 @@ primary_region = "gru"
   SPRING_PROFILES_ACTIVE = "production"
   SERVER_PORT = "8080"
   PORT = "8080"
-  JAVA_TOOL_OPTIONS = "-Xms128m -Xmx580m -XX:MaxMetaspaceSize=196m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Xss256k -Djava.security.egd=file:/dev/./urandom"
+  JAVA_TOOL_OPTIONS = "-Xms256m -Xmx580m -XX:MaxMetaspaceSize=196m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Xss256k -XX:TieredStopAtLevel=1 -Djava.security.egd=file:/dev/./urandom -Djava.awt.headless=true"
 
 [http_service]
   internal_port = 8080
@@ -32,7 +32,7 @@ primary_region = "gru"
 
 [checks]
   [checks.health]
-    grace_period = "60s"
+    grace_period = "90s"
     interval = "30s"
     method = "GET"
     path = "/actuator/health"

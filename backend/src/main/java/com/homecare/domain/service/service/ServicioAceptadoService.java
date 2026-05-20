@@ -54,7 +54,7 @@ public class ServicioAceptadoService {
                 nuevoEstado.name()
         );
 
-        log.info("Servicio {} cambiÃ³ de estado: {} -> {} por proveedor {}",
+        log.info("Servicio {} cambió de estado: {} -> {} por proveedor {}",
                 servicioId, estadoAnterior, nuevoEstado, proveedorId);
 
         return mapToResponse(servicio);

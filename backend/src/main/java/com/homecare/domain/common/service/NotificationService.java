@@ -163,11 +163,11 @@ public class NotificationService {
 
             procesarRespuestaFCM(response, dispositivos);
 
-            log.info("NotificaciÃ³n enviada a usuario {}: {}/{} exitosas",
+            log.info("Notificación enviada a usuario {}: {}/{} exitosas",
                     usuarioId, response.getSuccessCount(), tokens.size());
 
         } catch (Exception e) {
-            log.error("Error al enviar notificaciÃ³n a usuario {}: {}", usuarioId, e.getMessage(), e);
+            log.error("Error al enviar notificación a usuario {}: {}", usuarioId, e.getMessage(), e);
         }
     }
 
@@ -216,17 +216,17 @@ public class NotificationService {
                 procesarRespuestaFCM(response, dispositivos.subList(i, Math.min(i + 500, dispositivos.size())));
             }
 
-            log.info("NotificaciÃ³n broadcast enviada: {}/{} exitosas", totalEnviadas, tokens.size());
+            log.info("Notificación broadcast enviada: {}/{} exitosas", totalEnviadas, tokens.size());
 
             return new NotificationDTO.Response(
                     true,
-                    "NotificaciÃ³n enviada",
+                    "Notificación enviada",
                     totalEnviadas,
                     totalFallidas
             );
 
         } catch (Exception e) {
-            log.error("Error al enviar notificaciÃ³n broadcast: {}", e.getMessage(), e);
+            log.error("Error al enviar notificación broadcast: {}", e.getMessage(), e);
             return new NotificationDTO.Response(false, "Error: " + e.getMessage(), 0, 0);
         }
     }
@@ -262,8 +262,8 @@ public class NotificationService {
     }
 
     public void sendPasswordResetEmail(String email, String token) {
-        log.info("Simulando envÃ­o de email de recuperaciÃ³n para {}: {}", email, token);
-        // ImplementaciÃ³n real de SMTP/SendGrid aquÃ­
+        log.info("Simulando envío de email de recuperación para {}: {}", email, token);
+        // Implementación real de SMTP/SendGrid aquí
     }
 
     public void notificarOfertaAceptada(Long ofertaId, Long proveedorId, String clienteNombre) {
@@ -274,8 +274,8 @@ public class NotificationService {
 
         enviarNotificacion(
                 proveedorId,
-                "Â¡Tu oferta fue aceptada!",
-                clienteNombre + " aceptÃ³ tu oferta. PrepÃ¡rate para el servicio.",
+                "¡Tu oferta fue aceptada!",
+                clienteNombre + " aceptó tu oferta. Prepárate para el servicio.",
                 data,
                 null
         );
@@ -289,14 +289,14 @@ public class NotificationService {
         data.put("action", "VER_SERVICIO");
 
         String mensaje = switch (estado) {
-            case "EN_CAMINO" -> "El proveedor estÃ¡ en camino";
+            case "EN_CAMINO" -> "El proveedor está en camino";
             case "LLEGUE" -> "El proveedor ha llegado";
             case "EN_PROGRESO" -> "El servicio ha comenzado";
             case "COMPLETADO" -> "El servicio ha finalizado";
             default -> "Estado del servicio actualizado";
         };
 
-        enviarNotificacion(usuarioId, "ActualizaciÃ³n del servicio", mensaje, data, null);
+        enviarNotificacion(usuarioId, "Actualización del servicio", mensaje, data, null);
     }
 
     public void notificarNuevoMensaje(Long solicitudId, Long destinatarioId, String remitenteNombre, String mensaje) {
@@ -394,7 +394,7 @@ public class NotificationService {
                         DispositivoFCM dispositivo = dispositivos.get(i);
                         dispositivo.setActivo(false);
                         dispositivoRepository.save(dispositivo);
-                        log.info("Token FCM invÃ¡lido desactivado: {}", dispositivo.getTokenFcm());
+                        log.info("Token FCM inválido desactivado: {}", dispositivo.getTokenFcm());
                     }
                 }
             }
@@ -416,7 +416,7 @@ public class NotificationService {
 
             notificacionRepository.save(notificacion);
         } catch (Exception e) {
-            log.error("Error al guardar notificaciÃ³n en BD: {}", e.getMessage());
+            log.error("Error al guardar notificación en BD: {}", e.getMessage());
         }
     }
 }

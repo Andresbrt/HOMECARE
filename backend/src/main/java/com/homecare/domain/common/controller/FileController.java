@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
-@Tag(name = "Files", description = "GestiÃ³n de archivos y multimedia")
+@Tag(name = "Files", description = "Gestión de archivos y multimedia")
 @SecurityRequirement(name = "bearerAuth")
 public class FileController {
 
@@ -44,7 +44,7 @@ public class FileController {
 
     @PostMapping(value = "/upload/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Subir mÃºltiples archivos")
+    @Operation(summary = "Subir múltiples archivos")
     public ResponseEntity<FileUploadDTO.BatchResponse> uploadMultiple(
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam("tipoArchivo") TipoArchivo tipoArchivo,

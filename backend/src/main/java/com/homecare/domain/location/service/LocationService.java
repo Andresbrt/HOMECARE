@@ -42,7 +42,7 @@ public class LocationService {
 
         usuarioRepository.save(usuario);
         
-        log.info("UbicaciÃ³n actualizada para usuario {}: {}, {}",
+        log.info("Ubicación actualizada para usuario {}: {}, {}",
                 usuarioId, request.getLatitud(), request.getLongitud());
     }
 
@@ -52,7 +52,7 @@ public class LocationService {
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         if (usuario.getLatitud() == null || usuario.getLongitud() == null) {
-            throw new NotFoundException("Usuario no tiene ubicaciÃ³n registrada");
+            throw new NotFoundException("Usuario no tiene ubicación registrada");
         }
 
         return new LocationDTO.LocationResponse(
@@ -147,7 +147,7 @@ public class LocationService {
         double tiempoHoras = distanciaKm / velocidadKmh;
         double tiempoMinutos = tiempoHoras * 60;
 
-        // Agregar factor de trÃ¡fico (10-30%)
+        // Agregar factor de tráfico (10-30%)
         tiempoMinutos *= 1.2;
 
         return (int) Math.ceil(tiempoMinutos);

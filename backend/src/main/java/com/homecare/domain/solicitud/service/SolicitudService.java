@@ -108,7 +108,7 @@ public class SolicitudService {
 
         if (!solicitud.getEstado().equals(EstadoSolicitud.ABIERTA) &&
             !solicitud.getEstado().equals(EstadoSolicitud.EN_NEGOCIACION)) {
-            throw new IllegalStateException("Solo se pueden modificar solicitudes abiertas o en negociaciÃ³n");
+            throw new IllegalStateException("Solo se pueden modificar solicitudes abiertas o en negociación");
         }
 
         if (request.getDescripcion() != null) {
@@ -270,7 +270,7 @@ public class SolicitudService {
         solicitud.setEstado(nuevoEstado);
         solicitudRepository.save(solicitud);
 
-        log.info("Solicitud {} cambiÃ³ de estado: {} -> {}", solicitudId, estadoAnterior, nuevoEstado);
+        log.info("Solicitud {} cambió de estado: {} -> {}", solicitudId, estadoAnterior, nuevoEstado);
     }
 
     private SolicitudDTO.Response mapToResponse(Solicitud solicitud) {
@@ -299,7 +299,7 @@ public class SolicitudService {
                 solicitud.getOfertaAceptadaId(),
                 solicitud.getCreatedAt().toString(),
                 solicitud.getExpiraEn() != null ? solicitud.getExpiraEn().toString() : null,
-                null // distanciaKm - se calcula en consultas especÃ­ficas
+                null // distanciaKm - se calcula en consultas específicas
         );
     }
 

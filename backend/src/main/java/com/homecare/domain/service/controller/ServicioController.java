@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/servicios")
 @RequiredArgsConstructor
-@Tag(name = "Servicios", description = "GestiÃ³n de servicios aceptados")
+@Tag(name = "Servicios", description = "Gestión de servicios aceptados")
 @SecurityRequirement(name = "bearerAuth")
 public class ServicioController {
 

@@ -39,6 +39,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
+import { apiFetch } from '../../config/api';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
@@ -119,13 +121,7 @@ const markerStyles = StyleSheet.create({
   arrowAccent: { borderTopColor: PROF.accent },
 });
 
-//  Solicitudes cercanas mock 
 const BOGOTA = { latitude: 4.7109886, longitude: -74.072092, latitudeDelta: 0.035, longitudeDelta: 0.035 };
-const NEARBY = [
-  { id: 1, lat: 4.716, lng: -74.076, title: 'Colorimetría Interior' },
-  { id: 2, lat: 4.706, lng: -74.066, title: 'Análisis de Fachada' },
-  { id: 3, lat: 4.719, lng: -74.062, title: 'Diagnóstico Cromático' },
-];
 
 // 
 export default function MapScreen({ navigation }) {
@@ -133,12 +129,36 @@ export default function MapScreen({ navigation }) {
   const mapRef = useRef(null);
   const [isAvailable, setIsAvailable] = useState(true);
   const [zone] = useState('Bogotá D.C.');
+  const [nearby, setNearby] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
 
   // Animaciones  idéntico patrón al DashboardScreen
   const glowAnim   = useSharedValue(0.35);
   const toggleScale = useSharedValue(1);
   const pulseScale  = useSharedValue(1);
   const pulseOpacity = useSharedValue(0.55);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const { latitude, longitude } = loc.coords;
+        setUserLocation({ latitude, longitude });
+        const data = await apiFetch(`/solicitudes/cercanas?lat=${latitude}&lng=${longitude}&radioKm=5`);
+        const list = Array.isArray(data) ? data : (data?.content ?? []);
+        setNearby(list.map((s) => ({
+          id: s.id,
+          lat: s.latitud ?? s.lat,
+          lng: s.longitud ?? s.lng,
+          title: s.tipoServicio ?? s.descripcion ?? 'Solicitud',
+        })));
+      } catch (_) {
+        // Si falla, el mapa sigue sin pines pero no bloquea
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (isAvailable) {
@@ -203,7 +223,7 @@ export default function MapScreen({ navigation }) {
         <Marker coordinate={{ latitude: BOGOTA.latitude, longitude: BOGOTA.longitude }} anchor={{ x: 0.5, y: 1 }}>
           <HomecareMarker isMe />
         </Marker>
-        {isAvailable && NEARBY.map((s) => (
+        {isAvailable && nearby.map((s) => (
           <Marker key={s.id} coordinate={{ latitude: s.lat, longitude: s.lng }} anchor={{ x: 0.5, y: 1 }} title={s.title}>
             <HomecareMarker />
           </Marker>
@@ -260,7 +280,7 @@ export default function MapScreen({ navigation }) {
                 </Text>
                 <Text style={styles.toggleSub}>
                   {isAvailable
-                    ? `${NEARBY.length} solicitudes cerca de ti`
+                    ? `${nearby.length} solicitudes cerca de ti`
                     : 'Actívate para recibir servicios'}
                 </Text>
               </View>

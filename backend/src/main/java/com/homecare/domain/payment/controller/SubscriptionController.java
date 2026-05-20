@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/subscriptions")
 @RequiredArgsConstructor
-@Tag(name = "Subscriptions", description = "GestiÃ³n de suscripciones y planes")
+@Tag(name = "Subscriptions", description = "Gestión de suscripciones y planes")
 @SecurityRequirement(name = "bearerAuth")
 public class SubscriptionController {
 

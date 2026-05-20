@@ -107,7 +107,7 @@ public class ReportService {
 
     private byte[] generarPdfServicios(List<ReportDTO.ServicioReporte> servicios,
                                       LocalDate inicio, LocalDate fin) throws IOException {
-        // Placeholder - ImplementaciÃ³n real requiere iText library
+        // Placeholder - Implementación real requiere iText library
         return "PDF Report Placeholder".getBytes();
     }
 
@@ -119,7 +119,7 @@ public class ReportService {
             Sheet sheet = workbook.createSheet("Proveedores");
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"ID", "Nombre", "Servicios", "Total Ganado", "CalificaciÃ³n"};
+            String[] headers = {"ID", "Nombre", "Servicios", "Total Ganado", "Calificación"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -157,7 +157,7 @@ public class ReportService {
             Sheet sheet = workbook.createSheet("Pagos");
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"ID", "Fecha", "Referencia", "Monto", "ComisiÃ³n", "Estado"};
+            String[] headers = {"ID", "Fecha", "Referencia", "Monto", "Comisión", "Estado"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);

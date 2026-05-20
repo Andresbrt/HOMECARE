@@ -75,7 +75,7 @@ public class DatabaseHealthService {
     }
 
     /**
-     * Verifica mÃ©tricas especÃ­ficas de la base de datos
+     * Verifica métricas específicas de la base de datos
      */
     public Map<String, Object> getDatabaseMetrics() {
         Map<String, Object> metrics = new HashMap<>();
@@ -90,7 +90,7 @@ public class DatabaseHealthService {
             metrics.put("totalPagos", getTableCount(connection, "pagos"));
             metrics.put("totalSuscripciones", getTableCount(connection, "suscripciones"));
             
-            // EstadÃ­sticas de actividad reciente (Ãºltimo dÃ­a)
+            // Estadísticas de actividad reciente (último día)
             metrics.put("solicitudesHoy", getCountToday(connection, "solicitudes", "fecha_creacion"));
             metrics.put("serviciosHoy", getCountToday(connection, "servicios_aceptados", "fecha_aceptacion"));
             metrics.put("pagosHoy", getCountToday(connection, "pagos", "created_at"));
@@ -98,7 +98,7 @@ public class DatabaseHealthService {
             metrics.put("timestamp", LocalDateTime.now());
             
         } catch (Exception e) {
-            log.error("Error obteniendo mÃ©tricas de base de datos: {}", e.getMessage(), e);
+            log.error("Error obteniendo métricas de base de datos: {}", e.getMessage(), e);
             metrics.put("error", e.getMessage());
         }
         
@@ -132,7 +132,7 @@ public class DatabaseHealthService {
             }
             
         } catch (Exception e) {
-            log.warn("Error contando registros del dÃ­a en tabla {}: {}", tableName, e.getMessage());
+            log.warn("Error contando registros del día en tabla {}: {}", tableName, e.getMessage());
         }
         
         return 0;

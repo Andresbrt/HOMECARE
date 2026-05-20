@@ -2,7 +2,7 @@
  * SecuritySection — Sección de Seguridad Premium Homecare 2026
  * Contraseña, 2FA, dispositivos conectados, historial de actividad
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -31,21 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import GlassCard from '../shared/GlassCard';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
-
-// ─── Datos de dispositivos simulados ─────────────────────────────────────────
-const MOCK_DEVICES = [
-  { id: '1', name: 'iPhone 14 Pro', os: 'iOS 17.4', lastSeen: 'Ahora',         current: true  },
-  { id: '2', name: 'Samsung Galaxy S23', os: 'Android 14', lastSeen: 'Hace 2h', current: false },
-  { id: '3', name: 'MacBook Pro', os: 'macOS 14',   lastSeen: 'Hace 1 dia',    current: false },
-];
-
-// ─── Actividad reciente simulada ─────────────────────────────────────────────
-const MOCK_ACTIVITY = [
-  { id: '1', icon: 'log-in-outline',      text: 'Inicio de sesion',          time: 'Hace 5 min',   risk: 'safe'    },
-  { id: '2', icon: 'key-outline',         text: 'Cambio de contrasena',      time: 'Hace 3 dias',  risk: 'warning' },
-  { id: '3', icon: 'shield-checkmark',    text: 'Verificacion OTP exitosa',  time: 'Hace 3 dias',  risk: 'safe'    },
-  { id: '4', icon: 'phone-portrait-outline', text: 'Nuevo dispositivo',      time: 'Hace 1 semana', risk: 'warning' },
-];
+import { apiFetch } from '../../config/api';
 
 // ─── Row clickeable ───────────────────────────────────────────────────────────
 function ActionRow({ icon, title, subtitle, onPress, rightNode, delay = 0, danger = false }) {
@@ -160,14 +146,68 @@ function ChangePasswordModal({ visible, onClose }) {
   );
 }
 
+// ─── Dispositivo actual (información real) ───────────────────────────────────
+function getCurrentDevice() {
+  const os = Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : 'Web';
+  const version = Platform.Version ? ` ${Platform.Version}` : '';
+  return { id: 'current', name: 'Este dispositivo', os: `${os}${version}`, lastSeen: 'Ahora', current: true };
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function SecuritySection({ onLogoutAll }) {
   const [twoFAEnabled,    setTwoFAEnabled]    = useState(false);
   const [showDevices,     setShowDevices]     = useState(false);
   const [showActivity,    setShowActivity]    = useState(false);
-  const [showPassModal,   setShowPassModal]   = useState(false);
-  const devRotate  = useSharedValue(0);
+  const [showPassModal,   setShowPassModal]   = useState(false);  const [devices,         setDevices]         = useState([getCurrentDevice()]);
+  const [activityLog,     setActivityLog]     = useState([]);  const devRotate  = useSharedValue(0);
   const actRotate  = useSharedValue(0);
+
+  // Cargar sesiones activas y actividad desde el backend
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await apiFetch('/auth/sesiones');
+        const list = Array.isArray(data) ? data : [];
+        const current = getCurrentDevice();
+        const others = list
+          .filter((s) => !s.current)
+          .map((s, i) => ({
+            id: String(s.id ?? i),
+            name: s.dispositivo ?? s.device ?? 'Dispositivo',
+            os: s.sistema ?? s.os ?? '',
+            lastSeen: s.ultimaActividad ?? s.lastSeen ?? 'Desconocido',
+            current: false,
+          }));
+        setDevices([current, ...others]);
+      } catch (_) {
+        // Si no hay endpoint de sesiones, solo mostramos el dispositivo actual
+      }
+    })();
+    (async () => {
+      try {
+        const data = await apiFetch('/auth/actividad');
+        const list = Array.isArray(data) ? data : [];
+        const ICON_MAP = {
+          LOGIN: { icon: 'log-in-outline', risk: 'safe' },
+          PASSWORD_CHANGE: { icon: 'key-outline', risk: 'warning' },
+          OTP: { icon: 'shield-checkmark', risk: 'safe' },
+          NEW_DEVICE: { icon: 'phone-portrait-outline', risk: 'warning' },
+        };
+        setActivityLog(list.slice(0, 5).map((a) => {
+          const mapped = ICON_MAP[a.tipo ?? a.type] ?? { icon: 'time-outline', risk: 'safe' };
+          return {
+            id: String(a.id),
+            icon: mapped.icon,
+            text: a.descripcion ?? a.description ?? a.tipo ?? 'Evento',
+            time: a.tiempo ?? a.time ?? '',
+            risk: mapped.risk,
+          };
+        }));
+      } catch (_) {
+        // Si no hay endpoint de actividad, no se muestra nada
+      }
+    })();
+  }, []);
 
   const toggleDevices  = () => {
     devRotate.value  = withSpring(showDevices  ? 0 : 1, { damping: 16 });
@@ -262,7 +302,7 @@ export default function SecuritySection({ onLogoutAll }) {
         <ActionRow
           icon="laptop-outline"
           title="Dispositivos conectados"
-          subtitle={`${MOCK_DEVICES.length} dispositivos activos`}
+          subtitle={`${devices.length} dispositivo${devices.length !== 1 ? 's' : ''} activo${devices.length !== 1 ? 's' : ''}`}
           onPress={toggleDevices}
           delay={180}
           rightNode={
@@ -273,7 +313,7 @@ export default function SecuritySection({ onLogoutAll }) {
         />
         {showDevices && (
           <Animated.View entering={FadeInDown.duration(250)} style={styles.subSection}>
-            {MOCK_DEVICES.map((d) => (
+            {devices.map((d) => (
               <View key={d.id} style={styles.deviceRow}>
                 <Ionicons
                   name={d.name.toLowerCase().includes('iphone') || d.name.toLowerCase().includes('samsung') ? 'phone-portrait-outline' : 'laptop-outline'}
@@ -310,17 +350,22 @@ export default function SecuritySection({ onLogoutAll }) {
         />
         {showActivity && (
           <Animated.View entering={FadeInDown.duration(250)} style={styles.subSection}>
-            {MOCK_ACTIVITY.map((a) => (
-              <View key={a.id} style={styles.activityRow}>
-                <View style={[styles.activityDot, a.risk === 'warning' && styles.activityDotWarn]}>
-                  <Ionicons name={a.icon} size={14} color={a.risk === 'warning' ? PROF.warning : PROF.accent} />
-                </View>
-                <View style={styles.activityInfo}>
-                  <Text style={styles.activityText}>{a.text}</Text>
-                  <Text style={styles.activityTime}>{a.time}</Text>
-                </View>
-              </View>
-            ))}
+            {activityLog.length > 0
+              ? activityLog.map((a) => (
+                  <View key={a.id} style={styles.activityRow}>
+                    <View style={[styles.activityDot, a.risk === 'warning' && styles.activityDotWarn]}>
+                      <Ionicons name={a.icon} size={14} color={a.risk === 'warning' ? PROF.warning : PROF.accent} />
+                    </View>
+                    <View style={styles.activityInfo}>
+                      <Text style={styles.activityText}>{a.text}</Text>
+                      <Text style={styles.activityTime}>{a.time}</Text>
+                    </View>
+                  </View>
+                ))
+              : (
+                  <Text style={[styles.activityTime, { padding: 8 }]}>Sin actividad reciente</Text>
+                )
+            }
           </Animated.View>
         )}
         <View style={styles.divider} />

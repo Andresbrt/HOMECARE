@@ -23,12 +23,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByTelefono(String telefono);
 
-    // Actualizar calificaciÃ³n promedio
+    // Actualizar calificación promedio
     @org.springframework.data.jpa.repository.Modifying
     @Query("UPDATE Usuario u SET u.calificacionPromedio = :promedio WHERE u.id = :usuarioId")
     void updateCalificacionPromedio(@Param("usuarioId") Long usuarioId, @Param("promedio") BigDecimal promedio);
 
-    // Proveedores cercanos a una ubicaciÃ³n (radio en km)
+    // Proveedores cercanos a una ubicación (radio en km)
     @Query(value = """
         SELECT * FROM usuarios u
         INNER JOIN usuario_roles ur ON u.id = ur.usuario_id
@@ -63,7 +63,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
         @Param("radioKm") int radioKm
     );
 
-    // Top proveedores por calificaciÃ³n
+    // Top proveedores por calificación
     @Query("""
         SELECT u FROM Usuario u
         INNER JOIN u.roles r

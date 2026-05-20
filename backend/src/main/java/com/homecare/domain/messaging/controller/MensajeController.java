@@ -64,7 +64,7 @@ public class MensajeController {
 
     @PutMapping("/{mensajeId}/leer")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Marcar mensaje como leÃ­do")
+    @Operation(summary = "Marcar mensaje como leído")
     public ResponseEntity<Void> marcarComoLeido(
             @PathVariable Long mensajeId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -75,7 +75,7 @@ public class MensajeController {
 
     @PutMapping("/solicitud/{solicitudId}/leer-todos")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Marcar todos los mensajes como leÃ­dos")
+    @Operation(summary = "Marcar todos los mensajes como leídos")
     public ResponseEntity<Void> marcarTodosComoLeidos(
             @PathVariable Long solicitudId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -86,7 +86,7 @@ public class MensajeController {
 
     @GetMapping("/no-leidos")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Contar mensajes no leÃ­dos")
+    @Operation(summary = "Contar mensajes no leídos")
     public ResponseEntity<Long> contarNoLeidos(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Long count = mensajeService.contarNoLeidos(userDetails.getId());
         return ResponseEntity.ok(count);
@@ -94,7 +94,7 @@ public class MensajeController {
 
     @GetMapping("/solicitud/{solicitudId}/no-leidos")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Contar mensajes no leÃ­dos de una solicitud")
+    @Operation(summary = "Contar mensajes no leídos de una solicitud")
     public ResponseEntity<Long> contarNoLeidosPorSolicitud(
             @PathVariable Long solicitudId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -105,7 +105,7 @@ public class MensajeController {
 
     @PostMapping("/{mensajeId}/typing")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER')")
-    @Operation(summary = "Indicar que estÃ¡ escribiendo")
+    @Operation(summary = "Indicar que está escribiendo")
     public ResponseEntity<Void> indicarEscribiendo(
             @PathVariable Long mensajeId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -117,7 +117,7 @@ public class MensajeController {
 
 /**
  * Controlador WebSocket para chat en tiempo real
- * Maneja la comunicaciÃ³n bidireccional entre cliente y proveedor
+ * Maneja la comunicación bidireccional entre cliente y proveedor
  */
 @Controller
 @RequiredArgsConstructor
@@ -127,7 +127,7 @@ class ChatWebSocketController {
 
     /**
      * Enviar mensaje por WebSocket
-     * Cliente envÃ­a a: /app/chat/send
+     * Cliente envía a: /app/chat/send
      */
     @MessageMapping("/chat/send")
     public void handleChatMessage(@Payload MensajeDTO.WebSocketMessage mensaje, Principal principal) {
@@ -147,8 +147,8 @@ class ChatWebSocketController {
     }
 
     /**
-     * Notificar que estÃ¡ escribiendo
-     * Cliente envÃ­a a: /app/chat/{solicitudId}/typing
+     * Notificar que está escribiendo
+     * Cliente envía a: /app/chat/{solicitudId}/typing
      */
     @MessageMapping("/chat/{solicitudId}/typing")
     public void handleTypingIndicator(@DestinationVariable Long solicitudId, Principal principal) {
@@ -167,8 +167,8 @@ class ChatWebSocketController {
     }
 
     /**
-     * Marcar mensajes como leÃ­dos por WebSocket
-     * Cliente envÃ­a a: /app/chat/{solicitudId}/read
+     * Marcar mensajes como leídos por WebSocket
+     * Cliente envía a: /app/chat/{solicitudId}/read
      */
     @MessageMapping("/chat/{solicitudId}/read")
     public void handleMarkAsRead(@DestinationVariable Long solicitudId, Principal principal) {

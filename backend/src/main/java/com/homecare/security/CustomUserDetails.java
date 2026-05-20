@@ -43,7 +43,10 @@ public class CustomUserDetails implements UserDetails {
         this.verificado = usuario.getVerificado();
         this.supabaseUid = usuario.getSupabaseUid();
         this.authorities = usuario.getRoles().stream()
-                .map(rol -> new SimpleGrantedAuthority(rol.getNombre()))
+                .map(rol -> {
+                    String name = rol.getNombre();
+                    return new SimpleGrantedAuthority(name.startsWith("ROLE_") ? name : "ROLE_" + name);
+                })
                 .collect(Collectors.toList());
     }
 

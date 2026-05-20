@@ -35,7 +35,7 @@ const SERVICES = [
     gradient: ['#49C0BC', '#2a9d99'],
     name: 'Limpieza General',
     description: 'Limpieza completa del hogar con productos de alta calidad.',
-    priceRange: '$25 – $60',
+    priceRange: '$80.000 – $200.000',
     duration: '2 – 4 hrs',
     badge: 'Más solicitado',
     features: [
@@ -53,7 +53,7 @@ const SERVICES = [
     gradient: ['#FFD700', '#FFA500'],
     name: 'Limpieza Premium',
     description: 'Servicio profundo con atención a todos los detalles del hogar.',
-    priceRange: '$60 – $120',
+    priceRange: '$200.000 – $380.000',
     duration: '4 – 6 hrs',
     badge: 'Premium',
     features: [
@@ -72,7 +72,7 @@ const SERVICES = [
     gradient: ['#7ED321', '#5BA515'],
     name: 'Limpieza por Horas',
     description: 'Servicio flexible adaptado a tus necesidades y disponibilidad.',
-    priceRange: '$12 – $18 /hr',
+    priceRange: '$40.000 – $60.000/hr',
     duration: 'Mínimo 2 hrs',
     badge: 'Flexible',
     features: [
@@ -89,7 +89,7 @@ const SERVICES = [
     gradient: ['#00BFFF', '#0080C0'],
     name: 'Desinfección Profesional',
     description: 'Eliminación de virus, bacterias y alérgenos certificada.',
-    priceRange: '$40 – $90',
+    priceRange: '$130.000 – $290.000',
     duration: '2 – 3 hrs',
     badge: 'Certificado',
     features: [
@@ -107,7 +107,7 @@ const SERVICES = [
     gradient: ['#FF8C00', '#CC5500'],
     name: 'Organización del Hogar',
     description: 'Sistema de organización profesional para tu espacio.',
-    priceRange: '$35 – $80',
+    priceRange: '$110.000 – $260.000',
     duration: '3 – 5 hrs',
     badge: 'Nuevo',
     features: [
@@ -125,7 +125,7 @@ const SERVICES = [
     gradient: ['#9B59B6', '#7D3C98'],
     name: 'Limpieza Post-Obra',
     description: 'Limpieza especializada tras remodelaciones y construcciones.',
-    priceRange: '$80 – $200',
+    priceRange: '$260.000 – $640.000',
     duration: '6 – 10 hrs',
     badge: 'Especializado',
     features: [

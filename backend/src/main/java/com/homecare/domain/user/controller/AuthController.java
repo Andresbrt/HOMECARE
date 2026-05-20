@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "AutenticaciÃ³n", description = "Endpoints para registro, login y gestiÃ³n de tokens")
+@Tag(name = "Autenticación", description = "Endpoints para registro, login y gestión de tokens")
 public class AuthController {
 
     private final AuthService authService;
@@ -62,17 +62,17 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Obtener informaciÃ³n del perfil del usuario autenticado")
+    @Operation(summary = "Obtener información del perfil del usuario autenticado")
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AuthDTO.UsuarioInfo> getMe(@AuthenticationPrincipal UserDetails userDetails) {
-        // En un sistema real, el ID se extraerÃ­a del UserDetails personalizado
+        // En un sistema real, el ID se extraería del UserDetails personalizado
         Long userId = userDetails instanceof CustomUserDetails ? ((CustomUserDetails) userDetails).getId() : Long.parseLong(userDetails.getUsername());
         return ResponseEntity.ok(authService.obtenerInfoUsuario(userId));
     }
 
     @PostMapping("/cambiar-password")
-    @Operation(summary = "Cambiar contraseÃ±a del usuario autenticado")
+    @Operation(summary = "Cambiar contraseña del usuario autenticado")
     @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> changePassword(
@@ -84,7 +84,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "Cerrar sesiÃ³n e invalidar tokens")
+    @Operation(summary = "Cerrar sesión e invalidar tokens")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletRequest request) {
         String token = jwtTokenProvider.resolveToken(request);

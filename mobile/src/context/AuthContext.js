@@ -341,10 +341,11 @@ export const AuthProvider = ({ children }) => {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function _parseError(error) {
+  // Priorizar el mensaje del servidor (Axios pone en error.message el genérico "Request failed with status code N")
   return (
-    error?.message ||
     error?.response?.data?.message ||
     error?.response?.data?.mensaje ||
+    error?.message ||
     'Ha ocurrido un error. Intenta de nuevo.'
   );
 }

@@ -23,24 +23,24 @@ public class TrackingWebSocketController {
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
-     * Recibe actualizaciones de ubicaciÃ³n del proveedor
+     * Recibe actualizaciones de ubicación del proveedor
      */
     @MessageMapping("/tracking/update/{solicitudId}")
     public void actualizarUbicacion(@DestinationVariable Long solicitudId,
                                    @Payload TrackingDTO.UbicacionUpdate ubicacion) {
         try {
-            log.debug("Actualizando ubicaciÃ³n para solicitud {}: {}", solicitudId, ubicacion);
+            log.debug("Actualizando ubicación para solicitud {}: {}", solicitudId, ubicacion);
             
-            // Procesar la ubicaciÃ³n
+            // Procesar la ubicación
             TrackingDTO.UbicacionResponse response = trackingService.actualizarUbicacionProveedor(solicitudId, ubicacion);
             
-            // Enviar actualizaciÃ³n a todos los suscriptores de esta solicitud
+            // Enviar actualización a todos los suscriptores de esta solicitud
             messagingTemplate.convertAndSend(
                 "/topic/tracking/" + solicitudId + "/location", 
                 response
             );
             
-            // Enviar actualizaciÃ³n especÃ­fica al cliente
+            // Enviar actualización específica al cliente
             messagingTemplate.convertAndSendToUser(
                 response.getClienteId().toString(),
                 "/queue/tracking/location",
@@ -48,12 +48,12 @@ public class TrackingWebSocketController {
             );
             
         } catch (Exception e) {
-            log.error("Error actualizando ubicaciÃ³n para solicitud {}: {}", solicitudId, e.getMessage(), e);
+            log.error("Error actualizando ubicación para solicitud {}: {}", solicitudId, e.getMessage(), e);
             
             // Notificar error
             messagingTemplate.convertAndSend(
                 "/topic/tracking/" + solicitudId + "/error",
-                "Error actualizando ubicaciÃ³n: " + e.getMessage()
+                "Error actualizando ubicación: " + e.getMessage()
             );
         }
     }
@@ -106,7 +106,7 @@ public class TrackingWebSocketController {
                 status
             );
             
-            // Notificar especÃ­ficamente al cliente
+            // Notificar específicamente al cliente
             messagingTemplate.convertAndSendToUser(
                 status.getClienteId().toString(),
                 "/queue/service/status",
@@ -137,7 +137,7 @@ public class TrackingWebSocketController {
     @MessageMapping("/tracking/subscribe/{solicitudId}")
     @SendTo("/topic/tracking/{solicitudId}/subscribed")
     public String suscribirseATracking(@DestinationVariable Long solicitudId) {
-        log.debug("Nueva suscripciÃ³n a tracking para solicitud {}", solicitudId);
+        log.debug("Nueva suscripción a tracking para solicitud {}", solicitudId);
         return "Suscrito al tracking de la solicitud " + solicitudId;
     }
 
@@ -146,8 +146,8 @@ public class TrackingWebSocketController {
      */
     @MessageMapping("/tracking/unsubscribe/{solicitudId}")
     public void desuscribirseDeTracking(@DestinationVariable Long solicitudId) {
-        log.debug("DesuscripciÃ³n de tracking para solicitud {}", solicitudId);
-        // La gestiÃ³n de suscripciones es automÃ¡tica con WebSocket
+        log.debug("Desuscripción de tracking para solicitud {}", solicitudId);
+        // La gestión de suscripciones es automática con WebSocket
     }
 }
 

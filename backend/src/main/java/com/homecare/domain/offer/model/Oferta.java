@@ -64,7 +64,7 @@ public class Oferta {
     @Column(name = "aceptada_at")
     private LocalDateTime aceptadaAt;
 
-    // AuditorÃ­a
+    // Auditoría
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -75,13 +75,13 @@ public class Oferta {
 
     // Enum interno
     public enum EstadoOferta {
-        PENDIENTE,   // Esperando decisiÃ³n del cliente
-        ACEPTADA,    // Cliente aceptÃ³ esta oferta
-        RECHAZADA,   // Cliente rechazÃ³ esta oferta
-        RETIRADA     // Proveedor retirÃ³ su oferta
+        PENDIENTE,   // Esperando decisión del cliente
+        ACEPTADA,    // Cliente aceptó esta oferta
+        RECHAZADA,   // Cliente rechazó esta oferta
+        RETIRADA     // Proveedor retiró su oferta
     }
 
-    // MÃ©todos de utilidad
+    // Métodos de utilidad
     public boolean esPendiente() {
         return estado == EstadoOferta.PENDIENTE;
     }
@@ -106,7 +106,7 @@ public class Oferta {
         this.estado = EstadoOferta.RETIRADA;
     }
 
-    // MÃ©todos alias para compatibilidad
+    // Métodos alias para compatibilidad
     public void setTiempoEstimadoHoras(Integer horas) {
         this.tiempoLlegadaMinutos = horas != null ? horas * 60 : null;
     }

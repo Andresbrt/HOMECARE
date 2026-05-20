@@ -199,21 +199,21 @@ public class TrackingService {
                     ubicacion
             );
 
-            log.debug("ActualizaciÃ³n de tracking enviada via WebSocket para servicio {}", servicioId);
+            log.debug("Actualización de tracking enviada via WebSocket para servicio {}", servicioId);
         } catch (Exception e) {
-            log.error("Error al enviar actualizaciÃ³n de tracking via WebSocket: {}", e.getMessage());
+            log.error("Error al enviar actualización de tracking via WebSocket: {}", e.getMessage());
         }
     }
 
-    // MÃ©todos adicionales para compatibilidad con WebSocket Controller
+    // Métodos adicionales para compatibilidad con WebSocket Controller
 
     /**
-     * Actualiza ubicaciÃ³n del proveedor (compatibilidad WebSocket)
+     * Actualiza ubicación del proveedor (compatibilidad WebSocket)
      */
     public com.homecare.dto.TrackingDTO.UbicacionResponse actualizarUbicacionProveedor(
             Long solicitudId, com.homecare.dto.TrackingDTO.UbicacionUpdate ubicacion) {
         
-        // Convertir a formato interno y delegar al mÃ©todo existente
+        // Convertir a formato interno y delegar al método existente
         LocationDTO.TrackingUpdate request = new LocationDTO.TrackingUpdate();
         request.setServicioId(solicitudId); // Asumiendo que solicitudId corresponde a servicioId
         request.setLatitud(ubicacion.getLatitud());
@@ -221,7 +221,7 @@ public class TrackingService {
         
         LocationDTO.LocationResponse response = actualizarTracking(ubicacion.getProveedorId(), request);
         
-        // Buscar informaciÃ³n del servicio para obtener clienteId
+        // Buscar información del servicio para obtener clienteId
         Long clienteId = null;
         try {
             ServicioAceptado servicio = servicioRepository.findById(solicitudId).orElse(null);
@@ -241,19 +241,19 @@ public class TrackingService {
             .longitud(response.getLongitud())
             .estado(ubicacion.getEstado())
             .timestamp(response.getTimestamp())
-            .mensaje("UbicaciÃ³n actualizada")
+            .mensaje("Ubicación actualizada")
             .build();
     }
 
     /**
-     * EnvÃ­a mensaje de chat (placeholder - implementaciÃ³n bÃ¡sica)
+     * Envía mensaje de chat (placeholder - implementación básica)
      */
     public com.homecare.dto.TrackingDTO.ChatMessage enviarMensajeChat(
             Long servicioId, com.homecare.dto.TrackingDTO.ChatMessage mensaje) {
         
         log.debug("Enviando mensaje de chat para servicio {}: {}", servicioId, mensaje.getMensaje());
         
-        // AquÃ­ irÃ­a la lÃ³gica para guardar el mensaje en base de datos
+        // Aquí iría la lógica para guardar el mensaje en base de datos
         // Por ahora, devolvemos el mensaje procesado
         mensaje.setTimestamp(LocalDateTime.now());
         mensaje.setLeido(false);
@@ -262,7 +262,7 @@ public class TrackingService {
     }
 
     /**
-     * Actualiza estado del servicio (placeholder - implementaciÃ³n bÃ¡sica)
+     * Actualiza estado del servicio (placeholder - implementación básica)
      */
     public com.homecare.dto.TrackingDTO.ServicioStatus actualizarEstadoServicio(
             Long servicioId, com.homecare.dto.TrackingDTO.EstadoUpdate estadoUpdate) {

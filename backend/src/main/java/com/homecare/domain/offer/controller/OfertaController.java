@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ofertas")
 @RequiredArgsConstructor
-@Tag(name = "Ofertas", description = "GestiÃ³n de ofertas competitivas (Modelo inDriver)")
+@Tag(name = "Ofertas", description = "Gestión de ofertas competitivas (Modelo inDriver)")
 @SecurityRequirement(name = "bearerAuth")
 public class OfertaController {
 

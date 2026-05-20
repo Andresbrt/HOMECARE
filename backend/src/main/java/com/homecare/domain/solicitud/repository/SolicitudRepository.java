@@ -76,5 +76,12 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
         AND s.estado IN ('ABIERTA', 'EN_NEGOCIACION', 'ACEPTADA', 'EN_PROGRESO')
         """)
     long countSolicitudesActivasByCliente(@Param("clienteId") Long clienteId);
+
+    // Contar solicitudes creadas a partir de una fecha (para predicción de demanda)
+    @Query("""
+        SELECT COUNT(s) FROM Solicitud s
+        WHERE s.createdAt >= :desde
+        """)
+    long countSolicitudesDesde(@Param("desde") LocalDateTime desde);
 }
 

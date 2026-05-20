@@ -49,7 +49,7 @@ public class Usuario {
         return fotoPerfil;
     }
 
-    // Campos especÃ­ficos para Proveedores
+    // Campos específicos para Proveedores
     @Column(name = "documento_identidad", length = 50)
     private String documentoIdentidad;
 
@@ -67,7 +67,7 @@ public class Usuario {
     @Builder.Default
     private BigDecimal calificacionPromedio = BigDecimal.ZERO;
 
-    // GeolocalizaciÃ³n
+    // Geolocalización
     @Column(precision = 10, scale = 8)
     private BigDecimal latitud;
 
@@ -77,7 +77,7 @@ public class Usuario {
     @Column(columnDefinition = "TEXT")
     private String direccion;
 
-    // Tracking de ubicaciÃ³n
+    // Tracking de ubicación
     @Column(name = "ultima_ubicacion")
     private LocalDateTime ultimaUbicacion;
 
@@ -153,7 +153,7 @@ public class Usuario {
     @Builder.Default
     private Set<Oferta> ofertas = new HashSet<>();
 
-    // AuditorÃ­a
+    // Auditoría
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -162,21 +162,21 @@ public class Usuario {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // MÃ©todos de utilidad
+    // Métodos de utilidad
     public String getNombreCompleto() {
         return nombre + " " + apellido;
     }
 
     public boolean esProveedor() {
-        return roles.stream().anyMatch(rol -> rol.getNombre().equals("SERVICE_PROVIDER"));
+        return roles.stream().anyMatch(rol -> rol.getNombre().equals("ROLE_SERVICE_PROVIDER"));
     }
 
     public boolean esCliente() {
-        return roles.stream().anyMatch(rol -> rol.getNombre().equals("CUSTOMER"));
+        return roles.stream().anyMatch(rol -> rol.getNombre().equals("ROLE_CUSTOMER"));
     }
 
     public boolean esAdmin() {
-        return roles.stream().anyMatch(rol -> rol.getNombre().equals("ADMIN"));
+        return roles.stream().anyMatch(rol -> rol.getNombre().equals("ROLE_ADMIN"));
     }
 
     // Alias para compatibilidad

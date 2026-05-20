@@ -54,7 +54,7 @@ public class ExternalServicesHealthService {
             
             // Test simple geocoding request
             String url = "https://maps.googleapis.com/maps/api/geocode/json" +
-                        "?address=BogotÃ¡,Colombia&key=" + googleMapsApiKey;
+                        "?address=Bogotá,Colombia&key=" + googleMapsApiKey;
             
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
@@ -155,8 +155,8 @@ public class ExternalServicesHealthService {
                 return health;
             }
 
-            // Para Firebase, solo verificamos que la configuraciÃ³n existe
-            // Un test real requerirÃ­a enviar una notificaciÃ³n de prueba
+            // Para Firebase, solo verificamos que la configuración existe
+            // Un test real requeriría enviar una notificación de prueba
             health.put("status", "UP");
             health.put("configured", true);
             health.put("note", "Configuration validated - full test requires test notification");
@@ -172,7 +172,7 @@ public class ExternalServicesHealthService {
     }
 
     /**
-     * Verifica el estado de AWS S3 (si estÃ¡ configurado)
+     * Verifica el estado de AWS S3 (si está configurado)
      */
     public Map<String, Object> checkS3Health() {
         Map<String, Object> health = new HashMap<>();
@@ -185,8 +185,8 @@ public class ExternalServicesHealthService {
                 return health;
             }
 
-            // VerificaciÃ³n bÃ¡sica de configuraciÃ³n S3
-            // En un entorno real, harÃ­as una operaciÃ³n HEAD al bucket
+            // Verificación básica de configuración S3
+            // En un entorno real, harías una operación HEAD al bucket
             health.put("status", "UP");
             health.put("configured", true);
             health.put("bucketName", s3BucketName);

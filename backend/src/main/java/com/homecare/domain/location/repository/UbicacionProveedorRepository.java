@@ -15,13 +15,13 @@ import java.util.Optional;
 public interface UbicacionProveedorRepository extends JpaRepository<UbicacionProveedor, Long> {
 
     /**
-     * Obtiene la Ãºltima ubicaciÃ³n del proveedor para una solicitud
+     * Obtiene la última ubicación del proveedor para una solicitud
      */
     Optional<UbicacionProveedor> findTopBySolicitudIdAndProveedorIdOrderByTimestampDesc(
             Long solicitudId, Long proveedorId);
 
     /**
-     * Obtiene la Ãºltima ubicaciÃ³n del proveedor para cualquier solicitud
+     * Obtiene la última ubicación del proveedor para cualquier solicitud
      */
     Optional<UbicacionProveedor> findTopByProveedorIdOrderByTimestampDesc(Long proveedorId);
 
@@ -38,7 +38,7 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
             Long solicitudId, LocalDateTime inicio, LocalDateTime fin);
 
     /**
-     * Obtiene ubicaciones recientes del proveedor (Ãºltimos N minutos)
+     * Obtiene ubicaciones recientes del proveedor (últimos N minutos)
      */
     @Query("SELECT u FROM UbicacionProveedor u WHERE u.proveedor.id = :proveedorId " +
            "AND u.timestamp >= :desde ORDER BY u.timestamp DESC")
@@ -47,12 +47,12 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
             @Param("desde") LocalDateTime desde);
 
     /**
-     * Cuenta actualizaciones de ubicaciÃ³n en una solicitud
+     * Cuenta actualizaciones de ubicación en una solicitud
      */
     Long countBySolicitudId(Long solicitudId);
 
     /**
-     * Obtiene la primera ubicaciÃ³n (inicio del tracking)
+     * Obtiene la primera ubicación (inicio del tracking)
      */
     Optional<UbicacionProveedor> findTopBySolicitudIdOrderByTimestampAsc(Long solicitudId);
 
@@ -62,7 +62,7 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
     boolean existsBySolicitudId(Long solicitudId);
 
     /**
-     * Obtiene ubicaciones donde el proveedor estÃ¡ en ruta
+     * Obtiene ubicaciones donde el proveedor está en ruta
      */
     @Query("SELECT u FROM UbicacionProveedor u WHERE u.solicitud.id = :solicitudId " +
            "AND u.estado = 'EN_RUTA' ORDER BY u.timestamp DESC")
@@ -76,14 +76,14 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
     Double calcularVelocidadPromedio(@Param("solicitudId") Long solicitudId);
 
     /**
-     * Calcula velocidad mÃ¡xima alcanzada
+     * Calcula velocidad máxima alcanzada
      */
     @Query("SELECT MAX(u.velocidadKmh) FROM UbicacionProveedor u " +
            "WHERE u.solicitud.id = :solicitudId AND u.velocidadKmh IS NOT NULL")
     Double calcularVelocidadMaxima(@Param("solicitudId") Long solicitudId);
 
     /**
-     * Obtiene duraciÃ³n total del tracking (diferencia entre primera y Ãºltima ubicaciÃ³n)
+     * Obtiene duración total del tracking (diferencia entre primera y última ubicación)
      */
     @Query("SELECT MIN(u.timestamp) FROM UbicacionProveedor u WHERE u.solicitud.id = :solicitudId")
     LocalDateTime findPrimerTimestamp(@Param("solicitudId") Long solicitudId);
@@ -112,7 +112,7 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
 
     /**
      * Elimina ubicaciones antiguas (limpieza de datos)
-     * Ãštil para eliminar ubicaciones de mÃ¡s de X dÃ­as
+     * Ãštil para eliminar ubicaciones de más de X días
      */
     void deleteByTimestampBefore(LocalDateTime fecha);
 
@@ -124,7 +124,7 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
     List<Long> findSolicitudesConTrackingActivo(@Param("desde") LocalDateTime desde);
 
     /**
-     * Busca solicitudes que han tenido tracking activo desde una fecha especÃ­fica
+     * Busca solicitudes que han tenido tracking activo desde una fecha específica
      * Considera una solicitud "con tracking activo" si tiene ubicaciones registradas
      */
     @Query("SELECT DISTINCT u.solicitud FROM UbicacionProveedor u " +
@@ -133,7 +133,7 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
     List<Object> findSolicitudesConTrackingActivoCompleto(@Param("fechaDesde") LocalDateTime fechaDesde);
 
     /**
-     * Busca tracking activo en tiempo real (Ãºltimos 10 minutos)
+     * Busca tracking activo en tiempo real (últimos 10 minutos)
      */
     @Query("SELECT DISTINCT u.solicitud FROM UbicacionProveedor u " +
            "WHERE u.timestamp >= :fechaLimite " +
@@ -141,7 +141,7 @@ public interface UbicacionProveedorRepository extends JpaRepository<UbicacionPro
     List<Object> findTrackingEnTiempoReal(@Param("fechaLimite") LocalDateTime fechaLimite);
 
     /**
-     * Obtiene estadÃ­sticas de uso de tracking por perÃ­odo
+     * Obtiene estadísticas de uso de tracking por período
      */
     @Query("SELECT DATE(u.timestamp) as fecha, " +
            "COUNT(u.id) as totalActualizaciones, " +

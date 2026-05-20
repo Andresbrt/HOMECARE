@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
-@Tag(name = "Usuarios", description = "GestiÃ³n de perfiles de usuario")
+@Tag(name = "Usuarios", description = "Gestión de perfiles de usuario")
 @SecurityRequirement(name = "bearerAuth")
 public class UsuarioController {
 
@@ -45,7 +45,7 @@ public class UsuarioController {
 
     @PutMapping("/ubicacion")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Actualizar ubicaciÃ³n")
+    @Operation(summary = "Actualizar ubicación")
     public ResponseEntity<Void> actualizarUbicacion(
             @RequestParam BigDecimal latitud,
             @RequestParam BigDecimal longitud,
@@ -66,7 +66,7 @@ public class UsuarioController {
 
     @GetMapping("/estadisticas")
     @PreAuthorize("hasRole('SERVICE_PROVIDER')")
-    @Operation(summary = "Obtener estadÃ­sticas del proveedor")
+    @Operation(summary = "Obtener estadísticas del proveedor")
     public ResponseEntity<UsuarioDTO.Estadisticas> obtenerEstadisticas(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         UsuarioDTO.Estadisticas stats = usuarioService.obtenerEstadisticas(userDetails.getId());
@@ -75,7 +75,7 @@ public class UsuarioController {
 
     @GetMapping("/{usuarioId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Obtener perfil pÃºblico de usuario")
+    @Operation(summary = "Obtener perfil público de usuario")
     public ResponseEntity<UsuarioDTO.Response> obtenerPerfilPublico(@PathVariable Long usuarioId) {
         UsuarioDTO.Response perfil = usuarioService.obtenerPerfilPublico(usuarioId);
         return ResponseEntity.ok(perfil);

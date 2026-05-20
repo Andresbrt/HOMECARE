@@ -18,12 +18,12 @@ import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
 import useChatStore from '../../store/chatStore';
+import { listarSolicitudesAbiertas } from '../../services/solicitudesService';
+import { apiFetch } from '../../config/api';
+import apiClient from '../../services/apiClient';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import ScreenLayout from '../../components/shared/ScreenLayout';
 import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
-
-// Número de solicitudes pendientes (mock — conectar a backend)
-const PENDING_REQUESTS = 3;
 
 // Umbral del nivel Elite (meta trimestral)
 const ELITE_THRESHOLD = 26;
@@ -101,8 +101,11 @@ export default function ProfDashboardScreen({ navigation }) {
   const [isAvailable, setIsAvailable] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tooltip, setTooltip] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  const weeklyServices = 20;  // demo Pro — en producción: user?.serviciosCompletados ?? 0
+  const weeklyServices = user?.serviciosCompletados ?? 0;
   const level = computeLevel(weeklyServices);
   const quarterLabel = getQuarterLabel();
   // Progreso dentro del nivel actual (barra de la tarjeta)
@@ -115,10 +118,47 @@ export default function ProfDashboardScreen({ navigation }) {
   const fabScale = useSharedValue(0);
   const fabChatScale = useSharedValue(0);
 
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      const solicitudes = await listarSolicitudesAbiertas({});
+      setPendingCount(Array.isArray(solicitudes) ? solicitudes.length : 0);
+    } catch (_) {
+      // No bloquear la UI si falla la carga de solicitudes
+    }
+  }, []);
+
+  const fetchRecentActivity = useCallback(async () => {
+    try {
+      const data = await apiFetch('/payments/me');
+      const list = Array.isArray(data) ? data : (data?.content ?? []);
+      const mapped = list.slice(0, 3).map((p) => ({
+        type: p.concepto ?? p.descripcion ?? 'Servicio',
+        address: p.direccion ?? p.zona ?? '',
+        amount: `COL$ ${Number(p.monto ?? p.amount ?? 0).toLocaleString('es-CO')}`,
+      }));
+      setRecentActivity(mapped);
+    } catch (_) {
+      // No bloquear la UI si falla
+    }
+  }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/notificaciones');
+      const list = Array.isArray(data) ? data : (data?.content ?? []);
+      setUnreadNotifCount(list.filter((n) => !n.leida && !n.read).length);
+    } catch (_) {
+      // No bloquear la UI
+    }
+  }, []);
+
   useEffect(() => {
     progressAnim.value = withTiming(progressPct, { duration: 1200, easing: Easing.out(Easing.cubic) });
     fabScale.value = withSpring(1, { damping: 14, stiffness: 160, mass: 0.8 });
-  }, []);
+    fetchPendingCount();
+    fetchRecentActivity();
+    fetchUnreadCount();
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isAvailable) {
@@ -162,18 +202,16 @@ export default function ProfDashboardScreen({ navigation }) {
     navigation.navigate('Chat', { solicitudId: activeService.solicitudId, destinatarioId: activeService.destinatarioId, titulo: activeService.titulo ?? 'Servicio activo' });
   }, [activeService, navigation]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1200);
-  }, []);
+    try {
+      await Promise.all([fetchPendingCount(), fetchRecentActivity(), fetchUnreadCount()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchPendingCount]);
 
   const today = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  const mockActivity = [
-    { type: 'Limpieza Básica', address: 'Cra 15 #82-45, Bogotá', amount: 'COL$ 45.000' },
-    { type: 'Limpieza Profunda', address: 'Cll 100 #19-25, Bogotá', amount: 'COL$ 85.000' },
-    { type: 'Limpieza Oficina', address: 'Av El Dorado #90-35', amount: 'COL$ 120.000' },
-  ];
 
   return (
     <ScreenLayout backgroundColor={PROF.background} top={true}>
@@ -188,7 +226,11 @@ export default function ProfDashboardScreen({ navigation }) {
           <Text style={dp.brandTitle}>HOMECARE</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={dp.bellBtn}>
             <Ionicons name="notifications-outline" size={24} color={PROF.textPrimary} />
-            <View style={dp.notifBadge}><Text style={dp.notifBadgeText}>3</Text></View>
+            {unreadNotifCount > 0 && (
+              <View style={dp.notifBadge}>
+                <Text style={dp.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -222,7 +264,7 @@ export default function ProfDashboardScreen({ navigation }) {
           </Animated.View>
 
           {/* ═══ SOLICITUDES PENDIENTES (si hay) ═══ */}
-          {PENDING_REQUESTS > 0 && isAvailable && (
+          {pendingCount > 0 && isAvailable && (
             <Animated.View entering={FadeIn.delay(150).duration(350)}>
               <TouchableOpacity
                 onPress={() => navigation.navigate('ProfRequests')}
@@ -234,7 +276,7 @@ export default function ProfDashboardScreen({ navigation }) {
                       <Ionicons name="notifications" size={18} color="#fff" />
                     </View>
                     <View style={dp.pendingInfo}>
-                      <Text style={dp.pendingTitle}>{PENDING_REQUESTS} solicitudes nuevas</Text>
+                      <Text style={dp.pendingTitle}>{pendingCount} solicitudes nuevas</Text>
                       <Text style={dp.pendingSub}>Toca para ver y aceptar</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="#fff" />
@@ -312,12 +354,19 @@ export default function ProfDashboardScreen({ navigation }) {
               </TouchableOpacity>
             </View>
             <GlassCard variant="elevated" style={dp.actCard}>
-              {mockActivity.map((item, i) => (
-                <View key={i}>
-                  <ActivityItem item={item} index={i} />
-                  {i < mockActivity.length - 1 && <View style={dp.actSep} />}
-                </View>
-              ))}
+              {recentActivity.length > 0
+                ? recentActivity.map((item, i) => (
+                    <View key={i}>
+                      <ActivityItem item={item} index={i} />
+                      {i < recentActivity.length - 1 && <View style={dp.actSep} />}
+                    </View>
+                  ))
+                : (
+                    <View style={{ padding: SPACING.md, alignItems: 'center' }}>
+                      <Text style={{ color: PROF.textMuted, fontSize: TYPOGRAPHY.xs }}>Sin actividad reciente</Text>
+                    </View>
+                  )
+              }
             </GlassCard>
           </Animated.View>
 

@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/promotions")
 @RequiredArgsConstructor
-@Tag(name = "Promotions", description = "GestiÃ³n de promociones y cupones")
+@Tag(name = "Promotions", description = "Gestión de promociones y cupones")
 @SecurityRequirement(name = "bearerAuth")
 public class PromotionController {
 
@@ -27,7 +27,7 @@ public class PromotionController {
 
     @PostMapping("/validate")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Validar cÃ³digo de promociÃ³n")
+    @Operation(summary = "Validar código de promoción")
     public ResponseEntity<PromotionDTO.Response> validarPromocion(
             @RequestParam String codigo,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -48,7 +48,7 @@ public class PromotionController {
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Crear nueva promociÃ³n (solo admin)")
+    @Operation(summary = "Crear nueva promoción (solo admin)")
     public ResponseEntity<PromotionDTO.Response> crearPromocion(
             @Valid @RequestBody PromotionDTO.Crear request) {
 

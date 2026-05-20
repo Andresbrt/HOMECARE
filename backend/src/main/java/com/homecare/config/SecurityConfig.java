@@ -3,6 +3,7 @@ package com.homecare.config;
 import com.homecare.security.JwtAuthenticationEntryPoint;
 import com.homecare.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,6 +37,10 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /** Orígenes adicionales inyectados desde application-production.yml (cors.allowed-origins) */
+    @Value("${cors.allowed-origins:}")
+    private String extraAllowedOrigins;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -59,7 +65,12 @@ public class SecurityConfig {
                         // Endpoints públicos
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
+                        // h2-console solo en perfil dev/test — nunca en producción
+                        .requestMatchers("/h2-console/**").access((authz, ctx) -> {
+                            String profile = System.getProperty("spring.profiles.active", "");
+                            boolean isDevOrTest = profile.contains("dev") || profile.contains("test");
+                            return new org.springframework.security.authorization.AuthorizationDecision(isDevOrTest);
+                        })
                         .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
@@ -94,14 +105,25 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // setAllowedOriginPatterns soporta wildcards y es compatible con allowCredentials(true)
-        configuration.setAllowedOriginPatterns(List.of(
+        // Orígenes base: desarrollo local y Expo Go
+        List<String> patterns = new ArrayList<>(List.of(
                 "http://localhost:*",
                 "http://192.168.*.*",   // celular físico en red local
                 "http://10.0.*.*",      // emulador Android
                 "exp://*"               // protocolo Expo Go
         ));
 
+        // Agregar orígenes de producción desde application-production.yml
+        if (extraAllowedOrigins != null && !extraAllowedOrigins.isBlank()) {
+            for (String origin : extraAllowedOrigins.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty()) {
+                    patterns.add(trimmed);
+                }
+            }
+        }
+
+        configuration.setAllowedOriginPatterns(patterns);
         configuration.setAllowedMethods(
                 Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         );

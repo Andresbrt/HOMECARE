@@ -12,18 +12,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositorio para gestiÃ³n de promociones
+ * Repositorio para gestión de promociones
  */
 @Repository
 public interface PromotionRepository extends JpaRepository<Promotion, Long> {
 
     /**
-     * Busca una promociÃ³n por cÃ³digo
+     * Busca una promoción por código
      */
     Optional<Promotion> findByCodigo(String codigo);
 
     /**
-     * Verifica si existe una promociÃ³n con un cÃ³digo especÃ­fico
+     * Verifica si existe una promoción con un código específico
      */
     boolean existsByCodigo(String codigo);
 
@@ -36,7 +36,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     List<Promotion> findPromocionesActivas(@Param("fecha") LocalDate fecha);
 
     /**
-     * Busca promociones activas por tipo de aplicaciÃ³n
+     * Busca promociones activas por tipo de aplicación
      */
     @Query("SELECT p FROM Promotion p WHERE p.activa = true " +
            "AND p.fechaInicio <= :fecha AND p.fechaFin >= :fecha " +
@@ -74,7 +74,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     Long countPromocionesActivas(@Param("fecha") LocalDate fecha);
 
     /**
-     * Obtiene estadÃ­sticas de uso de promociones
+     * Obtiene estadísticas de uso de promociones
      */
     @Query("SELECT p.aplicaA, COUNT(p), SUM(p.usoActual) FROM Promotion p " +
            "WHERE p.activa = true GROUP BY p.aplicaA")

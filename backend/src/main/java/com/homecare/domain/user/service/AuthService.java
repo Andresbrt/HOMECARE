@@ -9,6 +9,7 @@ import com.homecare.domain.user.repository.UsuarioRepository;
 import com.homecare.domain.user.repository.RolRepository;
 import com.homecare.security.CustomUserDetails;
 import com.homecare.security.JwtTokenProvider;
+import com.homecare.security.SupabaseJwtValidator;
 import com.homecare.domain.common.service.EmailService;
 // FirebaseTokenService eliminado — autenticación 100% Supabase Auth
 import com.homecare.domain.user.model.UserToken;
@@ -38,11 +39,12 @@ public class AuthService {
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final SupabaseJwtValidator supabaseJwtValidator;
     private final EmailService emailService;
     private final UserTokenRepository userTokenRepository;
     private final com.homecare.domain.common.service.FileStorageService fileStorageService;
     private final com.homecare.domain.user.validator.PasswordValidator passwordValidator;
-    // firebaseTokenService eliminado — el JWT de Supabase se valida en JwtTokenProvider
+    // firebaseTokenService eliminado — el JWT de Supabase se valida con SupabaseJwtValidator
 
     @Value("${app.frontend.base-url:https://homecare.works}")
     private String frontendBaseUrl;
@@ -50,10 +52,22 @@ public class AuthService {
     @Value("${app.backend.base-url:https://api.homecare.works}")
     private String backendBaseUrl;
 
+    /**
+     * Normaliza el nombre del rol para el cliente móvil.
+     * La DB almacena "ROLE_CUSTOMER", "ROLE_SERVICE_PROVIDER".
+     * El móvil espera "CUSTOMER", "SERVICE_PROVIDER" (sin prefijo).
+     */
+    private String normalizeRole(String roleName) {
+        if (roleName == null) return "CUSTOMER";
+        return roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
+    }
+
     @Transactional
     public AuthDTO.LoginResponse registro(AuthDTO.Registro registroDTO) {
-        if (usuarioRepository.existsByEmail(registroDTO.getEmail())) {
-            throw new DuplicateResourceException("El email '" + registroDTO.getEmail() + "' ya está registrado en nuestra plataforma.");
+        String emailNorm = registroDTO.getEmail().trim().toLowerCase();
+
+        if (usuarioRepository.existsByEmail(emailNorm)) {
+            throw new DuplicateResourceException("El email '" + emailNorm + "' ya está registrado en nuestra plataforma.");
         }
 
         passwordValidator.validate(registroDTO.getPassword());
@@ -66,8 +80,24 @@ public class AuthService {
         Rol rol = rolRepository.findByNombre(rolNombre)
                 .orElseThrow(() -> new AuthException("Rol no encontrado: " + rolNombre));
 
+        // Validar documentos obligatorios para proveedores
+        if ("SERVICE_PROVIDER".equalsIgnoreCase(registroDTO.getRol())) {
+            if (registroDTO.getFotoSelfieBase64() == null || registroDTO.getFotoSelfieBase64().isBlank()) {
+                throw new AuthException("La foto selfie es obligatoria para proveedores de servicio");
+            }
+            if (registroDTO.getFotoCedulaFrontalBase64() == null || registroDTO.getFotoCedulaFrontalBase64().isBlank()) {
+                throw new AuthException("La foto frontal de la cédula es obligatoria para proveedores de servicio");
+            }
+            if (registroDTO.getFotoCedulaPosteriorBase64() == null || registroDTO.getFotoCedulaPosteriorBase64().isBlank()) {
+                throw new AuthException("La foto posterior de la cédula es obligatoria para proveedores de servicio");
+            }
+            if (registroDTO.getArchivoAntecedentesBase64() == null || registroDTO.getArchivoAntecedentesBase64().isBlank()) {
+                throw new AuthException("El archivo de antecedentes judiciales es obligatorio para proveedores de servicio");
+            }
+        }
+
         Usuario usuario = Usuario.builder()
-                .email(registroDTO.getEmail())
+                .email(emailNorm)
                 .password(passwordEncoder.encode(registroDTO.getPassword()))
                 .nombre(registroDTO.getNombre())
                 .apellido(registroDTO.getApellido())
@@ -117,7 +147,7 @@ public class AuthService {
             }
         }
         
-        // Generar token de verificaciÃ³n
+        // Generar token de verificación
         String token = java.util.UUID.randomUUID().toString();
         UserToken userToken = UserToken.builder()
                 .usuario(savedUser)
@@ -153,7 +183,7 @@ public class AuthService {
                 .nombre(savedUser.getNombre())
                 .apellido(savedUser.getApellido())
                 .fotoPerfil(savedUser.getFotoPerfil())
-                .rol(rolNombre)
+                .rol(normalizeRole(rolNombre))
                 .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
                 .build();
     }
@@ -220,15 +250,18 @@ public class AuthService {
 
     @Transactional
     public AuthDTO.LoginResponse login(String email, String password) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Credenciales invÃ¡lidas"));
+        // Normalizar email: Android puede enviar mayúsculas por autocompletado o pegado
+        String emailNorm = email == null ? "" : email.trim().toLowerCase();
 
-        if (!passwordEncoder.matches(password, usuario.getPassword())) {
-            throw new BadCredentialsException("Credenciales invÃ¡lidas");
+        Usuario usuario = usuarioRepository.findByEmail(emailNorm)
+                .orElseThrow(() -> new AuthException("Credenciales inválidas"));
+
+        if (usuario.getPassword() == null || !passwordEncoder.matches(password, usuario.getPassword())) {
+            throw new AuthException("Credenciales inválidas");
         }
 
         if (!usuario.getActivo()) {
-            throw new AuthException("Su cuenta estÃ¡ inactiva. Contacte al administrador.");
+            throw new AuthException("Su cuenta está inactiva. Contacte al administrador.");
         }
 
         usuario.setUltimoAcceso(LocalDateTime.now());
@@ -238,7 +271,8 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(userDetails);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
 
-        String mainRole = usuario.getRoles().iterator().next().getNombre();
+        String mainRole = usuario.getRoles().isEmpty() ? "ROLE_CUSTOMER"
+                : usuario.getRoles().iterator().next().getNombre();
 
         return AuthDTO.LoginResponse.builder()
                 .token(token)
@@ -249,7 +283,7 @@ public class AuthService {
                 .nombre(usuario.getNombre())
                 .apellido(usuario.getApellido())
                 .fotoPerfil(usuario.getFotoPerfil())
-                .rol(mainRole)
+                .rol(normalizeRole(mainRole))
                 .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
                 .build();
     }
@@ -257,7 +291,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthDTO.LoginResponse refreshToken(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new AuthException("Token de refresco invÃ¡lido");
+            throw new AuthException("Token de refresco inválido");
         }
 
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
@@ -265,14 +299,15 @@ public class AuthService {
                 .orElseThrow(() -> new AuthException("Usuario no encontrado"));
 
         if (!usuario.getActivo()) {
-            throw new AuthException("Su cuenta estÃ¡ inactiva");
+            throw new AuthException("Su cuenta está inactiva");
         }
 
         CustomUserDetails userDetails = CustomUserDetails.create(usuario);
         String newToken = jwtTokenProvider.generateToken(userDetails);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
 
-        String mainRole = usuario.getRoles().iterator().next().getNombre();
+        String mainRole = usuario.getRoles().isEmpty() ? "ROLE_CUSTOMER"
+                : usuario.getRoles().iterator().next().getNombre();
 
         return AuthDTO.LoginResponse.builder()
                 .token(newToken)
@@ -283,7 +318,7 @@ public class AuthService {
                 .nombre(usuario.getNombre())
                 .apellido(usuario.getApellido())
                 .fotoPerfil(usuario.getFotoPerfil())
-                .rol(mainRole)
+                .rol(normalizeRole(mainRole))
                 .expiresIn(jwtTokenProvider.getJwtExpirationMs() / 1000)
                 .build();
     }
@@ -294,11 +329,11 @@ public class AuthService {
                 .orElseThrow(() -> new AuthException("Usuario no encontrado"));
 
         if (!passwordEncoder.matches(oldPassword, usuario.getPassword())) {
-            throw new AuthException("La contraseÃ±a actual es incorrecta");
+            throw new AuthException("La contraseña actual es incorrecta");
         }
 
         if (oldPassword.equals(newPassword)) {
-            throw new AuthException("La nueva contraseÃ±a debe ser diferente a la actual");
+            throw new AuthException("La nueva contraseña debe ser diferente a la actual");
         }
 
         usuario.setPassword(passwordEncoder.encode(newPassword));
@@ -310,7 +345,7 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findById(userId)
                 .orElseThrow(() -> new AuthException("Usuario no encontrado"));
 
-        String mainRole = usuario.getRoles().isEmpty() ? "USER" : usuario.getRoles().iterator().next().getNombre();
+        String mainRole = usuario.getRoles().isEmpty() ? "CUSTOMER" : normalizeRole(usuario.getRoles().iterator().next().getNombre());
 
         return AuthDTO.UsuarioInfo.builder()
                 .id(usuario.getId())
@@ -337,34 +372,48 @@ public class AuthService {
     public AuthDTO.LoginResponse loginWithSupabaseToken(AuthDTO.SupabaseLogin dto) {
         String supabaseJwt = dto.getSupabaseToken();
 
-        // Extraer claims del JWT de Supabase (validado por JwtTokenProvider)
-        String email = jwtTokenProvider.getEmailFromToken(supabaseJwt);
-        if (email == null || email.isBlank()) {
-            throw new AuthException("El token de Supabase no contiene un email válido");
+        // Validar firma con la clave correcta de Supabase (distinta al jwt.secret del backend)
+        if (!supabaseJwtValidator.isValid(supabaseJwt)) {
+            throw new AuthException("Token de Supabase inválido o expirado");
         }
 
-        // Buscar o crear el usuario en nuestra DB local (sincronizado con Supabase Auth)
-        Usuario usuario = usuarioRepository.findByEmail(email).orElseGet(() -> {
-            // El usuario existe en Supabase Auth pero aún no en nuestra DB pública.
-            // Normalmente el trigger handle_new_user ya lo crea, pero como fallback:
-            Usuario nuevo = new Usuario();
-            nuevo.setEmail(email);
-            nuevo.setNombre(dto.getNombre() != null ? dto.getNombre() : "Usuario");
-            nuevo.setApellido(dto.getApellido() != null ? dto.getApellido() : "");
-            nuevo.setActivo(true);
-            nuevo.setVerificado(false);
+        String supabaseUid = supabaseJwtValidator.extractSubject(supabaseJwt);
+        String emailRaw = supabaseJwtValidator.extractEmail(supabaseJwt);
+        if (emailRaw == null || emailRaw.isBlank()) {
+            throw new AuthException("El token de Supabase no contiene un email válido");
+        }
+        String email = emailRaw.trim().toLowerCase();
 
-            String rolNombre = dto.getRol() != null ? dto.getRol().toUpperCase() : "CUSTOMER";
-            Rol rol = rolRepository.findByNombre(rolNombre)
-                    .orElseGet(() -> {
-                        Rol nuevoRol = new Rol();
-                        nuevoRol.setNombre(rolNombre);
-                        nuevoRol.setDescripcion("Auto-creado");
-                        return rolRepository.save(nuevoRol);
-                    });
-            nuevo.setRoles(new HashSet<>(Set.of(rol)));
-            return usuarioRepository.save(nuevo);
-        });
+        // Buscar primero por supabaseUid, luego por email (usuarios migrados sin uid)
+        Usuario usuario = usuarioRepository.findBySupabaseUid(supabaseUid)
+                .or(() -> usuarioRepository.findByEmail(email))
+                .orElseGet(() -> {
+                    // Usuario existe en Supabase Auth pero no en la DB local (trigger no ejecutó aún)
+                    Usuario nuevo = new Usuario();
+                    nuevo.setEmail(email);
+                    nuevo.setSupabaseUid(supabaseUid);
+                    nuevo.setPassword("{supabase}" + java.util.UUID.randomUUID());
+                    nuevo.setNombre(dto.getNombre() != null ? dto.getNombre() : "Usuario");
+                    nuevo.setApellido(dto.getApellido() != null ? dto.getApellido() : "");
+                    // telefono puede ser null en login Google — asignar placeholder para evitar NOT NULL constraint
+                    nuevo.setTelefono(dto.getTelefono() != null && !dto.getTelefono().isBlank()
+                            ? dto.getTelefono() : "0000000000");
+                    nuevo.setActivo(true);
+                    nuevo.setVerificado(true);
+
+                    // Roles en DB tienen prefijo ROLE_ (ej: ROLE_CUSTOMER, ROLE_SERVICE_PROVIDER)
+                    String rolNombre = "ROLE_" + (dto.getRol() != null ? dto.getRol().toUpperCase() : "CUSTOMER");
+                    Rol rol = rolRepository.findByNombre(rolNombre)
+                            .orElseGet(() -> rolRepository.findByNombre("ROLE_CUSTOMER")
+                                    .orElseThrow(() -> new AuthException("Rol ROLE_CUSTOMER no encontrado en la base de datos")));
+                    nuevo.setRoles(new HashSet<>(Set.of(rol)));
+                    return usuarioRepository.save(nuevo);
+                });
+
+        // Si el usuario existía por email pero no tenía supabaseUid, actualizarlo
+        if (usuario.getSupabaseUid() == null) {
+            usuario.setSupabaseUid(supabaseUid);
+        }
 
         if (!usuario.getActivo()) {
             throw new AuthException("Su cuenta está inactiva. Contacte al administrador.");
@@ -377,8 +426,8 @@ public class AuthService {
         CustomUserDetails userDetails = CustomUserDetails.create(usuario);
         String token = jwtTokenProvider.generateToken(userDetails);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
-        String mainRole = usuario.getRoles().isEmpty() ? "CUSTOMER" :
-                usuario.getRoles().iterator().next().getNombre();
+        String mainRole = normalizeRole(usuario.getRoles().isEmpty() ? "CUSTOMER" :
+                usuario.getRoles().iterator().next().getNombre());
 
         return AuthDTO.LoginResponse.builder()
                 .token(token)
@@ -409,7 +458,7 @@ public class AuthService {
 
         userTokenRepository.deleteByUsuarioIdAndTokenType(usuario.getId(), UserTokenType.OTP_VERIFICATION);
 
-        String codigo = String.format("%04d", ThreadLocalRandom.current().nextInt(0, 10000));
+        String codigo = String.format("%04d", new java.security.SecureRandom().nextInt(10000));
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
 
         UserToken otpToken = UserToken.builder()
@@ -468,7 +517,7 @@ public class AuthService {
         CustomUserDetails userDetails = CustomUserDetails.create(usuario);
         String token = jwtTokenProvider.generateToken(userDetails);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
-        String mainRole = usuario.getRoles().iterator().next().getNombre();
+        String mainRole = normalizeRole(usuario.getRoles().iterator().next().getNombre());
 
         return AuthDTO.LoginResponse.builder()
                 .token(token)

@@ -142,7 +142,7 @@ public class MensajeService {
     })
     public void marcarTodosComoLeidos(Long solicitudId, Long usuarioId) {
         mensajeRepository.marcarTodosLeidosPorDestinatario(solicitudId, usuarioId);
-        log.info("Mensajes marcados como leÃ­dos para usuario {} en solicitud {}", usuarioId, solicitudId);
+        log.info("Mensajes marcados como leídos para usuario {} en solicitud {}", usuarioId, solicitudId);
     }
 
     @Cacheable(cacheNames = "unreadMessages", key = "#usuarioId")
@@ -177,11 +177,11 @@ public class MensajeService {
                 ? obtenerProveedorPrincipal(solicitud) 
                 : solicitud.getCliente();
             
-            // Obtener Ãºltimo mensaje de la conversaciÃ³n
+            // Obtener último mensaje de la conversación
             Mensaje ultimoMensaje = mensajeRepository.findTopBySolicitudIdOrderByCreatedAtDesc(solicitud.getId())
                 .orElse(null);
             
-            // Contar mensajes no leÃ­dos
+            // Contar mensajes no leídos
             long noLeidos = mensajeRepository.countBySolicitudIdAndDestinatarioIdAndLeido(
                 solicitud.getId(), usuarioId, false);
             
@@ -200,7 +200,7 @@ public class MensajeService {
     }
 
     /**
-     * Contar mensajes no leÃ­dos por solicitud
+     * Contar mensajes no leídos por solicitud
      */
     @Cacheable(cacheNames = "unreadMessagesByRequest", key = "#solicitudId + ':' + #usuarioId")
     public Long contarNoLeidosPorSolicitud(Long solicitudId, Long usuarioId) {
@@ -208,7 +208,7 @@ public class MensajeService {
     }
 
     /**
-     * Notificar que el usuario estÃ¡ escribiendo
+     * Notificar que el usuario está escribiendo
      */
     public void notificarEscribiendo(Long solicitudId, Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)

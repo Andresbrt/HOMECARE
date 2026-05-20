@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Entidad Pago - IntegraciÃ³n con Wompi
+ * Entidad Pago - Integración con Wompi
  */
 @Entity
 @Table(name = "pagos")
@@ -91,7 +91,7 @@ public class Pago {
     @Column(name = "motivo_rechazo", columnDefinition = "TEXT")
     private String motivoRechazo;
 
-    // AuditorÃ­a
+    // Auditoría
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

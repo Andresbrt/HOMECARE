@@ -34,7 +34,7 @@ class SupabaseJwtValidatorTest {
 
     @BeforeEach
     void setUp() {
-        validator = new SupabaseJwtValidator(TEST_SECRET);
+        validator = new SupabaseJwtValidator(TEST_SECRET, "test");
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ class SupabaseJwtValidatorTest {
         @DisplayName("retorna false cuando el validador se construye con secret en blanco")
         void blankSecret_rejectsValidToken() {
             // El validador usa un placeholder cuando el secret está en blanco
-            SupabaseJwtValidator blankSecretValidator = new SupabaseJwtValidator("");
+            SupabaseJwtValidator blankSecretValidator = new SupabaseJwtValidator("", "test");
             String token = buildToken(TEST_UUID, TEST_EMAIL, future());
 
             // Token firmado con TEST_SECRET; placeholder es distinto → firma inválida

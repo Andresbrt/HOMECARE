@@ -46,7 +46,7 @@ public class Solicitud {
     @Column(name = "tipo_limpieza", nullable = false, length = 50)
     private TipoLimpieza tipoLimpieza;
 
-    // UbicaciÃ³n
+    // Ubicación
     @Column(nullable = false, columnDefinition = "TEXT")
     private String direccion;
 
@@ -114,7 +114,7 @@ public class Solicitud {
     @Builder.Default
     private Set<Mensaje> mensajes = new HashSet<>();
 
-    // AuditorÃ­a
+    // Auditoría
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -140,13 +140,13 @@ public class Solicitud {
         ABIERTA,           // Recibiendo ofertas
         EN_NEGOCIACION,    // Cliente negociando con proveedores
         ACEPTADA,          // Oferta aceptada, servicio confirmado
-        EN_PROGRESO,       // Servicio ejecutÃ¡ndose
+        EN_PROGRESO,       // Servicio ejecutándose
         COMPLETADA,        // Servicio completado
         CANCELADA,         // Solicitud cancelada
         EXPIRADA           // No se recibieron ofertas a tiempo
     }
 
-    // MÃ©todos de utilidad
+    // Métodos de utilidad
     public boolean puedeRecibirOfertas() {
         return estado == EstadoSolicitud.ABIERTA || estado == EstadoSolicitud.EN_NEGOCIACION;
     }
@@ -159,7 +159,7 @@ public class Solicitud {
         this.cantidadOfertas++;
     }
 
-    // MÃ©todos alias para compatibilidad con service
+    // Métodos alias para compatibilidad con service
     public LocalTime getHoraInicioEstimada() {
         return horaInicio;
     }

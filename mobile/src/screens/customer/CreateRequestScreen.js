@@ -165,6 +165,19 @@ export default function CreateRequestScreen({ navigation, route }) {
         ? parseInt(form.cantidadHoras || 2) * 60
         : (parseInt(form.duracionEstimada, 10) || 60);
 
+      const latitud = location?.coords?.latitude
+        ? parseFloat(location.coords.latitude.toFixed(6))
+        : null;
+      const longitud = location?.coords?.longitude
+        ? parseFloat(location.coords.longitude.toFixed(6))
+        : null;
+
+      if (!latitud || !longitud) {
+        Alert.alert('Ubicación requerida', 'No se pudo obtener tu ubicación. Activa el GPS e intenta de nuevo.');
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         titulo: form.titulo.trim(),
         descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza}`,

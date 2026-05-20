@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositorio para gestiÃ³n de webhooks
+ * Repositorio para gestión de webhooks
  */
 @Repository
 public interface WebhookSubscriptionRepository extends JpaRepository<WebhookSubscription, Long> {
@@ -27,7 +27,7 @@ public interface WebhookSubscriptionRepository extends JpaRepository<WebhookSubs
     Optional<WebhookSubscription> findByUrl(String url);
 
     /**
-     * Busca webhooks que escuchan un evento especÃ­fico
+     * Busca webhooks que escuchan un evento específico
      */
     @Query("SELECT w FROM WebhookSubscription w WHERE w.activo = true " +
            "AND :evento MEMBER OF w.eventos")
@@ -52,7 +52,7 @@ public interface WebhookSubscriptionRepository extends JpaRepository<WebhookSubs
     List<WebhookSubscription> findWebhooksConFallosRecientes(@Param("desde") LocalDateTime desde);
 
     /**
-     * Obtiene estadÃ­sticas de envÃ­os
+     * Obtiene estadísticas de envíos
      */
     @Query("SELECT SUM(w.totalEnvios), SUM(w.enviosExitosos), SUM(w.enviosFallidos) " +
            "FROM WebhookSubscription w WHERE w.activo = true")
@@ -64,7 +64,7 @@ public interface WebhookSubscriptionRepository extends JpaRepository<WebhookSubs
     List<WebhookSubscription> findByActivoFalse();
 
     /**
-     * Actualiza Ãºltimo envÃ­o
+     * Actualiza último envío
      */
     @Query("UPDATE WebhookSubscription w SET w.ultimoEnvio = :fecha, " +
            "w.totalEnvios = w.totalEnvios + 1, " +
@@ -73,7 +73,7 @@ public interface WebhookSubscriptionRepository extends JpaRepository<WebhookSubs
     void actualizarEnvioExitoso(@Param("id") Long id, @Param("fecha") LocalDateTime fecha);
 
     /**
-     * Actualiza fallo de envÃ­o
+     * Actualiza fallo de envío
      */
     @Query("UPDATE WebhookSubscription w SET w.ultimoError = :fecha, " +
            "w.totalEnvios = w.totalEnvios + 1, " +

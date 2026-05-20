@@ -36,15 +36,19 @@ public class SupabaseJwtValidator {
     private final SecretKey signingKey;
 
     public SupabaseJwtValidator(
-            @Value("${supabase.jwt-secret:}") String supabaseJwtSecret) {
+            @Value("${supabase.jwt-secret:}") String supabaseJwtSecret,
+            @Value("${spring.profiles.active:dev}") String activeProfile) {
 
         if (supabaseJwtSecret == null || supabaseJwtSecret.isBlank()) {
-            // Clave placeholder; el validador lanzará AuthException hasta que se configure.
-            log.warn("supabase.jwt-secret no está configurado. " +
-                     "Los tokens de Supabase no podrán validarse directamente. " +
-                     "Configura SUPABASE_JWT_SECRET en las variables de entorno.");
+            boolean isProduction = activeProfile.contains("production") || activeProfile.contains("prod");
+            if (isProduction) {
+                throw new IllegalStateException(
+                    "SUPABASE_JWT_SECRET no está configurado. " +
+                    "Es obligatorio en producción. Configúralo en las variables de entorno de Fly.io.");
+            }
+            log.warn("supabase.jwt-secret no configurado — usando placeholder (solo válido en dev/test).");
             this.signingKey = Keys.hmacShaKeyFor(
-                    "placeholder-not-configured-change-this-value-in-env".getBytes(StandardCharsets.UTF_8));
+                    "placeholder-dev-only-not-valid-for-production-env-change-me".getBytes(StandardCharsets.UTF_8));
         } else {
             this.signingKey = Keys.hmacShaKeyFor(
                     supabaseJwtSecret.getBytes(StandardCharsets.UTF_8));

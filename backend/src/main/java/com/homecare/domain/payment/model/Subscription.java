@@ -42,7 +42,7 @@ public class Subscription {
     private String metodoPagoId;
     
     @Column(name = "transaction_id")
-    private String transactionId; // ID de transacciÃ³n para pagos
+    private String transactionId; // ID de transacción para pagos
 
     public enum PlanType {
         // Precio en COP + IVA 19% - Colombia

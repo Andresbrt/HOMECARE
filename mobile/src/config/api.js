@@ -14,12 +14,12 @@ const _cfg = Constants.expoConfig?.extra ?? {};
 export const API_URL =
   _cfg.apiUrl ??
   process.env.EXPO_PUBLIC_API_URL ??
-  'https://homecare-backend.up.railway.app/api';
+  'https://homecare-backend.fly.dev/api';
 
 export const WS_URL =
   _cfg.wsUrl ??
   process.env.EXPO_PUBLIC_WS_URL ??
-  'wss://homecare-backend.up.railway.app/ws';
+  'wss://homecare-backend.fly.dev/ws';
 
 export const GOOGLE_CLIENT_ID = _cfg.googleClientId ?? '';
 export const API_TIMEOUT = 30000;

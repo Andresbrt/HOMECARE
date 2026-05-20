@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿﻿﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,10 +33,10 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
-// Necesario para que expo-web-browser cierre la sesiÃ³n correctamente al retornar
+// Necesario para que expo-web-browser cierre la sesión correctamente al retornar
 WebBrowser.maybeCompleteAuthSession();
 
-// â”€â”€â”€ Modal de selecciÃ³n de rol para nuevos usuarios de Google â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Modal de selección de rol para nuevos usuarios de Google -------------
 function RoleSelectionModal({ visible, loading, onSelect, onClose }) {
   const scaleUser = useSharedValue(1);
   const scaleProf = useSharedValue(1);
@@ -50,12 +50,12 @@ function RoleSelectionModal({ visible, loading, onSelect, onClose }) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={modal.backdrop}>
         <Animated.View entering={ZoomIn.duration(320).springify()} style={modal.card}>
-          <Text style={modal.title}>Â¿CÃ³mo vas a usar{'\n'}Homecare?</Text>
+          <Text style={modal.title}>¿Cómo vas a usar{'\n'}Homecare?</Text>
           <Text style={modal.subtitle}>
             Elige tu perfil para personalizar tu experiencia.
           </Text>
 
-          {/* OpciÃ³n CLIENTE */}
+          {/* Opción CLIENTE */}
           <Animated.View style={[animUser, { marginBottom: 12 }]}>
             <TouchableOpacity
               style={modal.option}
@@ -80,7 +80,7 @@ function RoleSelectionModal({ visible, loading, onSelect, onClose }) {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* OpciÃ³n PROFESIONAL */}
+          {/* Opción PROFESIONAL */}
           <Animated.View style={animProf}>
             <TouchableOpacity
               style={modal.option}
@@ -114,7 +114,7 @@ function RoleSelectionModal({ visible, loading, onSelect, onClose }) {
   );
 }
 
-// â”€â”€â”€ Pantalla principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Pantalla principal ---------------------------------------------------
 export default function LoginScreen({ navigation }) {
   const { login, loginWithGoogle, devLogin } = useAuth();
   const insets       = useSafeAreaInsets();
@@ -125,12 +125,12 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [quickLoading, setQuickLoading] = useState(null);
 
-  // Estado para el modal de selecciÃ³n de rol (nuevo usuario Google)
+  // Estado para el modal de selección de rol (nuevo usuario Google)
   const [roleModal,    setRoleModal]    = useState(false);
   const [roleLoading,  setRoleLoading]  = useState(null);   // 'CUSTOMER' | 'SERVICE_PROVIDER'
   const [pendingGToken, setPendingGToken] = useState(null); // Firebase token guardado hasta que el usuario elija rol
 
-  // Animaciones botÃ³n principal
+  // Animaciones botón principal
   const btnScale = useSharedValue(1);
   const btnGlow  = useSharedValue(0);
   const btnAnimStyle = useAnimatedStyle(() => ({
@@ -197,7 +197,7 @@ export default function LoginScreen({ navigation }) {
     }
   }, [loginWithGoogle]);
 
-  // â”€â”€â”€ Confirmar selecciÃ³n de rol (usuarios nuevos Google) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Confirmar selección de rol (usuarios nuevos Google) -------------
   const handleRoleSelected = useCallback(async (selectedRole) => {
     if (!pendingGToken) return;
     setRoleLoading(selectedRole);
@@ -212,7 +212,7 @@ export default function LoginScreen({ navigation }) {
     }
   }, [pendingGToken, loginWithGoogle]);
 
-  // â”€â”€â”€ Login con email/contraseÃ±a â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Login con email/contraseÃ±a ---------------------------------------
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -221,7 +221,7 @@ export default function LoginScreen({ navigation }) {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
-    const result = await login(email.trim(), password);
+    const result = await login(email.trim().toLowerCase(), password);
     setLoading(false);
     if (!result.success) Alert.alert('Error al ingresar', result.message);
   };
@@ -251,7 +251,7 @@ export default function LoginScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* â”€â”€ Logo â”€â”€ */}
+          {/* -- Logo -- */}
           <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.logoContainer}>
             <Image
               source={require('../../../assets/icon.png')}
@@ -261,7 +261,7 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.tagline}>Servicios a tu alcance</Text>
           </Animated.View>
 
-          {/* â”€â”€ Card Form â”€â”€ */}
+          {/* -- Card Form -- */}
           <Animated.View entering={FadeInDown.duration(600).delay(120).springify()} style={styles.card}>
             {/* Email */}
             <View style={styles.inputGroup}>
@@ -314,7 +314,7 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
 
-            {/* BotÃ³n principal */}
+            {/* Botón principal */}
             <Animated.View style={[styles.primaryBtn, loading && styles.btnDisabled, btnAnimStyle]}>
               <TouchableOpacity
                 onPress={handleLogin}
@@ -372,7 +372,7 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* â”€â”€ Registro â”€â”€ */}
+          {/* -- Registro -- */}
           <Animated.View entering={FadeInDown.duration(600).delay(240).springify()} style={styles.footer}>
             <Text style={styles.footerText}>¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
@@ -380,38 +380,40 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* â”€â”€ DEV quick access â”€â”€ */}
-          <Animated.View entering={FadeIn.duration(400).delay(400)} style={styles.devSection}>
-            <Text style={styles.devLabel}>⚡ DEV</Text>
-            <View style={styles.devRow}>
-              <TouchableOpacity
-                style={[styles.devBtn, { backgroundColor: 'rgba(14,77,104,0.6)' }]}
-                onPress={() => handleQuickLogin('profesional')}
-                disabled={!!quickLoading}
-              >
-                {quickLoading === 'profesional' ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.devBtnText}>👷 Profesional</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.devBtn, { backgroundColor: 'rgba(20,100,60,0.6)' }]}
-                onPress={() => handleQuickLogin('usuario')}
-                disabled={!!quickLoading}
-              >
-                {quickLoading === 'usuario' ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.devBtnText}>👤 Usuario</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
+          {/* -- DEV quick access (solo en modo desarrollo) -- */}
+          {__DEV__ && (
+            <Animated.View entering={FadeIn.duration(400).delay(400)} style={styles.devSection}>
+              <Text style={styles.devLabel}>⚡ DEV</Text>
+              <View style={styles.devRow}>
+                <TouchableOpacity
+                  style={[styles.devBtn, { backgroundColor: 'rgba(14,77,104,0.6)' }]}
+                  onPress={() => handleQuickLogin('profesional')}
+                  disabled={!!quickLoading}
+                >
+                  {quickLoading === 'profesional' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.devBtnText}>👷 Profesional</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.devBtn, { backgroundColor: 'rgba(20,100,60,0.6)' }]}
+                  onPress={() => handleQuickLogin('usuario')}
+                  disabled={!!quickLoading}
+                >
+                  {quickLoading === 'usuario' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.devBtnText}>👤 Usuario</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* â”€â”€ Modal rol nuevo usuario Google â”€â”€ */}
+      {/* -- Modal rol nuevo usuario Google -- */}
       <RoleSelectionModal
         visible={roleModal}
         loading={roleLoading}
@@ -425,7 +427,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-// â”€â”€â”€ Estilos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Estilos --------------------------------------------------------------
 const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
@@ -609,7 +611,7 @@ const styles = StyleSheet.create({
   },
 });
 
-// â”€â”€â”€ Estilos del modal de rol â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Estilos del modal de rol ---------------------------------------------
 const modal = StyleSheet.create({
   backdrop: {
     flex: 1,

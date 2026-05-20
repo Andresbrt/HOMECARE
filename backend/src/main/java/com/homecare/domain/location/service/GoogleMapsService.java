@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Servicio para integraciÃ³n con Google Maps APIs
+ * Servicio para integración con Google Maps APIs
  * - Directions API: Calcular rutas y ETAs precisos
  * - Distance Matrix API: Calcular distancias y tiempos
  * - Geocoding API: Convertir direcciones a coordenadas
@@ -38,8 +38,8 @@ public class GoogleMapsService {
     }
 
     /**
-     * Calcula la ruta desde la ubicaciÃ³n del proveedor hasta el cliente
-     * Devuelve ETA preciso considerando trÃ¡fico y tipo de transporte
+     * Calcula la ruta desde la ubicación del proveedor hasta el cliente
+     * Devuelve ETA preciso considerando tráfico y tipo de transporte
      */
     public RutaInfo calcularRuta(double latOrigen, double lonOrigen, 
                                   double latDestino, double lonDestino,
@@ -51,7 +51,7 @@ public class GoogleMapsService {
                     .queryParam("origin", latOrigen + "," + lonOrigen)
                     .queryParam("destination", latDestino + "," + lonDestino)
                     .queryParam("mode", modo)
-                    .queryParam("departure_time", "now") // Considera trÃ¡fico actual
+                    .queryParam("departure_time", "now") // Considera tráfico actual
                     .queryParam("traffic_model", "best_guess")
                     .queryParam("key", apiKey)
                     .queryParam("language", "es")
@@ -72,7 +72,7 @@ public class GoogleMapsService {
 
     /**
      * Calcula distancia y tiempo usando Distance Matrix API
-     * Ãštil para mÃºltiples destinos
+     * Ãštil para múltiples destinos
      */
     public DistanciaInfo calcularDistanciaYTiempo(double latOrigen, double lonOrigen,
                                                     double latDestino, double lonDestino,
@@ -103,7 +103,7 @@ public class GoogleMapsService {
     }
 
     /**
-     * Convierte direcciÃ³n a coordenadas (Geocoding)
+     * Convierte dirección a coordenadas (Geocoding)
      */
     public Coordenadas geocodificarDireccion(String direccion) {
         try {
@@ -115,13 +115,13 @@ public class GoogleMapsService {
                     .encode()
                     .toUri();
 
-            log.debug("Geocodificando direcciÃ³n: {}", direccion);
+            log.debug("Geocodificando dirección: {}", direccion);
             
             String response = restTemplate.getForObject(uri, String.class);
             return parseGeocodingResponse(response);
 
         } catch (Exception e) {
-            log.error("Error al geocodificar direcciÃ³n: {}", e.getMessage(), e);
+            log.error("Error al geocodificar dirección: {}", e.getMessage(), e);
             return null;
         }
     }
@@ -140,11 +140,11 @@ public class GoogleMapsService {
         JsonNode route = root.get("routes").get(0);
         JsonNode leg = route.get("legs").get(0);
 
-        // Extraer informaciÃ³n de la ruta
+        // Extraer información de la ruta
         int distanciaMetros = leg.get("distance").get("value").asInt();
         int duracionSegundos = leg.get("duration").get("value").asInt();
         
-        // Si hay trÃ¡fico, usar duration_in_traffic
+        // Si hay tráfico, usar duration_in_traffic
         int duracionConTraficoSegundos = duracionSegundos;
         if (leg.has("duration_in_traffic")) {
             duracionConTraficoSegundos = leg.get("duration_in_traffic").get("value").asInt();
@@ -156,7 +156,7 @@ public class GoogleMapsService {
         // Extraer puntos de la ruta (polyline)
         String polyline = route.get("overview_polyline").get("points").asText();
 
-        // Extraer pasos de navegaciÃ³n
+        // Extraer pasos de navegación
         List<PasoNavegacion> pasos = new ArrayList<>();
         JsonNode steps = leg.get("steps");
         for (JsonNode step : steps) {
@@ -174,7 +174,7 @@ public class GoogleMapsService {
         return new RutaInfo(
             distanciaMetros,
             duracionSegundos / 60, // Convertir a minutos
-            duracionConTraficoSegundos / 60, // ETA con trÃ¡fico
+            duracionConTraficoSegundos / 60, // ETA con tráfico
             resumenRuta,
             polyline,
             pasos
@@ -204,7 +204,7 @@ public class GoogleMapsService {
         int duracionSegundos = element.get("duration").get("value").asInt();
         String duracionTexto = element.get("duration").get("text").asText();
 
-        // DuraciÃ³n con trÃ¡fico si estÃ¡ disponible
+        // Duración con tráfico si está disponible
         int duracionConTraficoSegundos = duracionSegundos;
         String duracionConTraficoTexto = duracionTexto;
         
@@ -249,7 +249,7 @@ public class GoogleMapsService {
         
         return switch (tipo.toLowerCase()) {
             case "auto", "carro", "vehiculo" -> "driving";
-            case "moto", "motocicleta" -> "driving"; // Google Maps no tiene modo moto especÃ­fico
+            case "moto", "motocicleta" -> "driving"; // Google Maps no tiene modo moto específico
             case "bicicleta", "bike" -> "bicycling";
             case "a_pie", "caminando", "walking" -> "walking";
             default -> "driving";
@@ -257,7 +257,7 @@ public class GoogleMapsService {
     }
 
     /**
-     * CÃ¡lculo fallback usando fÃ³rmula de Haversine cuando Google Maps falla
+     * Cálculo fallback usando fórmula de Haversine cuando Google Maps falla
      */
     private RutaInfo calcularRutaFallback(double lat1, double lon1, double lat2, double lon2) {
         final double RADIO_TIERRA_KM = 6371.0;
@@ -281,7 +281,7 @@ public class GoogleMapsService {
             distanciaMetros,
             etaMinutos,
             etaMinutos,
-            "Ruta directa (cÃ¡lculo aproximado)",
+            "Ruta directa (cálculo aproximado)",
             null,
             new ArrayList<>()
         );
@@ -292,7 +292,7 @@ public class GoogleMapsService {
     public record RutaInfo(
         int distanciaMetros,
         int duracionMinutos,
-        int duracionConTraficoMinutos, // ETA con trÃ¡fico actual
+        int duracionConTraficoMinutos, // ETA con tráfico actual
         String resumenRuta,
         String polyline, // Encoded polyline para dibujar en mapa
         List<PasoNavegacion> pasos

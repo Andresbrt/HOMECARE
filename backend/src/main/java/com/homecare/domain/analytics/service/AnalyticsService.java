@@ -33,7 +33,7 @@ public class AnalyticsService {
     private final MensajeRepository mensajeRepository;
 
     public AnalyticsDTO.MetricasInDriver getMetricasInDriver(LocalDate fechaInicio, LocalDate fechaFin) {
-        // Valores por defecto si los mÃ©todos no existen
+        // Valores por defecto si los métodos no existen
         Long totalSolicitudes = 0L;
         Long totalOfertas = 0L;
         Double precioPromedio = 0.0;
@@ -46,7 +46,7 @@ public class AnalyticsService {
             totalSolicitudes = solicitudRepository.count();
             totalOfertas = ofertaRepository.count();
         } catch (Exception e) {
-            log.warn("Error al obtener mÃ©tricas: {}", e.getMessage());
+            log.warn("Error al obtener métricas: {}", e.getMessage());
         }
 
         Double ofertasPromedioPorSolicitud = totalSolicitudes > 0 ? 
@@ -91,7 +91,7 @@ public class AnalyticsService {
     }
 
     public List<AnalyticsDTO.TopProveedor> getTopProveedores(Integer limite) {
-        // Retornar lista vacÃ­a por defecto
+        // Retornar lista vacía por defecto
         return new ArrayList<>();
     }
 

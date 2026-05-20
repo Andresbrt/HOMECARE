@@ -25,7 +25,7 @@ public class LoyaltyService {
         usuario.setLoyaltyPoints(currentPoints + points);
 
         usuarioRepository.save(usuario);
-        log.info("Usuario {} ganÃ³ {} puntos de lealtad. Motivo: {}", usuarioId, points, motivo);
+        log.info("Usuario {} ganó {} puntos de lealtad. Motivo: {}", usuarioId, points, motivo);
 
         return new LoyaltyDTO.Response(
                 usuario.getId(),
@@ -48,7 +48,7 @@ public class LoyaltyService {
         usuario.setLoyaltyPoints(currentPoints - points);
         usuarioRepository.save(usuario);
 
-        log.info("Usuario {} canjeÃ³ {} puntos de lealtad", usuarioId, points);
+        log.info("Usuario {} canjeó {} puntos de lealtad", usuarioId, points);
 
         return new LoyaltyDTO.Response(
                 usuario.getId(),

@@ -18,7 +18,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
-@Tag(name = "Reports", description = "GeneraciÃ³n de reportes exportables")
+@Tag(name = "Reports", description = "Generación de reportes exportables")
 @SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class ReportController {

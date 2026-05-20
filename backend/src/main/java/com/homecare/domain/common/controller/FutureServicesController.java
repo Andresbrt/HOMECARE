@@ -55,7 +55,7 @@ public class FutureServicesController {
 
     @GetMapping("/referral/my-code")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Obtener cÃ³digo de referido")
+    @Operation(summary = "Obtener código de referido")
     public ResponseEntity<ReferralDTO.Response> getMyReferralCode(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         ReferralDTO.Response response = referralService.generarCodigo(userDetails.getId());
@@ -64,7 +64,7 @@ public class FutureServicesController {
 
     @PostMapping("/referral/apply")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Aplicar cÃ³digo de referido")
+    @Operation(summary = "Aplicar código de referido")
     public ResponseEntity<Void> applyReferralCode(
             @RequestParam String codigo,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

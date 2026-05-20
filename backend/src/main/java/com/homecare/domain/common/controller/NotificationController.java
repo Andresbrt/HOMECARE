@@ -17,7 +17,7 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@Tag(name = "Notifications", description = "GestiÃ³n de notificaciones push")
+@Tag(name = "Notifications", description = "Gestión de notificaciones push")
 @SecurityRequirement(name = "bearerAuth")
 public class NotificationController {
 
@@ -44,7 +44,7 @@ public class NotificationController {
 
     @PostMapping("/send")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Enviar notificaciÃ³n a un usuario especÃ­fico")
+    @Operation(summary = "Enviar notificación a un usuario específico")
     public ResponseEntity<String> sendNotification(
             @Valid @RequestBody NotificationDTO.SendNotification request) {
 
@@ -56,12 +56,12 @@ public class NotificationController {
                 request.getImageUrl()
         );
 
-        return ResponseEntity.ok("NotificaciÃ³n enviada");
+        return ResponseEntity.ok("Notificación enviada");
     }
 
     @PostMapping("/broadcast")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Enviar notificaciÃ³n masiva")
+    @Operation(summary = "Enviar notificación masiva")
     public ResponseEntity<NotificationDTO.Response> broadcastNotification(
             @Valid @RequestBody NotificationDTO.BroadcastNotification request) {
 

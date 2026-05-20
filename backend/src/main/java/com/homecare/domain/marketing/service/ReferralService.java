@@ -41,7 +41,7 @@ public class ReferralService {
                 });
 
         referral = referralRepository.save(referral);
-        log.info("CÃ³digo de referido generado para usuario {}: {}", usuarioId, referral.getCodigo());
+        log.info("Código de referido generado para usuario {}: {}", usuarioId, referral.getCodigo());
 
         return new ReferralDTO.Response(
                 referral.getCodigo(),
@@ -57,14 +57,14 @@ public class ReferralService {
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         Referral referral = referralRepository.findByCodigo(codigo)
-                .orElseThrow(() -> new NotFoundException("CÃ³digo de referido no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Código de referido no encontrado"));
 
         if (referral.getReferrer().getId().equals(usuarioId)) {
-            throw new BadRequestException("No puedes usar tu propio cÃ³digo de referido");
+            throw new BadRequestException("No puedes usar tu propio código de referido");
         }
 
         if (referral.getUsado()) {
-            throw new BadRequestException("Este cÃ³digo ya fue usado");
+            throw new BadRequestException("Este código ya fue usado");
         }
 
         referral.setReferee(referee);
@@ -74,8 +74,8 @@ public class ReferralService {
 
         referralRepository.save(referral);
 
-        log.info("CÃ³digo de referido {} aplicado por usuario {}", codigo, usuarioId);
-        // AquÃ­ se aplicarÃ­an los bonos a las cuentas de ambos usuarios
+        log.info("Código de referido {} aplicado por usuario {}", codigo, usuarioId);
+        // Aquí se aplicarían los bonos a las cuentas de ambos usuarios
     }
 
     private String generateUniqueCode() {

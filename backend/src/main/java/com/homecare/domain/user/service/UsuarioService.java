@@ -58,7 +58,7 @@ public class UsuarioService {
         usuario.setLatitud(latitud);
         usuario.setLongitud(longitud);
         usuarioRepository.save(usuario);
-        log.info("UbicaciÃ³n actualizada para usuario {}: {}, {}", usuarioId, latitud, longitud);
+        log.info("Ubicación actualizada para usuario {}: {}, {}", usuarioId, latitud, longitud);
     }
 
     @Transactional
@@ -108,7 +108,7 @@ public class UsuarioService {
 
         usuario.setVerificado(true);
         usuario.setFechaVerificacion(java.time.LocalDateTime.now());
-        usuario.setActivo(true); // Asegurar que estÃ© habilitado tras verificar
+        usuario.setActivo(true); // Asegurar que esté habilitado tras verificar
         usuarioRepository.save(usuario);
 
         log.info("Profesional {} verificado exitosamente por administrador", usuarioId);
@@ -119,7 +119,7 @@ public class UsuarioService {
         
         emailService.sendHtmlEmail(
             usuario.getEmail(),
-            "Â¡Tu cuenta de HomeCare ha sido verificada!",
+            "¡Tu cuenta de HomeCare ha sido verificada!",
             "profesional-verificado",
             variables
         );
