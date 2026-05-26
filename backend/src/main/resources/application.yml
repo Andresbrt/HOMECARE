@@ -115,6 +115,11 @@ tracking:
 file:
   max-size: ${FILE_MAX_SIZE:10485760}
 
+# Groq AI
+groq:
+  api:
+    key: ${GROQ_API_KEY:}
+
 # Supabase Integration
 # Obtener valores en: Supabase Dashboard → Settings → API
 supabase:

@@ -36,6 +36,7 @@ import VerifyOTPScreen from '../screens/auth/VerifyOTPScreen';
 
 // ─── Usuario premium (dark map UX) ──────────────────────────────────────────
 import UserMapScreen from '../screens/usuario/MapScreen';
+import CustomerHomeScreen from '../screens/customer/HomeScreen';
 
 // Screens usadas en el stack de usuario
 import CreateRequestScreen from '../screens/customer/CreateRequestScreen';
@@ -61,6 +62,7 @@ import AdminPanelScreen from '../screens/admin/AdminPanelScreen';
 import SubscriptionScreen from '../screens/shared/SubscriptionScreen';
 import RecommendationsScreen from '../screens/shared/RecommendationsScreen';
 import PremiumServicesScreen from '../screens/shared/PremiumServicesScreen';
+import AiAssistantScreen from '../screens/shared/AiAssistantScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -117,7 +119,13 @@ const darkStackOptions = {
 function UserModeStack() {
   return (
     <Stack.Navigator screenOptions={darkStackOptions}>
-      {/* 1. Raíz: mapa full-screen, sin header, sin gesto de retroceso */}
+      {/* 1. Raíz: home del cliente con solicitudes activas */}
+      <Stack.Screen
+        name="UserHome"
+        component={CustomerHomeScreen}
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
+      {/* 2. Mapa del usuario */}
       <Stack.Screen
         name="UserMap"
         component={UserMapScreen}
@@ -211,6 +219,7 @@ function UserModeStack() {
       <Stack.Screen name="Subscription"   component={SubscriptionScreen}   options={{ headerShown: false }} />
       <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="AiAssistant"    component={AiAssistantScreen}    options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -341,6 +350,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Subscription"    component={SubscriptionScreen}   options={{ headerShown: false }} />
           <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AiAssistant"     component={AiAssistantScreen}    options={{ headerShown: false }} />
         </>
       ) : (
         // ── Modo Usuario: Stack oscuro premium, UserMap como raíz ──

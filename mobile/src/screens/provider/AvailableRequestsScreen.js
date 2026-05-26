@@ -4,75 +4,127 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useLocation } from '../../context/LocationContext';
 import apiClient from '../../services/apiClient';
 import { SEARCH_RADIUS_KM } from '../../config/api';
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS } from '../../constants/theme';
+import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
-const TIPO_ICONS = {
-  BASICA: 'sparkles-outline',
-  PROFUNDA: 'water-outline',
-  OFICINA: 'business-outline',
-  POST_CONSTRUCCION: 'construct-outline',
-  MUDANZA: 'cube-outline',
-  DESINFECCION: 'shield-checkmark-outline',
+const TIPO_CONFIG = {
+  BASICA: { icon: 'home-outline', label: 'Limpieza General', color: '#49C0BC' },
+  PROFUNDA: { icon: 'sparkles-outline', label: 'Limpieza Profunda', color: '#9B59B6' },
+  OFICINA: { icon: 'business-outline', label: 'Oficinas', color: '#3498DB' },
+  POST_CONSTRUCCION: { icon: 'construct-outline', label: 'Post-Construcción', color: '#E67E22' },
+  MUDANZA: { icon: 'cube-outline', label: 'Mudanza', color: '#1ABC9C' },
+  DESINFECCION: { icon: 'shield-checkmark-outline', label: 'Desinfección', color: '#2ECC71' },
+  HORAS: { icon: 'time-outline', label: 'Por Horas', color: '#F5A623' },
 };
 
-function RequestCard({ request, onPress }) {
+function RequestCard({ request, index, onPress }) {
+  const tipo = TIPO_CONFIG[request.tipoLimpieza] || { icon: 'brush-outline', label: request.tipoLimpieza, color: '#49C0BC' };
+  const offersCount = request.cantidadOfertas ?? 0;
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+    } catch { return dateStr; }
+  };
+
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(request)} activeOpacity={0.7}>
-      <View style={styles.cardTop}>
-        <View style={styles.tipoChip}>
-          <Ionicons name={TIPO_ICONS[request.tipoLimpieza] || 'help-outline'} size={16} color={COLORS.accent} />
-          <Text style={styles.tipoText}>{request.tipoLimpieza?.replace('_', ' ')}</Text>
-        </View>
-        {request.distanciaKm != null && (
-          <Text style={styles.distanceText}>{request.distanciaKm.toFixed(1)} km</Text>
-        )}
-      </View>
-
-      <Text style={styles.cardTitle} numberOfLines={2}>{request.titulo}</Text>
-      <Text style={styles.cardAddress} numberOfLines={1}>
-        <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} /> {request.direccion}
-      </Text>
-
-      <View style={styles.cardMeta}>
-        <View style={styles.metaItem}>
-          <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.metaText}>{request.fechaServicio}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.metaText}>{request.horaInicio?.substring(0, 5)}</Text>
-        </View>
-        {request.cantidadOfertas > 0 && (
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={14} color={COLORS.warning} />
-            <Text style={[styles.metaText, { color: COLORS.warning }]}>{request.cantidadOfertas} ofertas</Text>
+    <Animated.View entering={FadeInDown.duration(400).delay(index * 50).springify()}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(request); }}
+        activeOpacity={0.85}
+      >
+        {/* Top: tipo + distancia */}
+        <View style={styles.cardTop}>
+          <View style={[styles.tipoChip, { backgroundColor: `${tipo.color}18` }]}>
+            <Ionicons name={tipo.icon} size={14} color={tipo.color} />
+            <Text style={[styles.tipoText, { color: tipo.color }]}>{tipo.label}</Text>
           </View>
-        )}
-      </View>
+          <View style={styles.distanceBadge}>
+            <Ionicons name="navigate" size={12} color={PROF.accent} />
+            <Text style={styles.distanceText}>
+              {request.distanciaKm != null ? `${request.distanciaKm.toFixed(1)} km` : '—'}
+            </Text>
+          </View>
+        </View>
 
-      {request.precioMaximo && (
-        <Text style={styles.maxPrice}>Presupuesto máx: ${Number(request.precioMaximo).toLocaleString()}</Text>
-      )}
+        {/* Título */}
+        <Text style={styles.cardTitle} numberOfLines={2}>{request.titulo || 'Solicitud de limpieza'}</Text>
 
-      <View style={styles.offerRow}>
-        <Text style={styles.offerCta}>Enviar oferta</Text>
-        <Ionicons name="arrow-forward" size={16} color={COLORS.accent} />
-      </View>
-    </TouchableOpacity>
+        {/* Dirección */}
+        <View style={styles.addressRow}>
+          <Ionicons name="location-outline" size={13} color={PROF.textMuted} />
+          <Text style={styles.addressText} numberOfLines={1}>{request.direccion || 'Sin dirección'}</Text>
+        </View>
+
+        {/* Separator */}
+        <View style={styles.sep} />
+
+        {/* Meta row */}
+        <View style={styles.metaRow}>
+          {request.fechaServicio ? (
+            <View style={styles.metaChip}>
+              <Ionicons name="calendar-outline" size={12} color={PROF.textMuted} />
+              <Text style={styles.metaText}>{formatDate(request.fechaServicio)}</Text>
+            </View>
+          ) : null}
+          {request.horaInicio ? (
+            <View style={styles.metaChip}>
+              <Ionicons name="time-outline" size={12} color={PROF.textMuted} />
+              <Text style={styles.metaText}>{request.horaInicio.substring(0, 5)}</Text>
+            </View>
+          ) : null}
+          {offersCount > 0 && (
+            <View style={[styles.metaChip, styles.metaChipWarning]}>
+              <Ionicons name="people-outline" size={12} color={PROF.warning} />
+              <Text style={[styles.metaText, { color: PROF.warning }]}>{offersCount} ofertas</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Footer: precio + CTA */}
+        <View style={styles.cardFooter}>
+          <View>
+            {request.precioMaximo ? (
+              <>
+                <Text style={styles.priceLabel}>Presupuesto máx.</Text>
+                <Text style={styles.priceValue}>${Number(request.precioMaximo).toLocaleString()}</Text>
+              </>
+            ) : (
+              <Text style={styles.priceLabel}>Precio libre</Text>
+            )}
+          </View>
+          <LinearGradient
+            colors={[PROF.accent, '#2a9d99']}
+            style={styles.ctaBtn}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.ctaText}>Ofertar</Text>
+            <Ionicons name="arrow-forward" size={14} color="#fff" />
+          </LinearGradient>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 export default function AvailableRequestsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { location } = useLocation();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,20 +134,16 @@ export default function AvailableRequestsScreen({ navigation }) {
 
   const fetchRequests = useCallback(async (pageNum = 0, append = false) => {
     try {
-      const lat = location?.coords?.latitude || 4.6097;
-      const lng = location?.coords?.longitude || -74.0817;
+      const lat = location?.coords?.latitude ?? 4.6097;
+      const lng = location?.coords?.longitude ?? -74.0817;
       const { data } = await apiClient.get('/solicitudes/cercanas', {
         params: { latitud: lat, longitud: lng, radioKm: SEARCH_RADIUS_KM, page: pageNum, size: 15 },
       });
-      const content = data.content || data;
-      if (append) {
-        setRequests(prev => [...prev, ...content]);
-      } else {
-        setRequests(content);
-      }
+      const content = Array.isArray(data) ? data : data?.content ?? [];
+      setRequests(append ? (prev) => [...prev, ...content] : content);
       setHasMore(data.last === false);
       setPage(pageNum);
-    } catch (error) {
+    } catch {
       if (!append) Alert.alert('Error', 'No se pudieron cargar las solicitudes.');
     } finally {
       setLoading(false);
@@ -105,65 +153,260 @@ export default function AvailableRequestsScreen({ navigation }) {
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const handleRefresh = () => { setRefreshing(true); fetchRequests(0); };
-  const handleLoadMore = () => { if (hasMore && !loading) fetchRequests(page + 1, true); };
-
-  const handlePress = (request) => {
-    navigation.navigate('SendOffer', { solicitud: request });
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={requests}
-        keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => <RequestCard request={item} onPress={handlePress} />}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.accent} />}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListHeaderComponent={
-          <Text style={styles.listTitle}>Solicitudes cercanas</Text>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color={COLORS.textDisabled} />
-            <Text style={styles.emptyTitle}>Sin solicitudes cercanas</Text>
-            <Text style={styles.emptyDesc}>No hay solicitudes abiertas en tu zona. Intenta más tarde.</Text>
-          </View>
-        }
-      />
-    </SafeAreaView>
+    <LinearGradient colors={['#000F22', '#001B38']} style={{ flex: 1 }}>
+      {/* Header */}
+      <Animated.View entering={FadeIn.duration(400)} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <View>
+          <Text style={styles.headerTitle}>Solicitudes cercanas</Text>
+          <Text style={styles.headerSub}>
+            {loading ? 'Buscando...' : `${requests.length} disponible${requests.length !== 1 ? 's' : ''} · ${SEARCH_RADIUS_KM} km`}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.refreshBtn}
+          onPress={() => { setRefreshing(true); fetchRequests(0); }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="refresh-outline" size={20} color={PROF.accent} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={PROF.accent} />
+          <Text style={styles.loadingText}>Buscando solicitudes cercanas...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item, index }) => (
+            <RequestCard
+              request={item}
+              index={index}
+              onPress={(r) => navigation.navigate('SendOffer', { solicitud: r })}
+            />
+          )}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); fetchRequests(0); }}
+              tintColor={PROF.accent}
+            />
+          }
+          onEndReached={() => { if (hasMore && !loading) fetchRequests(page + 1, true); }}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="search-outline" size={44} color={PROF.textMuted} />
+              </View>
+              <Text style={styles.emptyTitle}>Sin solicitudes cercanas</Text>
+              <Text style={styles.emptyDesc}>
+                No hay solicitudes abiertas en tu zona ahora mismo.{'\n'}Activa tu disponibilidad y espera nuevas solicitudes.
+              </Text>
+            </Animated.View>
+          }
+        />
+      )}
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.backgroundSecondary },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  listContent: { padding: SPACING.lg, gap: SPACING.md },
-  listTitle: { fontSize: TYPOGRAPHY.xxl, fontWeight: TYPOGRAPHY.bold, color: COLORS.textPrimary, marginBottom: SPACING.sm },
-  card: { backgroundColor: COLORS.card, borderRadius: BORDER_RADIUS.xl, padding: SPACING.lg, ...SHADOWS.sm },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
-  tipoChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.backgroundSecondary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: BORDER_RADIUS.full },
-  tipoText: { fontSize: TYPOGRAPHY.xs, color: COLORS.textSecondary, textTransform: 'capitalize' },
-  distanceText: { fontSize: TYPOGRAPHY.sm, fontWeight: TYPOGRAPHY.semibold, color: COLORS.accent },
-  cardTitle: { fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.semibold, color: COLORS.textPrimary },
-  cardAddress: { fontSize: TYPOGRAPHY.sm, color: COLORS.textSecondary, marginTop: 4 },
-  cardMeta: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.sm },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: TYPOGRAPHY.xs, color: COLORS.textSecondary },
-  maxPrice: { fontSize: TYPOGRAPHY.sm, color: COLORS.accent, fontWeight: TYPOGRAPHY.semibold, marginTop: SPACING.sm },
-  offerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.border },
-  offerCta: { fontSize: TYPOGRAPHY.sm, fontWeight: TYPOGRAPHY.bold, color: COLORS.accent },
-  emptyState: { alignItems: 'center', paddingTop: SPACING.xxl * 2 },
-  emptyTitle: { fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.semibold, color: COLORS.textPrimary, marginTop: SPACING.md },
-  emptyDesc: { fontSize: TYPOGRAPHY.sm, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.xs, paddingHorizontal: SPACING.xl },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: PROF.glassBorder,
+  },
+  headerTitle: {
+    fontSize: TYPOGRAPHY.xxl,
+    fontWeight: '700',
+    color: PROF.textPrimary,
+  },
+  headerSub: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textMuted,
+    marginTop: 2,
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: PROF.glass,
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  list: {
+    padding: SPACING.lg,
+    gap: SPACING.sm,
+  },
+
+  // Card
+  card: {
+    backgroundColor: PROF.glass,
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.md,
+    marginBottom: 0,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  tipoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  tipoText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(73,192,188,0.12)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  distanceText: {
+    fontSize: TYPOGRAPHY.xs,
+    fontWeight: '700',
+    color: PROF.accent,
+  },
+  cardTitle: {
+    fontSize: TYPOGRAPHY.md,
+    fontWeight: '700',
+    color: PROF.textPrimary,
+    marginBottom: 5,
+    lineHeight: 21,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  addressText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.xs,
+    color: PROF.textMuted,
+  },
+  sep: {
+    height: 1,
+    backgroundColor: PROF.glassBorder,
+    marginVertical: SPACING.sm,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
+    flexWrap: 'wrap',
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  metaChipWarning: {
+    backgroundColor: 'rgba(245,166,35,0.1)',
+  },
+  metaText: {
+    fontSize: 11,
+    color: PROF.textMuted,
+    fontWeight: '500',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  priceLabel: {
+    fontSize: 10,
+    color: PROF.textMuted,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  priceValue: {
+    fontSize: TYPOGRAPHY.lg,
+    fontWeight: '700',
+    color: PROF.accent,
+  },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  ctaText: {
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // Loading / empty
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.md,
+  },
+  loadingText: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textMuted,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: SPACING.xl,
+  },
+  emptyIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: PROF.glass,
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
+  emptyTitle: {
+    fontSize: TYPOGRAPHY.xl,
+    fontWeight: '700',
+    color: PROF.textPrimary,
+    marginBottom: SPACING.sm,
+    textAlign: 'center',
+  },
+  emptyDesc: {
+    fontSize: TYPOGRAPHY.sm,
+    color: PROF.textMuted,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
 });
