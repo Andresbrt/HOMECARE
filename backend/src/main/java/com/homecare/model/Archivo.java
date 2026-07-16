@@ -74,6 +74,7 @@ public class Archivo {
     public enum TipoArchivo {
         FOTO_PERFIL,
         FOTO_ANTES,
+        FOTO_DURANTE,
         FOTO_DESPUES,
         DOCUMENTO_IDENTIDAD,
         CERTIFICADO,

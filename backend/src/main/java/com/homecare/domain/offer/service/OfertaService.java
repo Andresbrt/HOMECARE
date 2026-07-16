@@ -2,6 +2,9 @@ package com.homecare.domain.offer.service;
 
 import com.homecare.common.event.NotificationEvent;
 import com.homecare.dto.OfertaDTO;
+import com.homecare.common.exception.BadRequestBusinessException;
+import com.homecare.common.exception.ConflictBusinessException;
+import com.homecare.common.exception.ForbiddenBusinessException;
 import com.homecare.common.exception.NotFoundException;
 import com.homecare.common.exception.UnauthorizedException;
 import com.homecare.domain.offer.model.Oferta;
@@ -58,11 +61,15 @@ public class OfertaService {
                 .orElseThrow(() -> new NotFoundException("Solicitud no encontrada"));
 
         if (!solicitud.puedeRecibirOfertas()) {
-            throw new IllegalStateException("Esta solicitud ya no acepta ofertas");
+            throw new ConflictBusinessException("SOLICITUD_CERRADA", "Esta solicitud ya no acepta ofertas");
+        }
+
+        if (!Boolean.TRUE.equals(proveedor.getVerificado())) {
+            throw new ForbiddenBusinessException("PROVEEDOR_NO_VERIFICADO", "Tu cuenta de proveedor no ha sido verificada. No puedes enviar ofertas hasta recibir la verificación.");
         }
 
         if (ofertaRepository.existsBySolicitudIdAndProveedorId(request.getSolicitudId(), proveedorId)) {
-            throw new IllegalStateException("Ya has enviado una oferta para esta solicitud");
+            throw new ConflictBusinessException("OFERTA_DUPLICADA", "Ya has enviado una oferta para esta solicitud");
         }
 
         if (request.getPrecioOfrecido().signum() <= 0) {
@@ -122,11 +129,11 @@ public class OfertaService {
         }
 
         if (!oferta.getEstado().equals(EstadoOferta.PENDIENTE)) {
-            throw new IllegalStateException("Solo se pueden modificar ofertas pendientes");
+            throw new ConflictBusinessException("OFERTA_NO_EDITABLE", "Solo se pueden modificar ofertas pendientes");
         }
 
         if (!oferta.getSolicitud().puedeRecibirOfertas()) {
-            throw new IllegalStateException("La solicitud ya no acepta modificaciones");
+            throw new ConflictBusinessException("SOLICITUD_NO_EDITABLE", "La solicitud ya no acepta modificaciones");
         }
 
         if (request.getPrecioOfrecido() != null) {
@@ -157,7 +164,7 @@ public class OfertaService {
         }
 
         if (!oferta.getEstado().equals(EstadoOferta.PENDIENTE)) {
-            throw new IllegalStateException("Solo se pueden retirar ofertas pendientes");
+            throw new ConflictBusinessException("OFERTA_NO_RETIRABLE", "Solo se pueden retirar ofertas pendientes");
         }
 
         oferta.setEstado(EstadoOferta.RETIRADA);
@@ -178,11 +185,11 @@ public class OfertaService {
         }
 
         if (!oferta.getEstado().equals(EstadoOferta.PENDIENTE)) {
-            throw new IllegalStateException("Esta oferta ya no está disponible");
+            throw new ConflictBusinessException("OFERTA_NO_DISPONIBLE", "Esta oferta ya no está disponible");
         }
 
         if (!solicitud.puedeRecibirOfertas()) {
-            throw new IllegalStateException("Esta solicitud ya no acepta ofertas");
+            throw new ConflictBusinessException("SOLICITUD_CERRADA", "Esta solicitud ya no acepta ofertas");
         }
 
         oferta.setEstado(EstadoOferta.ACEPTADA);

@@ -1,6 +1,7 @@
 package com.homecare.domain.payment.service;
 
 import com.homecare.dto.SubscriptionDTO;
+import com.homecare.common.exception.ConflictBusinessException;
 import com.homecare.common.exception.NotFoundException;
 import com.homecare.domain.payment.model.Subscription;
 import com.homecare.domain.payment.model.Subscription.Estado;
@@ -268,7 +269,7 @@ public class SubscriptionService {
         var suscripcionActiva = subscriptionRepository.findByUsuarioIdAndEstado(usuarioId, Estado.ACTIVA);
         if (suscripcionActiva.isPresent() && suscripcionActiva.get().getPlan() == planType) {
             log.info("Usuario {} ya tiene plan {} activo — devolviendo suscripción existente", usuarioId, planType);
-            throw new IllegalStateException("Ya tienes el plan " + planType.name() + " activo");
+            throw new ConflictBusinessException("SUSCRIPCION_ACTIVA", "Ya tienes el plan " + planType.name() + " activo");
         }
 
         log.info("Creando checkout MP para usuario {} — plan {} ({})", usuarioId, planFrontend, precio);

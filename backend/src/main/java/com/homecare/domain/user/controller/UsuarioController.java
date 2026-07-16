@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -79,6 +80,21 @@ public class UsuarioController {
     public ResponseEntity<UsuarioDTO.Response> obtenerPerfilPublico(@PathVariable Long usuarioId) {
         UsuarioDTO.Response perfil = usuarioService.obtenerPerfilPublico(usuarioId);
         return ResponseEntity.ok(perfil);
+    }
+
+    @GetMapping("/verificaciones/pendientes")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Listar proveedores pendientes de verificación")
+    public ResponseEntity<List<UsuarioDTO.Response>> listarProveedoresPendientesVerificacion() {
+        return ResponseEntity.ok(usuarioService.listarProveedoresPendientesVerificacion());
+    }
+
+    @GetMapping("/me/verificacion")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Obtener estado de verificación de mi cuenta")
+    public ResponseEntity<UsuarioDTO.Verificacion> obtenerEstadoVerificacion(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(usuarioService.obtenerEstadoVerificacion(userDetails.getId()));
     }
 
     @PostMapping("/{usuarioId}/verificar")

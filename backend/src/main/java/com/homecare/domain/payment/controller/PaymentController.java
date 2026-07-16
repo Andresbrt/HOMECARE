@@ -2,6 +2,7 @@ package com.homecare.domain.payment.controller;
 
 
 import com.homecare.dto.PagoDTO;
+import com.homecare.domain.payment.model.Pago;
 import com.homecare.domain.payment.model.Pago.EstadoPago;
 import com.homecare.security.CustomUserDetails;
 import com.homecare.domain.payment.service.PaymentService;
@@ -100,6 +101,22 @@ public class PaymentController {
 
         List<PagoDTO.PagoResponse> response = paymentService.obtenerPagosPorUsuario(userDetails.getId(), estado);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/pending-release")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Listar pagos retenidos pendientes de liberación")
+    public ResponseEntity<List<PagoDTO.PagoResponse>> getPendingReleasePayments() {
+        return ResponseEntity.ok(paymentService.obtenerPagosPorEstadoRetencion(Pago.EstadoRetencion.RETENIDO));
+    }
+
+    @PostMapping("/{pagoId}/release")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Liberar manualmente un pago retenido")
+    public ResponseEntity<PagoDTO.PagoResponse> releasePayment(
+            @PathVariable Long pagoId,
+            @RequestParam String motivo) {
+        return ResponseEntity.ok(paymentService.liberarPago(pagoId, motivo));
     }
 
     @GetMapping("/stats")

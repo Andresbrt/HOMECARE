@@ -47,6 +47,14 @@ public class Pago {
     @Column(name = "monto_proveedor", nullable = false, precision = 10, scale = 2)
     private BigDecimal montoProveedor;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_retencion", nullable = false, length = 20)
+    @Builder.Default
+    private EstadoRetencion estadoRetencion = EstadoRetencion.RETENIDO;
+
+    @Column(name = "fecha_liberacion")
+    private LocalDateTime fechaLiberacion;
+
     // Wompi
     @Column(name = "transaccion_id", unique = true)
     private String transaccionId;
@@ -109,6 +117,12 @@ public class Pago {
         REEMBOLSADO,
         FALLIDO,
         EXPIRADO
+    }
+
+    public enum EstadoRetencion {
+        RETENIDO,
+        LIBERADO,
+        REEMBOLSADO
     }
 
     public enum MetodoPago {

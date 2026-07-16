@@ -48,6 +48,8 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     // Pagos del proveedor (todos)
     List<Pago> findByServicioProveedorId(Long proveedorId);
 
+    List<Pago> findByEstadoRetencion(Pago.EstadoRetencion estadoRetencion);
+
     // Pagos por rango de fechas
     List<Pago> findByCreatedAtBetween(java.time.LocalDateTime inicio, java.time.LocalDateTime fin);
 

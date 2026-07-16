@@ -2,6 +2,8 @@ package com.homecare.domain.solicitud.service;
 
 import com.homecare.dto.SolicitudDTO;
 import com.homecare.common.event.NotificationEvent;
+import com.homecare.common.exception.BadRequestBusinessException;
+import com.homecare.common.exception.ConflictBusinessException;
 import com.homecare.common.exception.NotFoundException;
 import com.homecare.common.exception.UnauthorizedException;
 import com.homecare.security.RequiereRol;
@@ -108,7 +110,7 @@ public class SolicitudService {
 
         if (!solicitud.getEstado().equals(EstadoSolicitud.ABIERTA) &&
             !solicitud.getEstado().equals(EstadoSolicitud.EN_NEGOCIACION)) {
-            throw new IllegalStateException("Solo se pueden modificar solicitudes abiertas o en negociación");
+            throw new ConflictBusinessException("SOLICITUD_NO_EDITABLE", "Solo se pueden modificar solicitudes abiertas o en negociación");
         }
 
         if (request.getDescripcion() != null) {
@@ -152,7 +154,7 @@ public class SolicitudService {
 
         if (solicitud.getEstado().equals(EstadoSolicitud.ACEPTADA) ||
             solicitud.getEstado().equals(EstadoSolicitud.EN_PROGRESO)) {
-            throw new IllegalStateException("No se puede cancelar una solicitud aceptada o en progreso");
+            throw new ConflictBusinessException("SOLICITUD_NO_CANCELABLE", "No se puede cancelar una solicitud aceptada o en progreso");
         }
 
         solicitud.setEstado(EstadoSolicitud.CANCELADA);

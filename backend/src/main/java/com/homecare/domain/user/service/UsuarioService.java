@@ -10,6 +10,8 @@ import com.homecare.domain.service_order.repository.CalificacionRepository;
 import com.homecare.domain.common.service.FileStorageService;
 import com.homecare.domain.common.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,6 +99,29 @@ public class UsuarioService {
         return mapToResponse(usuario);
     }
 
+    public List<UsuarioDTO.Response> listarProveedoresPendientesVerificacion() {
+        return usuarioRepository.findProveedoresPendientesVerificacion().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public UsuarioDTO.Verificacion obtenerEstadoVerificacion(Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        return UsuarioDTO.Verificacion.builder()
+                .verificado(usuario.getVerificado())
+                .fotoSelfieVerificacion(usuario.getFotoSelfieVerificacion())
+                .fotoCedulaFrontal(usuario.getFotoCedulaFrontal())
+                .fotoCedulaPosterior(usuario.getFotoCedulaPosterior())
+                .archivoAntecedentes(usuario.getArchivoAntecedentes())
+                .verificacionIAScore(usuario.getVerificacionIAScore())
+                .comentariosVerificacion(usuario.getComentariosVerificacion())
+                .fechaVerificacion(usuario.getFechaVerificacion())
+                .intentoVerificacionConcluido(usuario.getIntentoVerificacionConcluido())
+                .build();
+    }
+
     @Transactional
     public void verificarProfesional(Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -136,6 +161,7 @@ public class UsuarioService {
                 usuario.getLatitud(),
                 usuario.getLongitud(),
                 usuario.getDisponible(),
+                usuario.getVerificado(),
                 usuario.getCalificacionPromedio(),
                 usuario.getRoles().stream()
                         .map(r -> r.getNombre().replace("ROLE_", ""))

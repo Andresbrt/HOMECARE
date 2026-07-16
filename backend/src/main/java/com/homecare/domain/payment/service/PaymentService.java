@@ -4,10 +4,17 @@ import com.homecare.dto.PagoDTO;
 import com.homecare.dto.SubscriptionDTO;
 import com.homecare.common.exception.NotFoundException;
 import com.homecare.common.exception.PaymentException;
+import com.homecare.domain.payment.model.ConfiguracionComision;
 import com.homecare.domain.payment.model.Pago;
 import com.homecare.domain.payment.model.Pago.EstadoPago;
+import com.homecare.domain.payment.model.Pago.EstadoRetencion;
 import com.homecare.domain.payment.model.Subscription.PlanType;
+import com.homecare.domain.service.model.ConformidadCliente;
+import com.homecare.domain.service.model.Disputa;
+import com.homecare.domain.service.repository.ConformidadClienteRepository;
+import com.homecare.domain.service.repository.DisputaRepository;
 import com.homecare.model.ServicioAceptado;
+import com.homecare.domain.payment.repository.ConfiguracionComisionRepository;
 import com.homecare.domain.payment.repository.PagoRepository;
 import com.homecare.domain.service_order.repository.ServicioAceptadoRepository;
 import com.homecare.domain.common.service.NotificationService;
@@ -38,6 +45,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -48,6 +56,9 @@ public class PaymentService {
 
     private final PagoRepository pagoRepository;
     private final ServicioAceptadoRepository servicioRepository;
+    private final ConfiguracionComisionRepository configuracionComisionRepository;
+    private final ConformidadClienteRepository conformidadRepository;
+    private final DisputaRepository disputaRepository;
     private final NotificationService notificationService;
 
     @Value("${mercadopago.access-token}")
@@ -97,9 +108,7 @@ public class PaymentService {
             throw new PaymentException("El servicio debe estar completado para procesar el pago");
         }
 
-        BigDecimal comision = request.getMonto()
-                .multiply(commissionRate)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal comision = calcularComision(servicio, request.getMonto());
         BigDecimal montoProveedor = request.getMonto().subtract(comision);
 
         String referencia = generateReferencia(servicio.getId());
@@ -168,8 +177,10 @@ public class PaymentService {
 
             if ("approved".equals(response.getStatus())) {
                 pago.setEstado(EstadoPago.APROBADO);
+                pago.setEstadoRetencion(EstadoRetencion.RETENIDO);
                 pago.setAprobadoAt(LocalDateTime.now());
                 notificarPagoExitoso(pago);
+                intentarLiberarPago(pago);
             } else if ("in_process".equals(response.getStatus())) {
                 pago.setEstado(EstadoPago.PROCESANDO);
             } else {
@@ -222,6 +233,7 @@ public class PaymentService {
                 case "approved" -> {
                     if (pago.getEstado() != EstadoPago.APROBADO) {
                         pago.setEstado(EstadoPago.APROBADO);
+                        pago.setEstadoRetencion(EstadoRetencion.RETENIDO);
                         pago.setTransaccionExternaId(String.valueOf(payment.getId()));
                         pago.setAprobadoAt(LocalDateTime.now());
                         pago.setMetodoPagoDetalle(payment.getPaymentMethodId());
@@ -229,6 +241,7 @@ public class PaymentService {
                         notificarPagoExitoso(pago);
                         log.info("Pago {} aprobado por Mercado Pago", pago.getId());
                     }
+                    intentarLiberarPago(pago);
                 }
                 case "rejected", "cancelled" -> {
                     pago.setEstado(EstadoPago.RECHAZADO);
@@ -385,6 +398,31 @@ public class PaymentService {
         }
     }
 
+    private BigDecimal calcularComision(ServicioAceptado servicio, BigDecimal monto) {
+        String tipoServicio = null;
+        if (servicio.getSolicitud() != null && servicio.getSolicitud().getTipoLimpieza() != null) {
+            tipoServicio = servicio.getSolicitud().getTipoLimpieza().name();
+        }
+
+        LocalDate hoy = LocalDate.now();
+        Optional<ConfiguracionComision> configuracion = configuracionComisionRepository
+                .findTopByTipoServicioOrGlobal(tipoServicio, hoy);
+
+        BigDecimal porcentaje = configuracion
+                .map(ConfiguracionComision::getPorcentajeComision)
+                .orElse(commissionRate != null ? commissionRate : BigDecimal.valueOf(0.10));
+
+        BigDecimal comision = monto.multiply(porcentaje).setScale(2, RoundingMode.HALF_UP);
+
+        if (configuracion.isPresent()) {
+            log.info("Aplicando comisión configurada {} para servicio {}", porcentaje, servicio.getId());
+        } else {
+            log.info("Aplicando comisión por defecto {} para servicio {}", porcentaje, servicio.getId());
+        }
+
+        return comision;
+    }
+
     private String generateReferencia(Long servicioId) {
         return "HC-SER-" + servicioId + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
@@ -428,8 +466,8 @@ public class PaymentService {
     }
 
     private void registrarAuditoria(Pago pago, EstadoPago anterior, EstadoPago nuevo, String evento) {
-        log.info("AUDITORIA PAGO - ID: {}, Referencia: {}, Cambio: {} -> {}, Evento: {}",
-                pago.getId(), pago.getReferencia(), anterior, nuevo, evento);
+        log.info("AUDITORIA PAGO - ID: {}, Referencia: {}, Cambio: {} -> {}, Retención: {}, FechaLiberación: {}, Evento: {}",
+                pago.getId(), pago.getReferencia(), anterior, nuevo, pago.getEstadoRetencion(), pago.getFechaLiberacion(), evento);
     }
 
     private PagoDTO.PagoResponse mapToResponse(Pago pago) {
@@ -441,12 +479,14 @@ public class PaymentService {
                 pago.getMontoProveedor(),
                 pago.getMetodoPago(),
                 pago.getEstado(),
+                pago.getEstadoRetencion(),
                 pago.getTransaccionExternaId(),
                 pago.getPreferenciaId(),
                 pago.getPaymentLink(),
                 pago.getReferencia(),
                 pago.getCreatedAt(),
-                pago.getAprobadoAt()
+                pago.getAprobadoAt(),
+                pago.getFechaLiberacion()
         );
     }
 
@@ -552,6 +592,72 @@ public class PaymentService {
     @Transactional
     public void verificarPagosPendientes() {
         // Implementar consulta periodica a MP si es necesario
+    }
+
+    @Transactional
+    public void intentarLiberarPago(Pago pago) {
+        if (pago == null || pago.getEstadoRetencion() != EstadoRetencion.RETENIDO) {
+            return;
+        }
+        if (pago.getEstado() != EstadoPago.APROBADO) {
+            return;
+        }
+        ServicioAceptado servicio = pago.getServicio();
+        if (servicio == null || servicio.getEstado() != ServicioAceptado.EstadoServicio.COMPLETADO) {
+            return;
+        }
+        ConformidadCliente conformidad = null;
+        if (servicio.getId() != null) {
+            conformidad = null;
+            try {
+                conformidad = conformidadRepository.findByServicioId(servicio.getId()).orElse(null);
+            } catch (Exception ignored) {
+            }
+        }
+        if (servicio.getId() != null && disputaRepository.existsByServicioIdAndEstadoIn(
+                servicio.getId(), List.of(Disputa.EstadoDisputa.ABIERTA, Disputa.EstadoDisputa.EN_REVISION))) {
+            throw new PaymentException("No se puede liberar el pago porque existe una disputa activa para el servicio");
+        }
+        if (conformidad != null && Boolean.TRUE.equals(conformidad.getAceptado())) {
+            liberarPagoInterno(pago, "Pago liberado automáticamente tras completarse y confirmarse el servicio");
+        }
+    }
+
+    @Transactional
+    public PagoDTO.PagoResponse liberarPago(Long pagoId, String motivo) {
+        Pago pago = pagoRepository.findById(pagoId)
+                .orElseThrow(() -> new NotFoundException("Pago no encontrado"));
+
+        if (pago.getEstado() != EstadoPago.APROBADO) {
+            throw new PaymentException("Solo se pueden liberar pagos aprobados");
+        }
+        if (pago.getEstadoRetencion() != EstadoRetencion.RETENIDO) {
+            throw new PaymentException("El pago ya no está en retención");
+        }
+
+        liberarPagoInterno(pago, motivo);
+        return mapToResponse(pago);
+    }
+
+    public List<PagoDTO.PagoResponse> obtenerPagosPorEstadoRetencion(EstadoRetencion estadoRetencion) {
+        return pagoRepository.findByEstadoRetencion(estadoRetencion).stream()
+                .map(this::mapToResponse)
+                .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
+                .toList();
+    }
+
+    private void liberarPagoInterno(Pago pago, String motivo) {
+        pago.setEstadoRetencion(EstadoRetencion.LIBERADO);
+        pago.setFechaLiberacion(LocalDateTime.now());
+        pagoRepository.save(pago);
+        log.info("AUDITORIA PAGO - ID: {}, Liberado: {}, Motivo: {}", pago.getId(), pago.getReferencia(), motivo);
+        notificationService.enviarNotificacion(
+                pago.getProveedor().getId(),
+                "Pago liberado",
+                "Tu pago por el servicio #" + pago.getServicio().getId() + " ha sido liberado. Monto: $" + pago.getMontoProveedor(),
+                Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_LIBERADO"),
+                null
+        );
     }
 
     public PagoDTO.PagoResponse obtenerPago(Long pagoId, Long usuarioId) {

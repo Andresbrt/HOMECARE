@@ -75,6 +75,7 @@ public class UsuarioDTO {
         private BigDecimal latitud;
         private BigDecimal longitud;
         private Boolean disponible;
+        private Boolean verificado;
         private BigDecimal calificacionPromedio;
         private List<String> roles;
     }
@@ -88,5 +89,21 @@ public class UsuarioDTO {
         private BigDecimal totalGanado;
         private BigDecimal calificacionPromedio;
         private Long totalCalificaciones;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Verificacion {
+        private Boolean verificado;
+        private String fotoSelfieVerificacion;
+        private String fotoCedulaFrontal;
+        private String fotoCedulaPosterior;
+        private String archivoAntecedentes;
+        private Double verificacionIAScore;
+        private String comentariosVerificacion;
+        private java.time.LocalDateTime fechaVerificacion;
+        private Boolean intentoVerificacionConcluido;
     }
 }

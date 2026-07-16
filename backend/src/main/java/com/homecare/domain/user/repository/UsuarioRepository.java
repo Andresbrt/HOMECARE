@@ -84,5 +84,14 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
         AND u.verificado = true
         """)
     List<Usuario> findProveedoresDisponibles();
+
+    // Proveedores pendientes de verificación
+    @Query("""
+        SELECT u FROM Usuario u
+        INNER JOIN u.roles r
+        WHERE r.nombre = 'SERVICE_PROVIDER'
+        AND u.verificado = false
+        """)
+    List<Usuario> findProveedoresPendientesVerificacion();
 }
 

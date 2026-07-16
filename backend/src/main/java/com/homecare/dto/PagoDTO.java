@@ -1,7 +1,7 @@
 package com.homecare.dto;
 
 import com.homecare.domain.payment.model.Pago.EstadoPago;
-import com.homecare.domain.payment.model.Pago.MetodoPago;
+import com.homecare.domain.payment.model.Pago.EstadoRetencion;import com.homecare.domain.payment.model.Pago.EstadoRetencion;import com.homecare.domain.payment.model.Pago.MetodoPago;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -46,12 +46,14 @@ public class PagoDTO {
         private BigDecimal montoProveedor;
         private String metodoPago;
         private EstadoPago estado;
+        private EstadoRetencion estadoRetencion;
         private String transaccionExternaId;
         private String preferenceId;
         private String paymentLink;
         private String referencia;
         private LocalDateTime createdAt;
         private LocalDateTime aprobadoAt;
+        private LocalDateTime fechaLiberacion;
     }
 
     @Data
