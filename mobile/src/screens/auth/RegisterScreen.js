@@ -10,12 +10,15 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useAuth } from '../../context/AuthContext';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
@@ -31,6 +34,11 @@ export default function RegisterScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({});
+  const [fotoSelfieBase64, setFotoSelfieBase64] = useState(null);
+  const [fotoCedulaFrontalBase64, setFotoCedulaFrontalBase64] = useState(null);
+  const [fotoCedulaPosteriorBase64, setFotoCedulaPosteriorBase64] = useState(null);
+  const [archivoAntecedentesBase64, setArchivoAntecedentesBase64] = useState(null);
+  const [uploadErrors, setUploadErrors] = useState({});
 
   const touch = (field) => setTouched((p) => ({ ...p, [field]: true }));
 
@@ -50,10 +58,16 @@ export default function RegisterScreen({ route, navigation }) {
         ? 'Mínimo 6 caracteres'
         : null
       : null,
+    fotoSelfie: uploadErrors.fotoSelfie || null,
+    fotoCedulaFrontal: uploadErrors.fotoCedulaFrontal || null,
+    fotoCedulaPosterior: uploadErrors.fotoCedulaPosterior || null,
+    archivoAntecedentes: uploadErrors.archivoAntecedentes || null,
   };
 
   const handleRegister = async () => {
     setTouched({ nombre: true, email: true, password: true });
+    setUploadErrors({});
+
     if (!nombreCompleto.trim() || !email.trim() || !password.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Campos requeridos', 'Completa nombre, correo y contraseña');
@@ -63,6 +77,19 @@ export default function RegisterScreen({ route, navigation }) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Contraseña débil', 'Debe tener al menos 6 caracteres');
       return;
+    }
+    if (isProvider) {
+      const errors = {};
+      if (!fotoSelfieBase64) errors.fotoSelfie = 'Selfie obligatorio para proveedores';
+      if (!fotoCedulaFrontalBase64) errors.fotoCedulaFrontal = 'Cédula frontal obligatoria';
+      if (!fotoCedulaPosteriorBase64) errors.fotoCedulaPosterior = 'Cédula posterior obligatoria';
+      if (!archivoAntecedentesBase64) errors.archivoAntecedentes = 'Antecedentes obligatorios';
+      if (Object.keys(errors).length > 0) {
+        setUploadErrors(errors);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert('Documentos obligatorios', 'Completa todos los documentos requeridos para registrar como profesional.');
+        return;
+      }
     }
 
     // Separar nombre completo en nombre + apellido para el backend
@@ -78,7 +105,10 @@ export default function RegisterScreen({ route, navigation }) {
       email: email.trim(),
       password,
       rol: selectedRole,
-      telefono: '',
+      ...(fotoSelfieBase64 && { fotoSelfieBase64 }),
+      ...(fotoCedulaFrontalBase64 && { fotoCedulaFrontalBase64 }),
+      ...(fotoCedulaPosteriorBase64 && { fotoCedulaPosteriorBase64 }),
+      ...(archivoAntecedentesBase64 && { archivoAntecedentesBase64 }),
     });
     setLoading(false);
 
@@ -90,6 +120,35 @@ export default function RegisterScreen({ route, navigation }) {
       }
     } else {
       Alert.alert('Error en el registro', result.message);
+    }
+  };
+
+  const pickImage = async (setter) => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permisos', 'Necesitamos acceso a la cámara para capturar los documentos.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      const asset = result.assets[0];
+      const manipulated = await ImageManipulator.manipulateAsync(asset.uri, [], {
+        compress: 0.7,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+      const response = await fetch(manipulated.uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result?.toString().replace(/^data:image\/[a-z]+;base64,/, '');
+        if (base64data) setter(base64data);
+      };
+      reader.readAsDataURL(blob);
     }
   };
 
@@ -220,6 +279,44 @@ export default function RegisterScreen({ route, navigation }) {
               <Text style={styles.devNoteText}>
                 Modo desarrollo · La verificación de documentos se habilitará en producción
               </Text>
+            </Animated.View>
+          )}
+
+          {isProvider && (
+            <Animated.View entering={FadeInDown.duration(500).delay(220).springify()} style={styles.card}>
+              <Text style={styles.sectionTitle}>Documentos profesionales</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Selfie profesional *</Text>
+                <TouchableOpacity style={styles.uploadBtn} onPress={() => pickImage(setFotoSelfieBase64)}>
+                  <Text style={styles.uploadBtnText}>{fotoSelfieBase64 ? 'Selfie cargada' : 'Tomar selfie'}</Text>
+                </TouchableOpacity>
+                {errors.fotoSelfie && <Text style={styles.errorText}>{errors.fotoSelfie}</Text>}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Cédula frontal *</Text>
+                <TouchableOpacity style={styles.uploadBtn} onPress={() => pickImage(setFotoCedulaFrontalBase64)}>
+                  <Text style={styles.uploadBtnText}>{fotoCedulaFrontalBase64 ? 'Documento cargado' : 'Tomar cédula frontal'}</Text>
+                </TouchableOpacity>
+                {errors.fotoCedulaFrontal && <Text style={styles.errorText}>{errors.fotoCedulaFrontal}</Text>}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Cédula posterior *</Text>
+                <TouchableOpacity style={styles.uploadBtn} onPress={() => pickImage(setFotoCedulaPosteriorBase64)}>
+                  <Text style={styles.uploadBtnText}>{fotoCedulaPosteriorBase64 ? 'Documento cargado' : 'Tomar cédula posterior'}</Text>
+                </TouchableOpacity>
+                {errors.fotoCedulaPosterior && <Text style={styles.errorText}>{errors.fotoCedulaPosterior}</Text>}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Antecedentes judiciales *</Text>
+                <TouchableOpacity style={styles.uploadBtn} onPress={() => pickImage(setArchivoAntecedentesBase64)}>
+                  <Text style={styles.uploadBtnText}>{archivoAntecedentesBase64 ? 'Documento cargado' : 'Tomar foto de antecedentes'}</Text>
+                </TouchableOpacity>
+                {errors.archivoAntecedentes && <Text style={styles.errorText}>{errors.archivoAntecedentes}</Text>}
+              </View>
             </Animated.View>
           )}
 
@@ -389,6 +486,21 @@ const styles = StyleSheet.create({
     color: PROF.textMuted,
     minWidth: 40,
     textAlign: 'right',
+  },
+  uploadBtn: {
+    backgroundColor: PROF.glassBorder,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 14,
+    paddingHorizontal: SPACING.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: PROF.glassBorder,
+  },
+  uploadBtnText: {
+    color: PROF.textPrimary,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   otpInfo: {
     flexDirection: 'row',

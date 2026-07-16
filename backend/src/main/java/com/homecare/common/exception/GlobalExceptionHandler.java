@@ -21,6 +21,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.homecare.common.exception.BadRequestBusinessException;
+import com.homecare.common.exception.ConflictBusinessException;
+import com.homecare.common.exception.ForbiddenBusinessException;
+
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
@@ -54,6 +58,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePayment(PaymentException ex) {
         log.error("Error de pago: {}", ex.getMessage());
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(BadRequestBusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequestBusiness(BadRequestBusinessException ex) {
+        return buildResponse(ex.getStatus(), ex.getMessage(), ex.getCode());
+    }
+
+    @ExceptionHandler(ForbiddenBusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleForbiddenBusiness(ForbiddenBusinessException ex) {
+        return buildResponse(ex.getStatus(), ex.getMessage(), ex.getCode());
+    }
+
+    @ExceptionHandler(ConflictBusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleConflictBusiness(ConflictBusinessException ex) {
+        return buildResponse(ex.getStatus(), ex.getMessage(), ex.getCode());
     }
 
     @ExceptionHandler(FileStorageException.class)
@@ -146,6 +165,16 @@ public class GlobalExceptionHandler {
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         body.put("message", message);
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message, String code) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+        body.put("code", code);
         return ResponseEntity.status(status).body(body);
     }
 }

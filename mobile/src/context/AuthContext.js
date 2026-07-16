@@ -77,14 +77,15 @@ export const AuthProvider = ({ children }) => {
   const register = async (formData) => {
     try {
       const { email, password, nombre, apellido, rol, telefono,
-              fotoSelfieVerificacion, fotoCedulaFrontal, fotoCedulaPosterior, archivoAntecedentes } = formData;
+              fotoSelfieBase64, fotoCedulaFrontalBase64, fotoCedulaPosteriorBase64, archivoAntecedentesBase64 } = formData;
       // Registrar usuario en el backend (documentos incluidos para verificación de proveedores)
       await authService.register({
-        email, password, nombre, apellido, rol: rol || 'CUSTOMER', telefono,
-        ...(fotoSelfieVerificacion && { fotoSelfieVerificacion }),
-        ...(fotoCedulaFrontal && { fotoCedulaFrontal }),
-        ...(fotoCedulaPosterior && { fotoCedulaPosterior }),
-        ...(archivoAntecedentes && { archivoAntecedentes }),
+        email, password, nombre, apellido, rol: rol || 'CUSTOMER',
+        ...(telefono ? { telefono } : {}),
+        ...(fotoSelfieBase64 && { fotoSelfieBase64 }),
+        ...(fotoCedulaFrontalBase64 && { fotoCedulaFrontalBase64 }),
+        ...(fotoCedulaPosteriorBase64 && { fotoCedulaPosteriorBase64 }),
+        ...(archivoAntecedentesBase64 && { archivoAntecedentesBase64 }),
       });
       
       // Enviar código OTP de 4 dígitos al email
@@ -341,12 +342,20 @@ export const AuthProvider = ({ children }) => {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function _parseError(error) {
-  // Priorizar el mensaje del servidor (Axios pone en error.message el genérico "Request failed with status code N")
-  return (
-    error?.response?.data?.message ||
-    error?.response?.data?.mensaje ||
-    error?.message ||
-    'Ha ocurrido un error. Intenta de nuevo.'
-  );
+  const responseData = error?.response?.data;
+  if (responseData) {
+    if (responseData.message) return responseData.message;
+    if (responseData.mensaje) return responseData.mensaje;
+    if (responseData.fieldErrors && typeof responseData.fieldErrors === 'object') {
+      const fieldMessages = Object.entries(responseData.fieldErrors)
+        .map(([field, message]) => `${field}: ${message}`)
+        .join(' • ');
+      if (fieldMessages) return fieldMessages;
+    }
+    if (responseData.error && responseData.message) {
+      return `${responseData.error}: ${responseData.message}`;
+    }
+  }
+  return error?.message || 'Ha ocurrido un error. Intenta de nuevo.';
 }
 

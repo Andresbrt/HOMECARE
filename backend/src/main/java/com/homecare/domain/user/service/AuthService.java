@@ -254,10 +254,10 @@ public class AuthService {
         String emailNorm = email == null ? "" : email.trim().toLowerCase();
 
         Usuario usuario = usuarioRepository.findByEmail(emailNorm)
-                .orElseThrow(() -> new AuthException("Credenciales inválidas"));
+                .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
 
         if (usuario.getPassword() == null || !passwordEncoder.matches(password, usuario.getPassword())) {
-            throw new AuthException("Credenciales inválidas");
+            throw new BadCredentialsException("Credenciales inválidas");
         }
 
         if (!usuario.getActivo()) {
