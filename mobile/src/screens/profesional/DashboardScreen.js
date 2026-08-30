@@ -3,10 +3,10 @@
  * Rediseñado para ser claro, scannable y sin sobrecarga.
  * Un profesional en campo necesita ver TODO en un vistazo rápido.
  */
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, RefreshControl, useWindowDimensions,
+  StatusBar, RefreshControl, useWindowDimensions, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -17,9 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
+import { useLocation } from '../../context/LocationContext';
 import useChatStore from '../../store/chatStore';
-import { listarSolicitudesAbiertas } from '../../services/solicitudesService';
-import { apiFetch } from '../../config/api';
+import { apiFetch, SEARCH_RADIUS_KM } from '../../config/api';
 import apiClient from '../../services/apiClient';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 import ScreenLayout from '../../components/shared/ScreenLayout';
@@ -95,17 +95,25 @@ function ActivityItem({ item, index }) {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function ProfDashboardScreen({ navigation }) {
   const { width } = useWindowDimensions();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const unreadTotal = useChatStore((s) => s.unreadTotal ?? 0);
   const activeService = useChatStore((s) => s.activeService);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(user?.disponible ?? true);
   const [refreshing, setRefreshing] = useState(false);
   const [tooltip, setTooltip] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [stats, setStats] = useState(null);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const weeklyServices = user?.serviciosCompletados ?? 0;
+
+  useEffect(() => {
+    if (user?.disponible != null) {
+      setIsAvailable(user.disponible);
+    }
+  }, [user?.disponible]);
   const level = computeLevel(weeklyServices);
   const quarterLabel = getQuarterLabel();
   // Progreso dentro del nivel actual (barra de la tarjeta)
@@ -118,23 +126,46 @@ export default function ProfDashboardScreen({ navigation }) {
   const fabScale = useSharedValue(0);
   const fabChatScale = useSharedValue(0);
 
+  const { location } = useLocation();
+
   const fetchPendingCount = useCallback(async () => {
     try {
-      const solicitudes = await listarSolicitudesAbiertas({});
-      setPendingCount(Array.isArray(solicitudes) ? solicitudes.length : 0);
+      const lat = location?.latitude ?? 4.6097;
+      const lng = location?.longitude ?? -74.0817;
+      const { data } = await apiClient.get('/solicitudes/cercanas', {
+        params: {
+          latitud: lat,
+          longitud: lng,
+          radioKm: SEARCH_RADIUS_KM,
+          page: 0,
+          size: 1,
+        },
+      });
+
+      const content = Array.isArray(data) ? data : data?.content ?? [];
+      const total = typeof data?.totalElements === 'number' ? data.totalElements : content.length;
+      setPendingCount(total);
     } catch (_) {
       // No bloquear la UI si falla la carga de solicitudes
     }
-  }, []);
+  }, [location]);
 
   const fetchRecentActivity = useCallback(async () => {
     try {
-      const data = await apiFetch('/payments/me');
-      const list = Array.isArray(data) ? data : (data?.content ?? []);
-      const mapped = list.slice(0, 3).map((p) => ({
+      const paymentsRes = await apiFetch('/payments/me');
+      const statsRes = await apiFetch('/usuarios/estadisticas');
+
+      const paymentList = paymentsRes.ok
+        ? (Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data?.content ?? []))
+        : [];
+
+      setPayments(paymentList);
+      setStats(statsRes.ok ? statsRes.data : null);
+
+      const mapped = paymentList.slice(0, 3).map((p) => ({
         type: p.concepto ?? p.descripcion ?? 'Servicio',
         address: p.direccion ?? p.zona ?? '',
-        amount: `COL$ ${Number(p.monto ?? p.amount ?? 0).toLocaleString('es-CO')}`,
+        amount: `COL$ ${Number(p.montoProveedor ?? p.monto ?? p.amount ?? 0).toLocaleString('es-CO')}`,
       }));
       setRecentActivity(mapped);
     } catch (_) {
@@ -158,7 +189,7 @@ export default function ProfDashboardScreen({ navigation }) {
     fetchPendingCount();
     fetchRecentActivity();
     fetchUnreadCount();
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchPendingCount, fetchRecentActivity, fetchUnreadCount]);
 
   useEffect(() => {
     if (isAvailable) {
@@ -178,12 +209,33 @@ export default function ProfDashboardScreen({ navigation }) {
   const fabAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: fabScale.value }], opacity: fabScale.value }));
   const fabChatAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: fabChatScale.value }], opacity: fabChatScale.value }));
 
+  const bannerAmount = useMemo(() => {
+    if (stats?.totalGanado != null) return Number(stats.totalGanado);
+    return payments.reduce((sum, p) => sum + parseFloat(p.montoProveedor ?? p.monto ?? p.amount ?? 0), 0);
+  }, [payments, stats]);
+
+  const successRate = useMemo(() => {
+    if (!payments.length) return 0;
+    const approvedCount = payments.filter((p) => p.estado === 'APROBADO').length;
+    return Math.round((approvedCount / payments.length) * 100);
+  }, [payments]);
+
   // ── Handlers ──
-  const handleToggle = useCallback(() => {
+  const handleToggle = useCallback(async () => {
+    const nextState = !isAvailable;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     toggleScale.value = withSpring(0.92, { damping: 10 }, () => { toggleScale.value = withSpring(1); });
-    setIsAvailable(p => !p);
-  }, []);
+    setIsAvailable(nextState);
+
+    const response = await apiFetch(`/usuarios/disponibilidad?disponible=${nextState}`, { method: 'PUT' });
+    if (!response.ok) {
+      setIsAvailable(!nextState);
+      Alert.alert('Error', 'No se pudo actualizar tu disponibilidad. Intenta de nuevo.');
+      return;
+    }
+
+    updateUser({ disponible: nextState });
+  }, [isAvailable, updateUser]);
 
   const handleOpenChats = useCallback(() => {
     setTooltip(null);
@@ -291,16 +343,16 @@ export default function ProfDashboardScreen({ navigation }) {
             <View style={dp.mainTop}>
               <View style={dp.mainInfo}>
                 <Text style={dp.mainLabel}>Ingresos de hoy</Text>
-                <Text style={[dp.mainAmount, { fontSize: Math.min(38, width * 0.09) }]}>COL$ 185.000</Text>
+                <Text style={[dp.mainAmount, { fontSize: Math.min(38, width * 0.09) }]}>COL$ {bannerAmount.toLocaleString('es-CO')}</Text>
                 <View style={dp.mainDelta}>
                   <Ionicons name="trending-up" size={13} color={PROF.success} />
-                  <Text style={dp.mainDeltaText}>+12% vs ayer · 4 servicios</Text>
+                  <Text style={dp.mainDeltaText}>{successRate}% aprobadas · {payments.length} pagos</Text>
                 </View>
               </View>
               <View style={dp.mainStats}>
-                <StatPill icon="star" value="4.9" label="Rating" />
-                <StatPill icon="checkmark-circle" value="127" label="Total" />
-                <StatPill icon="trending-up" value="98%" label="Éxito" />
+                <StatPill icon="star" value={stats?.calificacionPromedio != null ? stats.calificacionPromedio.toFixed(1) : '0.0'} label="Rating" />
+                <StatPill icon="checkmark-circle" value={stats?.serviciosCompletados ?? 0} label="Servicios" />
+                <StatPill icon="trending-up" value={`${successRate}%`} label="Éxito" />
               </View>
             </View>
           </GlassCard>

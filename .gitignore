@@ -141,6 +141,13 @@ firebase-credentials*.json
 .tmp/
 .temp/
 
+# Local agent/cache folders (no deben ir al repo)
+.agents/
+.expo-home/
+
+# Corrupcion accidental en recursos Android (JDK incrustado)
+**/oracleJdk-*.jdk/
+
 # OS generated files
 .DS_Store
 .DS_Store?

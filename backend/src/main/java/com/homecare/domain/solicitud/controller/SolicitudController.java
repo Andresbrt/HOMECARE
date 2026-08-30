@@ -4,6 +4,7 @@ import com.homecare.dto.SolicitudDTO;
 import com.homecare.domain.solicitud.model.Solicitud.EstadoSolicitud;
 import com.homecare.domain.solicitud.model.Solicitud.TipoLimpieza;
 import com.homecare.security.CustomUserDetails;
+import com.homecare.common.exception.BadRequestBusinessException;
 import com.homecare.domain.solicitud.service.SolicitudService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -98,15 +99,33 @@ public class SolicitudController {
     @PreAuthorize("hasRole('SERVICE_PROVIDER')")
     @Operation(summary = "Buscar solicitudes cercanas (Proveedor descubre)")
     public ResponseEntity<Page<SolicitudDTO.Response>> obtenerSolicitudesCercanas(
-            @RequestParam BigDecimal latitud,
-            @RequestParam BigDecimal longitud,
+            @RequestParam(required = false) BigDecimal latitud,
+            @RequestParam(required = false) BigDecimal longitud,
+            @RequestParam(required = false) BigDecimal lat,
+            @RequestParam(required = false) BigDecimal lng,
             @RequestParam(defaultValue = "10") Integer radioKm,
             Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Page<SolicitudDTO.Response> solicitudes = solicitudService.obtenerSolicitudesCercanas(
-                userDetails.getId(), latitud, longitud, radioKm, pageable
-        );
+        BigDecimal queryLat = latitud != null ? latitud : lat;
+        BigDecimal queryLng = longitud != null ? longitud : lng;
+
+        Page<SolicitudDTO.Response> solicitudes;
+        if (queryLat == null || queryLng == null) {
+            List<SolicitudDTO.Response> abiertas = solicitudService.obtenerSolicitudesAbiertas(userDetails.getId());
+            int start = (int) pageable.getOffset();
+            int end = Math.min(start + pageable.getPageSize(), abiertas.size());
+            solicitudes = new org.springframework.data.domain.PageImpl<>(
+                    abiertas.subList(start, end),
+                    pageable,
+                    abiertas.size()
+            );
+        } else {
+            solicitudes = solicitudService.obtenerSolicitudesCercanas(
+                    userDetails.getId(), queryLat, queryLng, radioKm, pageable
+            );
+        }
+
         return ResponseEntity.ok(solicitudes);
     }
 

@@ -21,15 +21,36 @@ jest.mock('expo-haptics', () => ({
 }));
 
 jest.mock('expo-constants', () => ({
-  expoConfig: { extra: {} },
+  expoConfig: {
+    extra: {
+      supabaseUrl: 'https://test.supabase.local',
+      supabaseAnonKey: 'anon-test-key',
+      firebaseApiKey: 'test-firebase-api-key',
+      firebaseProjectId: 'test-firebase-project',
+      firebaseStorageBucket: 'test-firebase-bucket',
+      firebaseMessagingSenderId: '1234567890',
+      firebaseAppId: '1:test:android:abc123',
+    },
+  },
 }));
 
 // Mock @expo/vector-icons — renders as plain Text with the icon name
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  const Ionicons = (props) => React.createElement(Text, null, props.name || 'icon');
-  return { Ionicons };
+  const Icon = (props) => React.createElement(Text, null, props.name || 'icon');
+  return {
+    Ionicons: Icon,
+    MaterialCommunityIcons: Icon,
+  };
+});
+
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: ({ children, style }) => React.createElement(View, { style }, children),
+  };
 });
 
 jest.mock('../../src/services/apiClient', () => ({
@@ -92,7 +113,7 @@ describe('Screen smoke tests', () => {
       React.createElement(HomeScreen, { navigation: mockNavigation })
     );
 
-    expect(getByText(/Hola/)).toBeTruthy();
+    expect(getByText(/(Hola|Buenos días|Buenas tardes|Buenas noches)/)).toBeTruthy();
   });
 
   it('Provider HomeScreen renders greeting', () => {

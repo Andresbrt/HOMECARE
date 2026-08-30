@@ -134,13 +134,22 @@ const OfferCard = React.memo(({ offer, index, onAccept }) => {
 });
 
 export default function ViewOffersScreen({ route, navigation }) {
-  const { solicitudId } = route.params || {};
+  const { solicitudId, showToast } = route.params || {};
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (showToast) {
+      setSuccessMessage('Solicitud publicada. En breve recibirás ofertas.');
+      const timer = setTimeout(() => setSuccessMessage(''), 3800);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   const fetchOffers = useCallback(async () => {
     try {
@@ -220,6 +229,12 @@ export default function ViewOffersScreen({ route, navigation }) {
           )}
         </Animated.View>
       </LinearGradient>
+
+      {successMessage ? (
+        <View style={styles.successBanner}>
+          <Text style={styles.successText}>{successMessage}</Text>
+        </View>
+      ) : null}
 
       {/* Overlay de carga al aceptar */}
       {accepting && (
@@ -556,5 +571,20 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.md,
     fontWeight: '600',
     color: COLORS.textPrimary,
+  },
+  successBanner: {
+    backgroundColor: '#D6F6EF',
+    borderRadius: BORDER_RADIUS.xl,
+    marginHorizontal: SPACING.lg,
+    marginTop: -SPACING.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: '#49C0BC',
+  },
+  successText: {
+    color: '#064C45',
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

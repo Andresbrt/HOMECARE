@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
-import { buildChatId } from '../services/chatService';
+import { buildChatId, enviarMensajeFirestore } from '../services/chatService';
 import { wsClient } from '../services/wsClient';
 import useChatStore from '../store/chatStore';
 import { useAuth } from '../context/AuthContext';
@@ -32,10 +32,11 @@ const __DEV_LOG__ = __DEV__
 /** Normaliza un QueryDocumentSnapshot de Firestore al formato interno */
 function normalizeFirestoreMsg(doc) {
   const d = doc.data();
+  const rawDate = d.creadoEn || d.timestamp || d.createdAt;
   return {
     id: doc.id,
     ...d,
-    createdAt: d.timestamp?.toDate?.()?.toISOString() ?? new Date().toISOString(),
+    createdAt: rawDate?.toDate?.()?.toISOString() ?? (typeof rawDate === 'string' ? rawDate : new Date().toISOString()),
   };
 }
 
@@ -75,13 +76,35 @@ export function useChat(solicitudId, destinatarioId) {
     initialLoadDone.current = false;
     oldestDocRef.current    = null;
 
-    // Conectar WS para envío (non-blocking; Firestore se encarga de leer)
-    wsClient.connect().catch((e) =>
-      __DEV_LOG__('[useChat] WS connect warning (send degraded):', e.message),
-    );
+    let unsubWs = () => {};
 
+    // ── Suscripción STOMP WebSocket en tiempo real ──
+    wsClient.connect()
+      .then(() => {
+        unsubWs = wsClient.subscribe(`/topic/chat/${solicitudId}`, (incoming) => {
+          if (incoming && incoming.id) {
+            const normalized = {
+              id: String(incoming.id),
+              remitenteId: incoming.remitenteId,
+              remitenteNombre: incoming.remitenteNombre || '',
+              contenido: incoming.contenido,
+              tipo: incoming.tipo || incoming.tipoMensaje || 'TEXTO',
+              archivoUrl: incoming.archivoUrl,
+              leido: incoming.leido || false,
+              createdAt: incoming.createdAt || new Date().toISOString(),
+            };
+            addMessage(solicitudId, normalized);
+            updateLastMessage(solicitudId, normalized);
+          }
+        });
+      })
+      .catch((e) =>
+        __DEV_LOG__('[useChat] WS connect warning (send degraded):', e.message),
+      );
+
+    // ── Suscripción Firestore (Tiempo Real / Persistencia) ──
     const msgsRef = collection(db, 'chats', chatId, 'messages');
-    const q = query(msgsRef, orderBy('timestamp', 'asc'), limitToLast(PAGE_SIZE));
+    const q = query(msgsRef, limitToLast(PAGE_SIZE));
 
     const unsub = onSnapshot(
       q,
@@ -124,6 +147,7 @@ export function useChat(solicitudId, destinatarioId) {
 
     return () => {
       unsub();
+      try { unsubWs(); } catch (_) {}
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, [chatId, solicitudId]);
@@ -137,7 +161,6 @@ export function useChat(solicitudId, destinatarioId) {
       const msgsRef = collection(db, 'chats', chatId, 'messages');
       const q = query(
         msgsRef,
-        orderBy('timestamp', 'asc'),
         endBefore(oldestDocRef.current),
         limitToLast(PAGE_SIZE),
       );
@@ -169,7 +192,7 @@ export function useChat(solicitudId, destinatarioId) {
         const tempMsg = {
           id: `temp_${Date.now()}`,
           remitenteId: user?.id,
-          remitenteNombre: user?.nome || 'Tú',
+          remitenteNombre: user?.nombre || user?.nome || 'Tú',
           contenido: trimmed,
           tipo: 'TEXTO',
           leido: false,
@@ -178,17 +201,29 @@ export function useChat(solicitudId, destinatarioId) {
         };
         addMessage(solicitudId, tempMsg);
 
+        // 1. Envío WebSocket STOMP
         wsClient.publish('/app/chat/send', {
           solicitudId,
           destinatarioId,
           contenido: trimmed,
           tipo: 'TEXTO',
         });
+
+        // 2. Envío Firestore (Garantiza entrega a clientes en tiempo real)
+        if (chatId) {
+          enviarMensajeFirestore({
+            chatId,
+            remitenteId: user?.id,
+            remitenteNombre: user?.nombre || 'Usuario',
+            contenido: trimmed,
+            tipo: 'TEXTO',
+          }).catch((err) => __DEV_LOG__('[useChat] Firestore send fallback error:', err));
+        }
       } finally {
         setSending(false);
       }
     },
-    [solicitudId, destinatarioId, user, sending],
+    [solicitudId, destinatarioId, user, sending, chatId],
   );
 
   // ─── Send image ───────────────────────────────────────────────────────────
@@ -221,6 +256,18 @@ export function useChat(solicitudId, destinatarioId) {
           tipo: 'IMAGEN',
           archivoUrl: downloadUrl,
         });
+
+        // 4. Send to Firestore
+        if (chatId) {
+          enviarMensajeFirestore({
+            chatId,
+            remitenteId: user?.id,
+            remitenteNombre: user?.nombre || 'Usuario',
+            contenido: downloadUrl,
+            tipo: 'IMAGEN',
+            archivoUrl: downloadUrl,
+          }).catch((err) => __DEV_LOG__('[useChat] Firestore image error:', err));
+        }
 
         // Optimistic local add
         addMessage(solicitudId, {

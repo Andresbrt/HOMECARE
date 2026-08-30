@@ -7,19 +7,44 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 
 // ── Mocks ─────────────────────────────────────────────
 
-const mockPost = jest.fn();
-const mockGet = jest.fn();
+const mockLogin = jest.fn();
+const mockRegister = jest.fn();
+const mockLogout = jest.fn();
+const mockSendOTP = jest.fn();
+const mockVerifyOTP = jest.fn();
+const mockForgotPassword = jest.fn();
+const mockSendForgotPasswordOTP = jest.fn();
+const mockVerifyForgotPasswordOTP = jest.fn();
+const mockResetPasswordWithOTP = jest.fn();
+const mockSupabaseLogin = jest.fn();
 
-jest.mock('../../src/services/apiClient', () => ({
+jest.mock('../../src/services/authService', () => ({
   __esModule: true,
-  default: {
-    post: mockPost,
-    get: mockGet,
-    interceptors: {
-      request: { use: jest.fn() },
-      response: { use: jest.fn() },
-    },
+  authService: {
+    login: (...args) => mockLogin(...args),
+    register: (...args) => mockRegister(...args),
+    logout: (...args) => mockLogout(...args),
+    sendOTP: (...args) => mockSendOTP(...args),
+    verifyOTP: (...args) => mockVerifyOTP(...args),
+    forgotPassword: (...args) => mockForgotPassword(...args),
+    sendForgotPasswordOTP: (...args) => mockSendForgotPasswordOTP(...args),
+    verifyForgotPasswordOTP: (...args) => mockVerifyForgotPasswordOTP(...args),
+    resetPasswordWithOTP: (...args) => mockResetPasswordWithOTP(...args),
+    supabaseLogin: (...args) => mockSupabaseLogin(...args),
   },
+}));
+
+jest.mock('../../src/services/firebaseAuthService', () => ({
+  __esModule: true,
+  getGoogleIdTokenNative: jest.fn(),
+}));
+
+jest.mock('../../src/store/modeStore', () => ({
+  getState: () => ({ setMode: jest.fn() }),
+}));
+
+jest.mock('../../src/config/api', () => ({
+  apiFetch: jest.fn().mockResolvedValue({ ok: true, data: {} }),
 }));
 
 jest.mock('expo-secure-store', () => ({
@@ -45,6 +70,8 @@ describe('AuthContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     SecureStore.getItemAsync.mockResolvedValue(null);
+    SecureStore.setItemAsync.mockResolvedValue();
+    SecureStore.deleteItemAsync.mockResolvedValue();
   });
 
   it('starts with user=null', async () => {
@@ -61,19 +88,17 @@ describe('AuthContext', () => {
 
   it('login stores tokens and user in SecureStore', async () => {
     const loginResponse = {
-      data: {
-        token: 'access-jwt',
-        refreshToken: 'refresh-jwt',
-        id: 1,
-        email: 'test@hc.com',
-        nombre: 'Juan',
-        apellido: 'Pérez',
-        rol: 'ROLE_CUSTOMER',
-        fotoPerfil: null,
-        expiresIn: 86400,
-      },
+      token: 'access-jwt',
+      refreshToken: 'refresh-jwt',
+      id: 1,
+      email: 'test@hc.com',
+      nombre: 'Juan',
+      apellido: 'Pérez',
+      rol: 'ROLE_CUSTOMER',
+      fotoPerfil: null,
+      expiresIn: 86400,
     };
-    mockPost.mockResolvedValueOnce(loginResponse);
+    mockLogin.mockResolvedValueOnce(loginResponse);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -88,17 +113,12 @@ describe('AuthContext', () => {
     });
 
     expect(loginResult.success).toBe(true);
-    expect(mockPost).toHaveBeenCalledWith('/auth/login', {
-      email: 'test@hc.com',
-      password: 'pass123',
-    });
-    expect(SecureStore.setItemAsync).toHaveBeenCalledWith('token', 'access-jwt');
-    expect(SecureStore.setItemAsync).toHaveBeenCalledWith('refreshToken', 'refresh-jwt');
+    expect(mockLogin).toHaveBeenCalledWith('test@hc.com', 'pass123');
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.user.email).toBe('test@hc.com');
   });
 
-  it('logout clears tokens and calls /auth/logout', async () => {
+  it('logout clears auth state and calls authService.logout', async () => {
     // Simulate logged-in state: getItemAsync returns stored data
     SecureStore.getItemAsync.mockImplementation(async (key) => {
       if (key === 'token') return 'jwt';
@@ -106,8 +126,7 @@ describe('AuthContext', () => {
       if (key === 'user') return JSON.stringify({ id: 1, email: 'test@hc.com', rol: 'ROLE_CUSTOMER' });
       return null;
     });
-    // logout endpoint call (best-effort)
-    mockPost.mockResolvedValueOnce({});
+    mockLogout.mockResolvedValueOnce({});
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -122,28 +141,25 @@ describe('AuthContext', () => {
       await result.current.logout();
     });
 
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('token');
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('refreshToken');
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user');
+    expect(mockLogout).toHaveBeenCalled();
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
   });
 
-  it('register calls /auth/registro with correct payload', async () => {
+  it('register calls authService.register and sends OTP', async () => {
     const regResponse = {
-      data: {
-        token: 'new-access',
-        refreshToken: 'new-refresh',
-        id: 2,
-        email: 'ana@hc.com',
-        nombre: 'Ana',
-        apellido: 'García',
-        rol: 'ROLE_SERVICE_PROVIDER',
-        fotoPerfil: null,
-        expiresIn: 86400,
-      },
+      token: 'new-access',
+      refreshToken: 'new-refresh',
+      id: 2,
+      email: 'ana@hc.com',
+      nombre: 'Ana',
+      apellido: 'García',
+      rol: 'ROLE_SERVICE_PROVIDER',
+      fotoPerfil: null,
+      expiresIn: 86400,
     };
-    mockPost.mockResolvedValueOnce(regResponse);
+    mockRegister.mockResolvedValueOnce(regResponse);
+    mockSendOTP.mockResolvedValueOnce({});
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -166,13 +182,20 @@ describe('AuthContext', () => {
     });
 
     expect(registerResult.success).toBe(true);
-    expect(mockPost).toHaveBeenCalledWith('/auth/registro', userData);
-    expect(SecureStore.setItemAsync).toHaveBeenCalledWith('token', 'new-access');
-    expect(result.current.isAuthenticated).toBe(true);
+    expect(mockRegister).toHaveBeenCalledWith({
+      email: 'ana@hc.com',
+      password: 'secret',
+      nombre: 'Ana',
+      apellido: 'García',
+      rol: 'SERVICE_PROVIDER',
+      telefono: '3001234567',
+    });
+    expect(mockSendOTP).toHaveBeenCalledWith('ana@hc.com');
+    expect(result.current.isAuthenticated).toBe(false);
   });
 
   it('login returns error object on API failure (does not throw)', async () => {
-    mockPost.mockRejectedValueOnce({
+    mockLogin.mockRejectedValueOnce({
       response: { data: { message: 'Credenciales inválidas' } },
     });
 

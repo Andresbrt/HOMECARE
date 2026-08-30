@@ -1,8 +1,9 @@
-﻿import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { authService } from '../services/authService';
 import { supabase } from '../config/supabase';
 import { getGoogleIdTokenNative } from '../services/firebaseAuthService';
+import { apiFetch } from '../config/api';
 import useModeStore from '../store/modeStore';
 
 // Solo loguear en desarrollo — no-op en producción
@@ -26,6 +27,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  const refreshUserProfile = useCallback(async (baseUser = {}) => {
+    try {
+      const profile = await apiFetch('/usuarios/me');
+      if (!profile.ok) return false;
+      setUser(prev => {
+        const mergedUser = { ...(baseUser || {}), ...(prev || {}), ...profile.data };
+        SecureStore.setItemAsync('user', JSON.stringify(mergedUser)).catch(err => {
+          __DEV_LOG__('refreshUserProfile storage error:', err);
+        });
+        return mergedUser;
+      });
+      return true;
+    } catch (error) {
+      __DEV_LOG__('refreshUserProfile error:', error);
+      return false;
+    }
+  }, []);
+
   // Cargar sesión guardada al iniciar
   useEffect(() => {
     const loadSession = async () => {
@@ -42,6 +61,7 @@ export const AuthProvider = ({ children }) => {
           // Detectar modo según rol
           const roleMode = userData.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
           useModeStore.getState().setMode(roleMode);
+          await refreshUserProfile(userData);
         }
       } catch (error) {
         __DEV_LOG__('Error cargando sesión:', error);
@@ -65,6 +85,7 @@ export const AuthProvider = ({ children }) => {
       // Detectar modo según rol
       const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
       useModeStore.getState().setMode(roleMode);
+      await refreshUserProfile(response);
       
       return { success: true };
     } catch (error) {
@@ -233,6 +254,7 @@ export const AuthProvider = ({ children }) => {
 
       const roleMode = backendResponse.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
       useModeStore.getState().setMode(roleMode);
+      await refreshUserProfile(backendResponse);
 
       return { success: true };
     } catch (error) {
@@ -253,6 +275,7 @@ export const AuthProvider = ({ children }) => {
       // Detectar modo según rol
       const roleMode = response.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
       useModeStore.getState().setMode(roleMode);
+      await refreshUserProfile(response);
       
       return { success: true, data: response };
     } catch (error) {
@@ -299,17 +322,73 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ─── DEV LOGIN ────────────────────────────────────────────────────────────
-  const devLogin = async (role) => {
-    if (!__DEV__) return { success: false, message: 'Función no disponible en producción' };
-
-    const devCredentials = {
-      SERVICE_PROVIDER: { email: 'profesional@test.com', password: 'Test123!' },
-      CUSTOMER: { email: 'usuario@test.com', password: 'Test123!' },
+  const createDevAccount = async (role) => {
+    const devProfiles = {
+      SERVICE_PROVIDER: {
+        nombre: 'Profesional',
+        apellido: 'Test',
+        email: 'profesional@test.com',
+        password: 'test123',
+        telefono: '+57300123456',
+        rol: 'SERVICE_PROVIDER',
+        documentoIdentidad: '0000000000',
+        descripcion: 'Cuenta de prueba profesional',
+        experienciaAnos: 0,
+      },
+      CUSTOMER: {
+        nombre: 'Usuario',
+        apellido: 'Test',
+        email: 'usuario@test.com',
+        password: 'test123',
+        telefono: '+57300789456',
+        rol: 'CUSTOMER',
+        documentoIdentidad: '0000000000',
+        descripcion: 'Cuenta de prueba cliente',
+        experienciaAnos: 0,
+      },
     };
 
-    const credentials = devCredentials[role];
-    if (!credentials) return { success: false, message: 'Rol inválido' };
-    return login(credentials.email, credentials.password);
+    const profile = devProfiles[role];
+    if (!profile) return;
+
+    try {
+      await authService.register(profile);
+    } catch (err) {
+      // Intentamos registrar en dev, pero no hace falta fallar aquí.
+    }
+  };
+
+  const devLogin = async (role) => {
+    const devCredentials = {
+      SERVICE_PROVIDER: [
+        { email: 'profesional@test.com', password: 'test123' },
+        { email: 'profesional@test.com', password: 'Test123!' },
+      ],
+      CUSTOMER: [
+        { email: 'usuario@test.com', password: 'test123' },
+        { email: 'usuario@test.com', password: 'Test123!' },
+      ],
+    };
+
+    const credentialsList = devCredentials[role];
+    if (!credentialsList) return { success: false, message: 'Rol inválido' };
+
+    let lastError = null;
+    for (const credentials of credentialsList) {
+      const result = await login(credentials.email, credentials.password);
+      if (result.success) return result;
+      lastError = result;
+    }
+
+    await createDevAccount(role);
+
+    for (const credentials of credentialsList) {
+      const result = await login(credentials.email, credentials.password);
+      if (result.success) return result;
+      lastError = result;
+    }
+
+    return lastError || { success: false, message: 'Credenciales de dev inválidas' };
   };
 
   return (

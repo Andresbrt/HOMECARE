@@ -52,9 +52,11 @@ const SERVICIOS = [
 ];
 
 export default function CreateRequestScreen({ navigation, route }) {
-  const { location } = useLocation();
+  const { location, startWatching } = useLocation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [form, setForm] = useState({
     servicioId: '',
     titulo: '',
@@ -119,7 +121,76 @@ export default function CreateRequestScreen({ navigation, route }) {
     }
   };
 
+  const searchAddressSuggestions = async (query) => {
+    if (!query.trim()) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    if (!apiKey) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=address&components=country:co&key=${apiKey}`
+      );
+      const json = await response.json();
+      if (json.status === 'OK') {
+        setAddressSuggestions(json.predictions || []);
+        setShowSuggestions(true);
+      } else {
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectAddressSuggestion = async (description) => {
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    setIsGeocoding(true);
+
+    setForm((prev) => {
+      const parts = description.split(',').map((part) => part.trim()).filter(Boolean);
+      const direccion = parts[0] || prev.direccion;
+      const barrio = parts.length >= 3 ? parts[1] : prev.barrio;
+      const ciudad = parts.length >= 3 ? parts[2] : parts[1] || prev.ciudad;
+
+      return {
+        ...prev,
+        direccion,
+        barrio,
+        ciudad,
+      };
+    });
+
+    try {
+      const { default: Location } = await import('expo-location');
+      const results = await Location.geocodeAsync(description);
+      if (results && results.length > 0) {
+        setGeocodedCoords({ latitude: results[0].latitude, longitude: results[0].longitude });
+      }
+    } catch (_) {
+      setGeocodedCoords(null);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+
   const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  useEffect(() => {
+    startWatching();
+  }, [startWatching]);
 
   const handleSubmit = async () => {
     if (!form.titulo.trim() || !form.servicioId || !form.ciudad.trim() || !form.direccion.trim()) {
@@ -155,25 +226,32 @@ export default function CreateRequestScreen({ navigation, route }) {
 
     try {
       const now = new Date();
-      const futureDate = new Date(now.getTime() + 10 * 60000); 
+      const futureDate = new Date(now.getTime() + 10 * 60000);
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const serviceDate = futureDate.toISOString().split('T')[0] === now.toISOString().split('T')[0]
+        ? tomorrow.toISOString().split('T')[0]
+        : futureDate.toISOString().split('T')[0];
       
       const esHoras = form.servicioId === 'horas';
       const precioFinal = esHoras
-        ? parseInt(form.cantidadHoras || 2) * parseInt(form.precioPorHora || 0)
-        : parseFloat(form.precioMaximo);
+        ? parseInt(form.cantidadHoras || 2, 10) * parseInt(form.precioPorHora || 0, 10)
+        : form.precioMaximo ? parseFloat(form.precioMaximo) : null;
       const duracion = esHoras
-        ? parseInt(form.cantidadHoras || 2) * 60
+        ? parseInt(form.cantidadHoras || 2, 10) * 60
         : (parseInt(form.duracionEstimada, 10) || 60);
 
-      const latitud = location?.coords?.latitude
-        ? parseFloat(location.coords.latitude.toFixed(6))
+      const currentLat = location?.latitude
+        ? parseFloat(location.latitude.toFixed(6))
         : null;
-      const longitud = location?.coords?.longitude
-        ? parseFloat(location.coords.longitude.toFixed(6))
+      const currentLng = location?.longitude
+        ? parseFloat(location.longitude.toFixed(6))
         : null;
 
-      if (!latitud || !longitud) {
-        Alert.alert('Ubicación requerida', 'No se pudo obtener tu ubicación. Activa el GPS e intenta de nuevo.');
+      const finalLat = geocodedCoords?.latitude ?? currentLat;
+      const finalLng = geocodedCoords?.longitude ?? currentLng;
+
+      if (!finalLat || !finalLng) {
+        Alert.alert('Ubicación requerida', 'No se pudo obtener tu ubicación o la dirección ingresada. Activa el GPS e intenta de nuevo.');
         setLoading(false);
         return;
       }
@@ -183,18 +261,18 @@ export default function CreateRequestScreen({ navigation, route }) {
         descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza}`,
         tipoLimpieza: form.tipoLimpieza,
         direccion: [form.direccion.trim(), form.barrio.trim(), form.ciudad.trim()].filter(Boolean).join(', '),
-        latitud: geocodedCoords?.latitude ?? (location?.coords?.latitude ? parseFloat(location.coords.latitude.toFixed(6)) : 4.6097),
-        longitud: geocodedCoords?.longitude ?? (location?.coords?.longitude ? parseFloat(location.coords.longitude.toFixed(6)) : -74.0817),
+        latitud: finalLat,
+        longitud: finalLng,
         metrosCuadrados: form.metrosCuadrados ? parseFloat(form.metrosCuadrados) : (form.tipoPropiedad === 'CASA' ? 100 : 60),
         cantidadHabitaciones: form.cantidadHabitaciones ? parseInt(form.cantidadHabitaciones, 10) : 2,
         cantidadBanos: form.cantidadBanos ? parseInt(form.cantidadBanos, 10) : 1,
         tieneMascotas: form.tieneMascotas,
-        precioMaximo: precioFinal,
-        fechaServicio: futureDate.toISOString().split('T')[0],
+        ...(precioFinal !== null && { precioMaximo: precioFinal }),
+        fechaServicio: serviceDate,
         horaInicio: futureDate.toTimeString().split(' ')[0].substring(0, 5),
         duracionEstimada: duracion,
         instruccionesEspeciales: esHoras
-          ? `[${form.tipoPropiedad}] Servicio por horas: ${form.cantidadHoras}h × $${parseInt(form.precioPorHora).toLocaleString('es-CO')}/h. ${form.instruccionesEspeciales?.trim() || ''}`.trim()
+          ? `[${form.tipoPropiedad}] Servicio por horas: ${form.cantidadHoras}h × $${parseInt(form.precioPorHora, 10).toLocaleString('es-CO')}/h. ${form.instruccionesEspeciales?.trim() || ''}`.trim()
           : `[${form.tipoPropiedad}] ${form.instruccionesEspeciales?.trim() || 'Sin instrucciones adicionales'}`.trim(),
       };
 
@@ -214,21 +292,45 @@ export default function CreateRequestScreen({ navigation, route }) {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // 3. Navegar directamente al chat (modo "pending" mientras espera profesional)
+      // 3. Navegar a ofertas luego de crear la solicitud para mostrar el flujo inmediato
       if (solicitudId) {
-        navigation.replace('UserChat', {
+        navigation.replace('ViewOffers', {
           solicitudId,
-          destinatarioId: null,   // aún no hay profesional asignado
-          titulo: 'Buscando profesional…',
-          pendiente: true,        // ChatScreen muestra banner de espera
+          showToast: true,
         });
       } else {
         // Fallback si el backend no devuelve el ID
         navigation.goBack();
       }
     } catch (error) {
-      const msg = error.response?.data?.message || 'Error al conectar con el servidor.';
-      Alert.alert('Error', msg);
+      const status = error?.response?.status;
+      const payload = error?.response?.data;
+      const validationErrors = payload?.fieldErrors;
+      let serverMsg =
+        payload?.message ||
+        payload?.mensaje ||
+        payload?.error ||
+        error?.message ||
+        'No se pudo procesar la solicitud.';
+
+      if (validationErrors && typeof validationErrors === 'object') {
+        const firstError = Object.values(validationErrors)[0];
+        serverMsg = firstError || serverMsg;
+      }
+
+      if (status === 401) {
+        Alert.alert(
+          'Sesión expirada',
+          'Tu sesión ya no es válida. Cierra sesión e inicia de nuevo para publicar la solicitud.'
+        );
+      } else if (!error?.response) {
+        Alert.alert(
+          'Error de conexión',
+          'No hay respuesta del servidor. Revisa tu conexión a internet y vuelve a intentar.'
+        );
+      } else {
+        Alert.alert('No se pudo publicar', serverMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -361,8 +463,12 @@ export default function CreateRequestScreen({ navigation, route }) {
               placeholder="Calle 45 # 12-34, apto 501"
               placeholderTextColor={COLORS.textDisabled}
               value={form.direccion}
-              onChangeText={v => { updateField('direccion', v); setGeocodedCoords(null); }}
-              onBlur={geocodeAddress}
+              onChangeText={v => {
+                updateField('direccion', v);
+                setGeocodedCoords(null);
+                searchAddressSuggestions(v);
+              }}
+              onFocus={() => setShowSuggestions(true)}
               returnKeyType="done"
               onSubmitEditing={geocodeAddress}
             />
@@ -373,6 +479,19 @@ export default function CreateRequestScreen({ navigation, route }) {
               }
             </TouchableOpacity>
           </View>
+          {showSuggestions && addressSuggestions.length > 0 && (
+            <View style={styles.suggestionsList}>
+              {addressSuggestions.slice(0, 4).map((item) => (
+                <TouchableOpacity
+                  key={item.place_id}
+                  style={styles.suggestionItem}
+                  onPress={() => selectAddressSuggestion(item.description)}
+                >
+                  <Text style={styles.suggestionText}>{item.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           {geocodedCoords && (
             <Text style={{ color: COLORS.accent, fontSize: 12, marginTop: -8, marginBottom: 8 }}>
               Ubicación encontrada ✓
@@ -503,20 +622,41 @@ export default function CreateRequestScreen({ navigation, route }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      <Modal visible={loading} transparent animationType="fade">
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+            <Text style={styles.loadingTitle}>Publicando tu solicitud</Text>
+            <Text style={styles.loadingSub}>Estamos creando la solicitud y buscando profesionales cercanos.</Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* MODAL DE CONFIRMACIÓN DE UBICACIÓN */}
       <Modal visible={isConfirmingLocation} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirma tu ubicación</Text>
-            <Text style={styles.modalSub}>El profesional llegará a este punto exacto</Text>
+            <Text style={styles.modalTitle}>Revisa y publica tu solicitud</Text>
+            <Text style={styles.modalSub}>Tu solicitud se enviará a profesionales cercanos y podrás ver ofertas en la siguiente pantalla.</Text>
+
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={18} color={COLORS.accent} />
+                <Text style={styles.infoText}>La dirección se usará como punto de encuentro.</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="time-outline" size={18} color={COLORS.accent} />
+                <Text style={styles.infoText}>Puedes editar los datos antes de confirmar.</Text>
+              </View>
+            </View>
             
             <View style={styles.miniMapWrap}>
               <MapView
                 provider={PROVIDER_GOOGLE}
                 style={styles.miniMap}
                 initialRegion={{
-                  latitude: location?.coords?.latitude || 4.6097,
-                  longitude: location?.coords?.longitude || -74.0817,
+                  latitude: geocodedCoords?.latitude ?? location?.latitude ?? 4.6097,
+                  longitude: geocodedCoords?.longitude ?? location?.longitude ?? -74.0817,
                   latitudeDelta: 0.005,
                   longitudeDelta: 0.005,
                 }}
@@ -525,8 +665,8 @@ export default function CreateRequestScreen({ navigation, route }) {
               >
                 <Marker
                   coordinate={{
-                    latitude: location?.coords?.latitude || 4.6097,
-                    longitude: location?.coords?.longitude || -74.0817,
+                    latitude: geocodedCoords?.latitude ?? location?.latitude ?? 4.6097,
+                    longitude: geocodedCoords?.longitude ?? location?.longitude ?? -74.0817,
                   }}
                 >
                   <View style={styles.markerCircle}>
@@ -537,11 +677,11 @@ export default function CreateRequestScreen({ navigation, route }) {
             </View>
 
             <TouchableOpacity style={styles.confirmBtn} onPress={executeRequest}>
-              <Text style={styles.confirmBtnText}>Confirmar y Publicar</Text>
+              <Text style={styles.confirmBtnText}>Publicar solicitud</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsConfirmingLocation(false)}>
-              <Text style={styles.cancelBtnText}>Editar dirección</Text>
+              <Text style={styles.cancelBtnText}>Editar datos</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -553,6 +693,24 @@ export default function CreateRequestScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { padding: SPACING.lg, paddingBottom: SPACING.xxl },
+  suggestionsList: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  suggestionText: {
+    color: COLORS.textPrimary,
+    fontSize: TYPOGRAPHY.md,
+  },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.lg },
   headerTitle: { fontSize: TYPOGRAPHY.xl, fontWeight: TYPOGRAPHY.bold, color: COLORS.textPrimary },
   label: { fontSize: TYPOGRAPHY.sm, fontWeight: TYPOGRAPHY.semibold, color: COLORS.textPrimary, marginTop: SPACING.md, marginBottom: SPACING.xs },
@@ -603,6 +761,34 @@ const styles = StyleSheet.create({
   submitText: { color: COLORS.white, fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.bold },
 
   // Estilos del Modal
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  loadingCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  loadingTitle: {
+    marginTop: SPACING.md,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+  },
+  loadingSub: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -626,6 +812,23 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: SPACING.md,
+  },
+  infoCard: {
+    backgroundColor: 'rgba(73,192,188,0.08)',
+    borderRadius: 14,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    gap: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+    color: '#234',
+    fontSize: 13,
+    flex: 1,
   },
   miniMapWrap: {
     height: 180,

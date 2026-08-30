@@ -152,6 +152,12 @@ public class MensajeService {
 
     private void enviarViaWebSocket(MensajeDTO.Response mensaje) {
         try {
+            // 1. Broadcast al topic de la sala de chat
+            messagingTemplate.convertAndSend(
+                    "/topic/chat/" + mensaje.getSolicitudId(),
+                    mensaje
+            );
+            // 2. Envío directo al destinatario
             messagingTemplate.convertAndSendToUser(
                     mensaje.getDestinatarioId().toString(),
                     "/topic/chat/" + mensaje.getSolicitudId(),

@@ -91,7 +91,6 @@ export default function RegisterScreen({ route, navigation }) {
         return;
       }
     }
-
     // Separar nombre completo en nombre + apellido para el backend
     const partes = nombreCompleto.trim().split(/\s+/);
     const nombre = partes[0];

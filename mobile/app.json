@@ -23,7 +23,6 @@
       "bundleIdentifier": "com.homecare.app",
       "buildNumber": "1",
       "requireFullScreen": true,
-      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para mostrarte servicios cercanos y conectarte con profesionales.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para el seguimiento en tiempo real del profesional.",
@@ -33,11 +32,6 @@
         "NSMicrophoneUsageDescription": "Necesitamos acceso al micrófono para mensajes de voz en el chat.",
         "UIBackgroundModes": ["fetch", "remote-notification"]
       },
-      "config": {
-        "googleSignIn": {
-          "reservedClientId": "com.googleusercontent.apps.630129948671-o3pb4j0ng9f6eeln8tevjn1b89bm16da"
-        }
-      }
     },
     "android": {
       "adaptiveIcon": {
@@ -46,7 +40,6 @@
       },
       "package": "com.homecare.app",
       "versionCode": 1,
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

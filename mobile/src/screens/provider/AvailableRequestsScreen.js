@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocation } from '../../context/LocationContext';
+import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiClient';
 import { SEARCH_RADIUS_KM } from '../../config/api';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
@@ -125,6 +127,7 @@ function RequestCard({ request, index, onPress }) {
 
 export default function AvailableRequestsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { location } = useLocation();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -133,25 +136,46 @@ export default function AvailableRequestsScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
 
   const fetchRequests = useCallback(async (pageNum = 0, append = false) => {
+    if (user?.disponible === false) {
+      setRequests([]);
+      setHasMore(false);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
-      const lat = location?.coords?.latitude ?? 4.6097;
-      const lng = location?.coords?.longitude ?? -74.0817;
-      const { data } = await apiClient.get('/solicitudes/cercanas', {
-        params: { latitud: lat, longitud: lng, radioKm: SEARCH_RADIUS_KM, page: pageNum, size: 15 },
-      });
+      const hasLocation = location?.latitude != null && location?.longitude != null;
+      const params = {
+        radioKm: SEARCH_RADIUS_KM,
+        page: pageNum,
+        size: 15,
+        ...(hasLocation ? { latitud: location.latitude, longitud: location.longitude } : {}),
+      };
+      console.debug('[AvailableRequestsScreen] fetchRequests params:', params);
+      const response = await apiClient.get('/solicitudes/cercanas', { params });
+      console.debug('[AvailableRequestsScreen] fetchRequests response:', response);
+
+      const data = response.data;
       const content = Array.isArray(data) ? data : data?.content ?? [];
       setRequests(append ? (prev) => [...prev, ...content] : content);
       setHasMore(data.last === false);
       setPage(pageNum);
-    } catch {
+    } catch (error) {
+      console.warn('[AvailableRequestsScreen] fetchRequests error:', error?.message || error);
       if (!append) Alert.alert('Error', 'No se pudieron cargar las solicitudes.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [location]);
+  }, [location, user]);
 
-  useEffect(() => { fetchRequests(); }, [fetchRequests]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchRequests();
+    }, [fetchRequests])
+  );
 
   return (
     <LinearGradient colors={['#000F22', '#001B38']} style={{ flex: 1 }}>
@@ -160,7 +184,11 @@ export default function AvailableRequestsScreen({ navigation }) {
         <View>
           <Text style={styles.headerTitle}>Solicitudes cercanas</Text>
           <Text style={styles.headerSub}>
-            {loading ? 'Buscando...' : `${requests.length} disponible${requests.length !== 1 ? 's' : ''} · ${SEARCH_RADIUS_KM} km`}
+            {loading
+              ? 'Buscando...'
+              : user?.disponible === false
+                ? 'Activa tu disponibilidad para ver solicitudes'
+                : `${requests.length} disponible${requests.length !== 1 ? 's' : ''} · ${SEARCH_RADIUS_KM} km`}
           </Text>
         </View>
         <TouchableOpacity

@@ -12,6 +12,7 @@ import {
   StatusBar,
   SafeAreaView,
   Platform,
+  Alert,
 } from 'react-native';
 
 let MapView, Marker, PROVIDER_GOOGLE;
@@ -125,9 +126,9 @@ const BOGOTA = { latitude: 4.7109886, longitude: -74.072092, latitudeDelta: 0.03
 
 // 
 export default function MapScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const mapRef = useRef(null);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(user?.disponible ?? true);
   const [zone] = useState('Bogotá D.C.');
   const [nearby, setNearby] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
@@ -146,19 +147,25 @@ export default function MapScreen({ navigation }) {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         const { latitude, longitude } = loc.coords;
         setUserLocation({ latitude, longitude });
-        const data = await apiFetch(`/solicitudes/cercanas?lat=${latitude}&lng=${longitude}&radioKm=5`);
+        const data = await apiFetch(`/solicitudes/cercanas?latitud=${latitude}&longitud=${longitude}&radioKm=5`);
         const list = Array.isArray(data) ? data : (data?.content ?? []);
         setNearby(list.map((s) => ({
           id: s.id,
           lat: s.latitud ?? s.lat,
           lng: s.longitud ?? s.lng,
-          title: s.tipoServicio ?? s.descripcion ?? 'Solicitud',
+          title: s.tipoLimpieza ?? s.titulo ?? s.descripcion ?? 'Solicitud',
         })));
       } catch (_) {
         // Si falla, el mapa sigue sin pines pero no bloquea
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (user?.disponible != null) {
+      setIsAvailable(user.disponible);
+    }
+  }, [user?.disponible]);
 
   useEffect(() => {
     if (isAvailable) {
@@ -197,12 +204,22 @@ export default function MapScreen({ navigation }) {
     opacity: pulseOpacity.value,
   }));
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
+    const nextState = !isAvailable;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     toggleScale.value = withSpring(0.92, { damping: 10 }, () => {
       toggleScale.value = withSpring(1, { damping: 12 });
     });
-    setIsAvailable((prev) => !prev);
+    setIsAvailable(nextState);
+
+    const response = await apiFetch(`/usuarios/disponibilidad?disponible=${nextState}`, { method: 'PUT' });
+    if (!response.ok) {
+      setIsAvailable(!nextState);
+      Alert.alert('Error', 'No se pudo actualizar tu disponibilidad. Intenta de nuevo.');
+      return;
+    }
+
+    updateUser({ disponible: nextState });
   };
 
   return (

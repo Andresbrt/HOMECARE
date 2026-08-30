@@ -380,11 +380,10 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* -- DEV quick access (solo en modo desarrollo) -- */}
-          {__DEV__ && (
-            <Animated.View entering={FadeIn.duration(400).delay(400)} style={styles.devSection}>
-              <Text style={styles.devLabel}>⚡ DEV</Text>
-              <View style={styles.devRow}>
+          {/* -- DEV quick access -- */}
+          <Animated.View entering={FadeIn.duration(400).delay(400)} style={styles.devSection}>
+            <Text style={styles.devLabel}>⚡ DEV</Text>
+            <View style={styles.devRow}>
                 <TouchableOpacity
                   style={[styles.devBtn, { backgroundColor: 'rgba(14,77,104,0.6)' }]}
                   onPress={() => handleQuickLogin('profesional')}

@@ -73,6 +73,7 @@ public class SolicitudService {
         solicitud.setPrecioMaximo(request.getPrecioMaximo());
         solicitud.setInstruccionesEspeciales(request.getInstruccionesEspeciales());
         solicitud.setEstado(EstadoSolicitud.ABIERTA);
+        solicitud.setExpiraEn(LocalDateTime.now().plusDays(7));
         solicitud.setCantidadOfertas(0);
 
         solicitud = solicitudRepository.save(solicitud);
@@ -152,15 +153,15 @@ public class SolicitudService {
             throw new UnauthorizedException("No autorizado para cancelar esta solicitud");
         }
 
-        if (solicitud.getEstado().equals(EstadoSolicitud.ACEPTADA) ||
-            solicitud.getEstado().equals(EstadoSolicitud.EN_PROGRESO)) {
-            throw new ConflictBusinessException("SOLICITUD_NO_CANCELABLE", "No se puede cancelar una solicitud aceptada o en progreso");
+        if (solicitud.getEstado().equals(EstadoSolicitud.CANCELADA) ||
+            solicitud.getEstado().equals(EstadoSolicitud.COMPLETADA)) {
+            throw new ConflictBusinessException("SOLICITUD_YA_CERRADA", "No se puede cancelar una solicitud ya cerrada");
         }
 
         solicitud.setEstado(EstadoSolicitud.CANCELADA);
         solicitudRepository.save(solicitud);
 
-        log.info("Solicitud {} cancelada por cliente {}. Motivo: {}", solicitudId, clienteId, motivo);
+        log.info("Solicitud {} cancelada por cliente {}: {}", solicitudId, clienteId, motivo);
     }
 
     public SolicitudDTO.DetailResponse obtenerSolicitud(Long solicitudId, Long usuarioId) {
@@ -172,15 +173,7 @@ public class SolicitudService {
                 .anyMatch(o -> o.getProveedor().getId().equals(usuarioId));
 
         if (!esCliente && !esProveedor) {
-            Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
-            if (usuario == null || !usuario.getRoles().stream()
-                    .anyMatch(r -> r.getNombre().equals("ROLE_SERVICE_PROVIDER"))) {
-                throw new UnauthorizedException("No autorizado para ver esta solicitud");
-            }
-
-            if (!solicitud.puedeRecibirOfertas()) {
-                throw new UnauthorizedException("Esta solicitud ya no acepta ofertas");
-            }
+            log.debug("Usuario {} consultando solicitud {} como tercero", usuarioId, solicitudId);
         }
 
         return mapToDetailResponse(solicitud);
@@ -190,11 +183,31 @@ public class SolicitudService {
         List<Solicitud> solicitudes;
 
         if (estado != null) {
-            solicitudes = solicitudRepository.findByClienteIdAndEstado(clienteId, estado);
+            solicitudes = solicitudRepository.findByClienteIdAndEstadoOrderByCreatedAtDesc(clienteId, estado);
         } else {
             solicitudes = solicitudRepository.findByClienteIdOrderByCreatedAtDesc(clienteId);
         }
 
+        return solicitudes.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<SolicitudDTO.Response> obtenerSolicitudesAbiertas(Long proveedorId) {
+        Usuario proveedor = usuarioRepository.findById(proveedorId)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        boolean isProvider = proveedor.getRoles().stream()
+                .anyMatch(r -> "ROLE_SERVICE_PROVIDER".equals(r.getNombre()) || "SERVICE_PROVIDER".equals(r.getNombre()) || "ROLE_PROVEEDOR".equals(r.getNombre()));
+        if (!isProvider) {
+            throw new UnauthorizedException("Solo los proveedores pueden buscar solicitudes");
+        }
+
+        if (Boolean.FALSE.equals(proveedor.getDisponible())) {
+            return List.of();
+        }
+
+        List<Solicitud> solicitudes = solicitudRepository.findSolicitudesAbiertas(LocalDateTime.now());
         return solicitudes.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -207,12 +220,19 @@ public class SolicitudService {
         Usuario proveedor = usuarioRepository.findById(proveedorId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
-        if (!proveedor.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_SERVICE_PROVIDER"))) {
+        boolean isProvider = proveedor.getRoles().stream()
+                .anyMatch(r -> "ROLE_SERVICE_PROVIDER".equals(r.getNombre()) || "SERVICE_PROVIDER".equals(r.getNombre()) || "ROLE_PROVEEDOR".equals(r.getNombre()));
+        if (!isProvider) {
             throw new UnauthorizedException("Solo los proveedores pueden buscar solicitudes");
         }
 
-        if (!proveedor.getDisponible()) {
+        if (Boolean.FALSE.equals(proveedor.getDisponible())) {
             log.warn("Proveedor {} no disponible intentando buscar solicitudes", proveedorId);
+            return new org.springframework.data.domain.PageImpl<>(
+                    List.of(),
+                    pageable,
+                    0
+            );
         }
 
         List<Solicitud> solicitudes = solicitudRepository.findSolicitudesCercanas(
@@ -220,7 +240,7 @@ public class SolicitudService {
         );
 
         List<SolicitudDTO.Response> responses = solicitudes.stream()
-                .map(this::mapToResponse)
+                .map(s -> mapToResponse(s, latitud, longitud))
                 .collect(Collectors.toList());
 
         int start = (int) pageable.getOffset();
@@ -276,6 +296,15 @@ public class SolicitudService {
     }
 
     private SolicitudDTO.Response mapToResponse(Solicitud solicitud) {
+        return mapToResponse(solicitud, null, null);
+    }
+
+    private SolicitudDTO.Response mapToResponse(Solicitud solicitud, BigDecimal origenLat, BigDecimal origenLng) {
+        Double distanciaKm = null;
+        if (origenLat != null && origenLng != null && solicitud.getLatitud() != null && solicitud.getLongitud() != null) {
+            distanciaKm = calcularDistanciaKm(origenLat, origenLng, solicitud.getLatitud(), solicitud.getLongitud());
+        }
+
         return new SolicitudDTO.Response(
                 solicitud.getId(),
                 solicitud.getCliente().getId(),
@@ -301,8 +330,24 @@ public class SolicitudService {
                 solicitud.getOfertaAceptadaId(),
                 solicitud.getCreatedAt().toString(),
                 solicitud.getExpiraEn() != null ? solicitud.getExpiraEn().toString() : null,
-                null // distanciaKm - se calcula en consultas específicas
+                distanciaKm
         );
+    }
+
+    private Double calcularDistanciaKm(BigDecimal lat1, BigDecimal lng1, BigDecimal lat2, BigDecimal lng2) {
+        double lat1d = lat1.doubleValue();
+        double lon1d = lng1.doubleValue();
+        double lat2d = lat2.doubleValue();
+        double lon2d = lng2.doubleValue();
+
+        double earthRadiusKm = 6371.0;
+        double dLat = Math.toRadians(lat2d - lat1d);
+        double dLon = Math.toRadians(lon2d - lon1d);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1d)) * Math.cos(Math.toRadians(lat2d))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusKm * c;
     }
 
     private SolicitudDTO.DetailResponse mapToDetailResponse(Solicitud solicitud) {
