@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Cuenta Verificada!</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { background-color: #2D3E50; color: #ffffff; padding: 40px 20px; text-align: center; }
+        .content { padding: 40px; text-align: center; line-height: 1.6; }
+        .icon { font-size: 60px; margin-bottom: 20px; }
+        .h1 { color: #2D3E50; margin: 0 0 20px 0; font-size: 24px; font-weight: bold; }
+        .p { margin: 0 0 20px 0; font-size: 16px; color: #666; }
+        .cta-button { display: inline-block; padding: 15px 35px; background-color: #00C4CC; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,196,204,0.2); }
+        .footer { background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+        .verified-badge { color: #4CAF50; font-weight: bold; display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">✅</div>
+            <h1>¡Hola, <span th:text="${nombre}"></span>!</h1>
+        </div>
+        <div class="content">
+            <p class="h1">¡Tus documentos han sido aprobados!</p>
+            <p class="p">Nuestro equipo de seguridad ha finalizado la revisión de tu perfil profesional. Tu cuenta ahora cuenta con el sello de <strong>Verificación de Confianza</strong>.</p>
+            <p class="p">A partir de este momento, ya puedes:</p>
+            <ul style="text-align: left; display: inline-block; padding: 0; list-style: none;">
+                <li>🚀 Recibir solicitudes de servicios en tiempo real.</li>
+                <li>📝 Enviar ofertas personalizadas a los clientes.</li>
+                <li>💼 Empezar a generar ingresos con HomeCare.</li>
+            </ul>
+            <br>
+            <a href="homecare://login" class="cta-button">Ir a la Aplicación</a>
+            <span class="verified-badge">✓ Perfil Profesional Verificado</span>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 HomeCare Services. Todos los derechos reservados.</p>
+            <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+        </div>
+    </div>
+</body>
+</html>

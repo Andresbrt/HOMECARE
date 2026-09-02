@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Fallback para Android < 8.0 (API < 26).
+    "mipmap-anydpi" tiene mayor prioridad que mipmap-hdpi/mdpi/etc.,
+    por lo que este archivo reemplaza los .webp del robot genérico
+    en TODOS los dispositivos anteriores a Android 8.
+    Para Android 8+ se usa mipmap-anydpi-v26/ic_launcher.xml en su lugar.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Capa de fondo: color teal sólido de la marca -->
+    <item android:drawable="@drawable/ic_launcher_background"/>
+    <!-- Capa frontal: anillos concéntricos con la letra H -->
+    <item android:drawable="@drawable/ic_launcher_foreground"/>
+</layer-list>

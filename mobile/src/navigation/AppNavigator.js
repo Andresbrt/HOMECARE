@@ -1,0 +1,418 @@
+/**
+ * AppNavigator — Navegación principal Homecare 2026
+ * Modo Profesional : Drawer oscuro → Tabs (ProfDashboard / ProfMap / ProfFinancePerformance)
+ * Modo Usuario     : Stack oscuro premium → UserMap como raíz (MapScreen.js)
+ */
+
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { Ionicons } from '@expo/vector-icons';
+
+import { useAuth } from '../context/AuthContext';
+import useModeStore from '../store/modeStore';
+import { usePushNotifications } from '../hooks/usePushNotifications';
+import { COLORS, PROF } from '../constants/theme';
+
+// Professional Screens
+import ProfDashboardScreen from '../screens/profesional/DashboardScreen';
+import ProfMapScreen from '../screens/profesional/MapScreen';
+import ProfFinancePerformanceScreen from '../screens/profesional/FinancePerformanceScreen';
+import DrawerContent from '../components/profesional/DrawerContent';
+
+// Auth Screens
+import OnboardingScreen from '../screens/auth/OnboardingScreen';
+import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
+import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
+import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
+import PendingVerificationScreen from '../screens/auth/PendingVerificationScreen';
+import VerifyOTPScreen from '../screens/auth/VerifyOTPScreen';
+
+// ─── Usuario premium (dark map UX) ──────────────────────────────────────────
+import UserMapScreen from '../screens/customer/MapScreen';
+import CustomerHomeScreen from '../screens/customer/HomeScreen';
+
+// Screens usadas en el stack de usuario
+import CreateRequestScreen from '../screens/customer/CreateRequestScreen';
+import ViewOffersScreen from '../screens/customer/ViewOffersScreen';
+import ServiceTrackingScreen from '../screens/customer/ServiceTrackingScreen';
+import PaymentBricksScreen from '../screens/customer/PaymentBricksScreen';
+
+// Screens exclusivas del modo profesional
+import AvailableRequestsScreen from '../screens/provider/AvailableRequestsScreen';
+import SendOfferScreen from '../screens/provider/SendOfferScreen';
+
+// Screens compartidas
+import ChatScreen from '../screens/shared/ChatScreen';
+import ChatListScreen from '../screens/shared/ChatListScreen';
+import ProfileScreen from '../screens/shared/ProfileScreen';
+import EditProfileScreen from '../screens/shared/EditProfileScreen';
+import SecurityScreen from '../screens/shared/SecurityScreen';
+import HelpSupportScreen from '../screens/shared/HelpSupportScreen';
+import QuickActionsScreen from '../screens/shared/QuickActionsScreen';
+import HistoryScreen from '../screens/shared/HistoryScreen';
+import NotificationsScreen from '../screens/shared/NotificationsScreen';
+import AdminPanelScreen from '../screens/admin/AdminPanelScreen';
+import SubscriptionScreen from '../screens/shared/SubscriptionScreen';
+import RecommendationsScreen from '../screens/shared/RecommendationsScreen';
+import PremiumServicesScreen from '../screens/shared/PremiumServicesScreen';
+import AiAssistantScreen from '../screens/shared/AiAssistantScreen';
+
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
+
+// ─── Opciones de tab para modo PROFESIONAL (dark) ────────────────────────────
+const profTabOptions = {
+  tabBarActiveTintColor: PROF.accent,
+  tabBarInactiveTintColor: PROF.textMuted,
+  tabBarStyle: {
+    backgroundColor: PROF.bgElevated,
+    borderTopColor: PROF.border,
+    borderTopWidth: 1,
+    height: 62,
+    paddingBottom: 8,
+    paddingTop: 6,
+  },
+  tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+  headerShown: false,
+};
+
+// ─── Opciones compartidas de Stack ───────────────────────────────────────────
+const screenOptions = {
+  headerStyle: { backgroundColor: COLORS.primary, elevation: 0, shadowOpacity: 0 },
+  headerTintColor: COLORS.white,
+  headerTitleStyle: { fontWeight: '600', fontSize: 18 },
+};
+
+// ─── Transición premium para pantallas de chat ───────────────────────────────
+// forHorizontalIOS = slide nativo iOS en ambas plataformas + swipe-back fluido
+const chatScreenOptions = {
+  headerShown: false,
+  gestureEnabled: true,
+  gestureDirection: 'horizontal',
+  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+};
+
+// ─── Opciones de Stack oscuro premium (modo usuario) ─────────────────────────
+const darkStackOptions = {
+  headerStyle: {
+    backgroundColor: PROF.bgElevated,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: PROF.border,
+  },
+  headerTintColor: PROF.textPrimary,
+  headerTitleStyle: { fontWeight: '700', fontSize: 17, color: PROF.textPrimary },
+  cardStyle: { backgroundColor: PROF.bg },
+};
+
+// ─── Stack USUARIO PREMIUM — UserMap como pantalla raíz ─────────────────────
+// Todos en modo oscuro, sin tabs: mapa full-screen + pantallas de servicio
+function UserModeStack() {
+  return (
+    <Stack.Navigator screenOptions={darkStackOptions}>
+      {/* 1. Raíz: home del cliente con solicitudes activas */}
+      <Stack.Screen
+        name="UserHome"
+        component={CustomerHomeScreen}
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
+      {/* 2. Mapa del usuario */}
+      <Stack.Screen
+        name="UserMap"
+        component={UserMapScreen}
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
+      {/* 2. Solicitar un servicio — tiene su propio header interno */}
+      <Stack.Screen
+        name="ServiceRequest"
+        component={CreateRequestScreen}
+        options={{ headerShown: false }}
+      />
+      {/* Alias usado desde chips de mapa y QuickActionButtons */}
+      <Stack.Screen
+        name="ServiceRequestFlow"
+        component={CreateRequestScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 3. Ver ofertas recibidas — tiene su propio header interno */}
+      <Stack.Screen
+        name="ViewOffers"
+        component={ViewOffersScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 4. Seguimiento del proveedor en tiempo real — tiene su propio header interno */}
+      <Stack.Screen
+        name="ServiceTracking"
+        component={ServiceTrackingScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 5. Checkout Bricks — pago seguro */}
+      <Stack.Screen
+        name="PaymentBricks"
+        component={PaymentBricksScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 5. Chat: lista e hilo de conversación — slide nativo + swipe-back */}
+      <Stack.Screen
+        name="UserChatList"
+        component={ChatListScreen}
+        options={chatScreenOptions}
+      />
+      <Stack.Screen
+        name="UserChat"
+        component={ChatScreen}
+        options={chatScreenOptions}
+      />
+      {/* 6. Historial de servicios */}
+      <Stack.Screen
+        name="UserHistory"
+        component={HistoryScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 7. Perfil del usuario */}
+      <Stack.Screen
+        name="UserProfile"
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 7b. Editar perfil */}
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 7b. Seguridad */}
+      <Stack.Screen
+        name="UserSecurity"
+        component={SecurityScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 7c. Ayuda y soporte */}
+      <Stack.Screen
+        name="UserHelpSupport"
+        component={HelpSupportScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 7d. Acciones rapidas (3 servicios de limpieza) */}
+      <Stack.Screen
+        name="UserQuickActions"
+        component={QuickActionsScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 8. Notificaciones */}
+      <Stack.Screen
+        name="UserNotifications"
+        component={NotificationsScreen}
+        options={{ headerShown: false }}
+      />
+      {/* 9. Pantallas secundarias compartidas */}
+      <Stack.Screen name="AdminPanel"     component={AdminPanelScreen}     options={{ headerShown: false }} />
+      <Stack.Screen name="Subscription"   component={SubscriptionScreen}   options={{ headerShown: false }} />
+      <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="AiAssistant"    component={AiAssistantScreen}    options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+}
+
+// ─── Tabs PROFESIONAL (modo premium oscuro) ───────────────────────────────────
+function ProfessionalTabs() {
+  return (
+    <Tab.Navigator screenOptions={profTabOptions}>
+      <Tab.Screen
+        name="ProfDashboard"
+        component={ProfDashboardScreen}
+        options={{
+          title: 'Inicio',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="ProfMap"
+        component={ProfMapScreen}
+        options={{
+          title: 'Mapa',
+          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="ProfFinancePerformance"
+        component={ProfFinancePerformanceScreen}
+        options={{
+          title: 'Finanzas',
+          tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={size} color={color} />,
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+// ─── Drawer + Tabs para modo PROFESIONAL ─────────────────────────────────────
+function ProfessionalDrawer() {
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => <DrawerContent {...props} />}
+      screenOptions={{
+        headerShown: false,
+        drawerType: 'slide',
+        drawerStyle: { width: Math.min(280, Dimensions.get('window').width * 0.82), backgroundColor: PROF.bg },
+        overlayColor: 'rgba(0,0,0,0.6)',
+        sceneStyle: { backgroundColor: PROF.bg },
+      }}
+    >
+      <Drawer.Screen name="ProfMain" component={ProfessionalTabs} />
+    </Drawer.Navigator>
+  );
+}
+
+// ─── Navigator principal ──────────────────────────────────────────────────────
+export default function AppNavigator() {
+  const { isAuthenticated, loading, user } = useAuth();
+  const { mode, setMode } = useModeStore();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingDone, setOnboardingDone]       = useState(false);
+
+  // Registrar dispositivo para notificaciones push (solo cuando hay usuario autenticado)
+  usePushNotifications();
+
+  // Verificar si el onboarding ya fue completado
+  useEffect(() => {
+    SecureStore.getItemAsync('onboardingDone').then(val => {
+      setOnboardingDone(val === 'true');
+      setOnboardingChecked(true);
+    }).catch(() => {
+      setOnboardingChecked(true);
+    });
+  }, []);
+
+  // Sincronizar modo con el rol del usuario al autenticarse
+  useEffect(() => {
+    if (user) {
+      const defaultMode = user.rol === 'SERVICE_PROVIDER' ? 'profesional' : 'usuario';
+      setMode(defaultMode);
+    }
+  }, [user]);
+
+  if (loading || !onboardingChecked) {
+    return (
+      <View style={loadingStyles.container}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+      </View>
+    );
+  }
+
+  const isProfessional = isAuthenticated && mode === 'profesional';
+
+  return (
+    <Stack.Navigator screenOptions={screenOptions}>
+      {!isAuthenticated ? (
+        // ── Auth Stack ──
+        <>
+          {!onboardingDone && (
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+          )}
+          <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} options={{ headerShown: false }} />
+        </>
+      ) : isProfessional ? (
+        // ── Modo Profesional: Drawer + Tabs oscuros ──
+        <>
+          <Stack.Screen name="Main" component={ProfessionalDrawer} options={{ headerShown: false }} />
+          {/* Chat: slide nativo con swipe-back, sin header propio (lo gestiona ChatScreen) */}
+          <Stack.Screen name="ChatList" component={ChatListScreen} options={chatScreenOptions} />
+          <Stack.Screen name="Chat" component={ChatScreen} options={chatScreenOptions} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SendOffer" component={SendOfferScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfProfile" component={ProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfSecurity" component={SecurityScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfHelpSupport" component={HelpSupportScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfRequests" component={AvailableRequestsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfHistory" component={HistoryScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfNotifications" component={NotificationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AdminPanel"      component={AdminPanelScreen}     options={{ headerShown: false }} />
+          <Stack.Screen name="Subscription"    component={SubscriptionScreen}   options={{ headerShown: false }} />
+          <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AiAssistant"     component={AiAssistantScreen}    options={{ headerShown: false }} />
+        </>
+      ) : (
+        // ── Modo Usuario: Stack oscuro premium, UserMap como raíz ──
+        // El primer screen en registrarse es el que se muestra automáticamente.
+        // UserMap = pantalla raíz → al llamar setMode('usuario') siempre aterriza aquí.
+        <Stack.Screen
+          name="UserRoot"
+          component={UserModeStack}
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
+      )}
+    </Stack.Navigator>
+  );
+}
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+});
+
+/*
+ * INSTRUCCIONES DE USO
+ * ─────────────────────────────────────────────────────────────
+ * CAMBIO DE MODO
+ *   const { setMode } = useModeStore();
+ *   setMode('usuario');      → va directo a UserMap (MapScreen usuario)
+ *   setMode('profesional');  → va directo al Dashboard profesional
+ *
+ * NAVEGACIÓN DENTRO DEL MODO USUARIO (desde UserMapScreen y pantallas de usuario):
+ *   navigation.navigate('ServiceRequest')      → Nueva solicitud (screen tiene header propio)
+ *   navigation.navigate('ServiceRequestFlow')  → Alias de ServiceRequest (desde chips de mapa)
+ *   navigation.navigate('ViewOffers')          → Ofertas recibidas (screen tiene header propio)
+ *   navigation.navigate('ServiceTracking')     → Seguimiento en tiempo real (screen tiene header propio)
+ *   navigation.navigate('PaymentBricks')       → Checkout de pago seguro
+ *   navigation.navigate('UserChat')            → Chat con proveedor
+ *   navigation.navigate('UserChatList')        → Lista de conversaciones
+ *   navigation.navigate('UserHistory')         → Historial de servicios
+ *   navigation.navigate('UserProfile')         → Mi perfil (modo usuario)
+ *   navigation.navigate('UserNotifications')   → Notificaciones
+ *   navigation.navigate('EditProfile')         → Editar perfil
+ *   navigation.navigate('UserSecurity')        → Seguridad (modo usuario)
+ *   navigation.navigate('UserHelpSupport')     → Ayuda y Soporte (modo usuario)
+ *   navigation.navigate('UserQuickActions')    → 3 botones de servicio rápido
+ *
+ * NAVEGACIÓN DENTRO DEL MODO PROFESIONAL:
+ *   navigation.navigate('ProfProfile')         → Mi perfil (modo profesional)
+ *   navigation.navigate('ProfHistory')         → Historial de servicios
+ *   navigation.navigate('ProfNotifications')   → Notificaciones
+ *   navigation.navigate('ProfSecurity')        → Seguridad (modo profesional)
+ *   navigation.navigate('ProfHelpSupport')     → Ayuda y Soporte (modo profesional)
+ *   navigation.navigate('ProfRequests')        → Solicitudes disponibles
+ *   navigation.navigate('AvailableRequests')   → Solicitudes disponibles (alias)
+ *   navigation.navigate('SendOffer')           → Enviar oferta a cliente
+ *   navigation.navigate('Notifications')       → Notificaciones (desde Dashboard/MapPro)
+ *   navigation.navigate('ChatList')            → Lista de conversaciones (pro)
+ *   navigation.navigate('Chat')               → Hilo de chat (pro)
+ *
+ * NOTA: Al llamar setMode() desde DrawerContent no se necesita navigation.navigate()
+ * porque el re-render de AppNavigator monta la nueva pila automáticamente.
+ */
+

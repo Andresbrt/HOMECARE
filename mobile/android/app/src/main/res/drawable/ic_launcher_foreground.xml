@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Primer plano del ícono adaptativo de HomeCarE.
+  Usa el logo del splash screen (splashscreen_logo.png) que ya existe en
+  drawable-hdpi/mdpi/xhdpi/xxhdpi/xxxhdpi — Android elige la densidad correcta.
+  El logo se escala para caber en la zona segura central (72dp de los 108dp totales).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <bitmap
+            android:src="@drawable/splashscreen_logo"
+            android:gravity="center"
+            android:tileMode="disabled" />
+    </item>
+</layer-list>

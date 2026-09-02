@@ -1,0 +1,82 @@
+# Perfil LOCAL de desarrollo
+# Por defecto usa H2 en memoria (sin necesidad de BD externa).
+# Para conectar a Supabase localmente, descomentar las variables en .env
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:homecare;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;NON_KEYWORDS=VALUE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    # database-platform: auto-detectado desde la URL
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: false
+
+  mail:
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.ssl.trust: "*"
+      mail.smtp.ssl.protocols: TLSv1.2
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 500ms
+      connect-timeout: 500ms
+
+  cache:
+    type: simple  # usa ConcurrentMap en vez de Redis en dev
+
+# Desactivar Redis y Mail del health check en dev
+management:
+  health:
+    redis:
+      enabled: false
+    mail:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  cache:
+    redis-enabled: false
+
+logging:
+  level:
+    com.homecare: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mercado Pago — SANDBOX (PRUEBAS)
+# ⚠️  CAMBIAR a credenciales de producción antes del lanzamiento.
+#     El Access Token NUNCA debe enviarse al cliente móvil.
+#     En producción: definir MP_ACCESS_TOKEN y MP_PUBLIC_KEY como variables
+#     de entorno en Railway (o el proveedor de hosting).
+# ──────────────────────────────────────────────────────────────────────────────
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN:TEST-4573125636727659-032221-11800df54c72dd6083c707976fb36e0f-1128115382}
+  public-key:   ${MP_PUBLIC_KEY:TEST-2fc07872-5703-43d1-bf4d-485d988c3323}
+  callback-url: ${MP_CALLBACK_URL:http://192.168.1.17:8090/api}
+  webhook-secret: ${MP_WEBHOOK_SECRET:}
+  commission-rate: ${MP_COMMISSION_RATE:0.10}

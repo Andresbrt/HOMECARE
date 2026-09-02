@@ -1,0 +1,26 @@
+name: Security & Secret Scan
+
+on:
+  push:
+    branches: [ "main", "develop", "master" ]
+  pull_request:
+    branches: [ "main", "develop", "master" ]
+
+jobs:
+  secrets-and-security:
+    name: Secrets Detection & Dependency Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Plaintext Secrets or Staged .env
+        run: |
+          if git ls-files | grep -E "^\.env$|\.env\.local$"; then
+            echo "ERROR: Plaintext .env file tracked by git!"
+            exit 1
+          fi
+          echo "No tracked plaintext environment files detected."

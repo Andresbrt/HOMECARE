@@ -1,0 +1,261 @@
+# ===========================================
+# HOMECARE API - PRODUCTION CONFIGURATION
+# ===========================================
+
+spring:
+  application:
+    name: homecare-api
+
+  main:
+    lazy-initialization: true   # Reduce tiempo de arranque — beans se crean bajo demanda
+
+  # Base de datos PostgreSQL - Supabase (gestionado)
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    # Ejemplo de URL para Supabase:
+    # url: jdbc:postgresql://<project>.db.supabase.co:5432/<database>
+
+    # HikariCP optimizado para Supabase (PostgreSQL gestionado)
+    hikari:
+      initialization-fail-timeout: -1
+      maximum-pool-size: 5          # Reducido para serverless (Neon escala automáticamente)
+      minimum-idle: 1                # Mínimo 1 para reducir conexiones idle
+      connection-timeout: 20000      # 20s - Neon es rápido en conectar
+      idle-timeout: 300000           # 5min - Liberar conexiones idle más rápido
+      max-lifetime: 1200000          # 20min - Rotación más frecuente para serverless
+      keepalive-time: 30000          # 30s - Mantener conexiones vivas
+      leak-detection-threshold: 60000 # 60s - Detectar conexiones no cerradas
+      pool-name: HomeCareNeonPool
+      
+      # Propiedades de conexión específicas para Neon
+      data-source-properties:
+        socketTimeout: 30
+        tcpKeepAlive: true
+        ApplicationName: homecare-api
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # dialect recomendado para Supabase
+
+  # Redis para cache y rate limiting
+  # Railway Redis plugin expone: REDISHOST, REDISPORT, REDISPASSWORD
+  data:
+    redis:
+      host: ${REDISHOST:${REDIS_HOST:localhost}}
+      port: ${REDISPORT:${REDIS_PORT:6379}}
+      password: ${REDISPASSWORD:${REDIS_PASSWORD:}}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 2000ms
+
+  # Flyway migrations
+  flyway:
+    enabled: false  # Deshabilitado: Hibernate ddl-auto=update crea el schema inicial.
+                    # Reactivar cuando el schema esté estable y exista V1 migration completa.
+
+  # Mail configuration (SMTP)
+  mail:
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreply@homecare.local}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # Servlet configuration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Server configuration
+server:
+  # Railway inyecta PORT; SERVER_PORT es el fallback estándar de Spring Boot
+  port: ${PORT:${SERVER_PORT:8080}}
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/javascript,text/css
+    min-response-size: 1024
+  http2:
+    enabled: true
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
+    include-binding-errors: never
+
+# JWT Configuration — JWT_SECRET es OBLIGATORIO en producción (mínimo 64 caracteres)
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# ============================================================
+# Spring Boot Actuator - Healthcheck para Railway
+# ============================================================
+management:
+  server:
+    port: ${PORT:${SERVER_PORT:8080}}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,liveness,readiness
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    diskspace:
+      enabled: false
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: ${spring.application.name}
+      environment: production
+
+# CORS Configuration
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://homecare.works,https://www.homecare.works,https://api.homecare.works}
+  allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+  allowed-headers: Authorization,Content-Type,X-Requested-With,Accept
+  exposed-headers: Authorization
+  allow-credentials: true
+  max-age: 3600
+
+# Mercado Pago
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN:TEST-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
+  public-key: ${MP_PUBLIC_KEY:TEST-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
+  webhook-secret: ${MP_WEBHOOK_SECRET:}
+  commission-rate: ${MP_COMMISSION_RATE:0.10}
+  callback-url: ${MP_CALLBACK_URL:https://homecare-backend.fly.dev/api/payments/webhook}
+
+# Google Maps API
+google:
+  maps:
+    api-key: ${GOOGLE_MAPS_API_KEY:maps_placeholder}
+    timeout: 5000
+    max-retries: 3
+
+# Supabase Configuration
+supabase:
+  url: ${SUPABASE_URL:https://mowqzkjbggfqfrnxgobn.supabase.co}
+  anon-key: ${SUPABASE_ANON_KEY:sb_publishable_hMkwDI_JwDQBy8MdNuA2ow_BJAs9pT_}
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+  jwt-secret: ${SUPABASE_JWT_SECRET:}
+  storage:
+    upload-timeout-seconds: ${SUPABASE_STORAGE_UPLOAD_TIMEOUT:30}
+    max-retries: ${SUPABASE_STORAGE_MAX_RETRIES:2}
+  allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/jpg,application/pdf}
+  storage-type: ${FILE_STORAGE_TYPE:s3}
+
+# AWS S3
+aws:
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
+  region: ${AWS_REGION:us-east-1}
+  s3:
+    bucket: ${AWS_S3_BUCKET:homecare-files}
+    base-url: https://${AWS_S3_BUCKET:homecare-files}.s3.${AWS_REGION:us-east-1}.amazonaws.com
+
+# Tracking Configuration
+tracking:
+  update-interval-seconds: ${TRACKING_UPDATE_INTERVAL:30}
+  distance-threshold-meters: ${TRACKING_DISTANCE_THRESHOLD:50}
+  location-history-days: ${TRACKING_HISTORY_DAYS:30}
+
+# Rate Limiting
+rate-limit:
+  enabled: true
+  login-attempts: 5      # 5 intentos por 15 minutos
+  registration-attempts: 3  # 3 registros por hora
+  api-requests: 100      # 100 requests por minuto por IP
+
+
+# Application info
+info:
+  app:
+    name: HomeCare API
+    version: 1.0.0
+    description: API para plataforma de servicios del hogar
+    contact:
+      email: support@homecare.works
+
+# Logging
+logging:
+  level:
+    root: WARN
+    com.homecare: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/homecare-api.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+
+# Async configuration
+async:
+  core-pool-size: ${ASYNC_CORE_POOL:5}
+  max-pool-size: ${ASYNC_MAX_POOL:20}
+  queue-capacity: ${ASYNC_QUEUE_CAPACITY:500}
+  notification-pool-size: ${NOTIFICATION_POOL:10}
+
+# Cache configuration
+cache:
+  caffeine:
+    spec: maximumSize=10000,expireAfterWrite=5m
+  names: ubicacionesProveedor,solicitudesCercanas,usuarioPerfil
+
+app:
+  environment: production
+  frontend-url: ${FRONTEND_URL:https://homecare.works}
+  admin-url: ${ADMIN_URL:https://admin.homecare.works}
+  frontend:
+    base-url: ${FRONTEND_URL:https://homecare.works}
+  backend:
+    base-url: ${BACKEND_URL:https://api.homecare.works}

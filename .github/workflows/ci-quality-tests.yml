@@ -1,0 +1,53 @@
+name: CI Quality & Test Automation
+
+on:
+  push:
+    branches: [ "main", "develop", "master" ]
+  pull_request:
+    branches: [ "main", "develop", "master" ]
+
+jobs:
+  backend-tests:
+    name: Spring Boot Backend Quality & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          mvn clean test --batch-mode
+
+  mobile-checks:
+    name: React Native & Expo Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd mobile
+          npm ci --legacy-peer-deps
+
+      - name: Run Mobile Tests & Typecheck
+        run: |
+          cd mobile
+          npm test -- --watchAll=false --passWithNoTests

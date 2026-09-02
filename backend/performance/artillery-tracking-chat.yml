@@ -1,0 +1,34 @@
+config:
+  target: "{{ $processEnvironment.BASE_URL || 'http://localhost:8082' }}"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: warmup
+    - duration: 60
+      arrivalRate: 20
+      name: load
+  defaults:
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ $processEnvironment.TOKEN }}"
+
+scenarios:
+  - name: tracking-and-chat
+    flow:
+      - post:
+          url: "/api/location/tracking/update"
+          json:
+            servicioId: "{{ $processEnvironment.SERVICIO_ID || 1 }}"
+            latitud: 4.7115
+            longitud: -74.0722
+            precisionMetros: 8
+            velocidadKmh: 30
+      - post:
+          url: "/api/mensajes"
+          json:
+            solicitudId: "{{ $processEnvironment.SOLICITUD_ID || 1 }}"
+            destinatarioId: "{{ $processEnvironment.DESTINATARIO_ID || 2 }}"
+            contenido: "artillery ping"
+            tipoMensaje: "TEXTO"
+      - get:
+          url: "/api/mensajes/no-leidos"

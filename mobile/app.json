@@ -1,0 +1,121 @@
+{
+  "expo": {
+    "name": "Homecare Colorimetría",
+    "slug": "homecare",
+    "scheme": "homecare",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000F22"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.homecare.app",
+      "buildNumber": "1",
+      "requireFullScreen": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para mostrarte servicios cercanos y conectarte con profesionales.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para el seguimiento en tiempo real del profesional.",
+        "NSCameraUsageDescription": "Necesitamos acceso a la cámara para tomar fotos del servicio realizado.",
+        "NSPhotoLibraryUsageDescription": "Necesitamos acceso a tus fotos para subir evidencias del servicio.",
+        "NSPhotoLibraryAddUsageDescription": "Necesitamos guardar fotos del servicio en tu galería.",
+        "NSMicrophoneUsageDescription": "Necesitamos acceso al micrófono para mensajes de voz en el chat.",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000F22"
+      },
+      "package": "com.homecare.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "SCHEDULE_EXACT_ALARM",
+        "POST_NOTIFICATIONS"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "homecare-backend.fly.dev",
+              "pathPrefix": "/api/payments/subscription"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "homecare" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Homecare necesita tu ubicación para conectarte con profesionales cercanos.",
+          "locationAlwaysPermission": "Homecare necesita tu ubicación en segundo plano para el seguimiento del servicio.",
+          "locationWhenInUsePermission": "Homecare necesita tu ubicación para mostrarte servicios disponibles."
+        }
+      ],
+      "expo-camera",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#49C0BC",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
+      "expo-font",
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.630129948671-o3pb4j0ng9f6eeln8tevjn1b89bm16da"
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "apiUrl": "https://homecare-backend.fly.dev/api",
+      "wsUrl": "wss://homecare-backend.fly.dev/ws",
+      "mpSandbox": false,
+      "googleClientId": "630129948671-plv7lfm8e13lr8df1pec2fs9r5ppkf7i.apps.googleusercontent.com",
+      "supabaseUrl": "https://mowqzkjbggfqfrnxgobn.supabase.co",
+      "supabaseAnonKey": "sb_publishable_hMkwDI_JwDQBy8MdNuA2ow_BJAs9pT_",
+      "eas": {
+        "projectId": "homecare-1582c"
+      }
+    }
+  }
+}
+
