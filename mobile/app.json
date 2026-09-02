@@ -13,7 +13,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000F22"
+      "backgroundColor": "#001B38"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -36,7 +36,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000F22"
+        "backgroundColor": "#0E4D68"
       },
       "package": "com.homecare.app",
       "versionCode": 1,
