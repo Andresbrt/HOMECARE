@@ -158,6 +158,21 @@ export default function PaymentBricksScreen({ route, navigation }) {
         }
 
         try {
+          if (!servicioId) {
+            // Recarga de saldo a la billetera del profesional o pago de comisiones
+            const res = await apiClient.post('/payments/wallet/recargar-directo', {
+              monto: parseFloat(monto) || 35000,
+              metodo: metodo,
+            });
+            const servs = Math.floor((parseFloat(monto) || 35000) / 17500);
+            Alert.alert(
+              '¡Recarga aprobada! ✓',
+              `Tu saldo ha sido recargado con COL$ ${Number(monto).toLocaleString('es-CO')} exitosamente mediante ${metodo === 'PSE' ? 'PSE' : metodo === 'MERCADO_PAGO' ? 'Efecty' : 'Tarjeta'}. Tienes ${servs} servicios habilitados.`,
+              [{ text: 'Continuar', onPress: () => navigation.goBack() }]
+            );
+            return;
+          }
+
           const res = await apiClient.post('/payments/create', {
             servicioId,
             monto,

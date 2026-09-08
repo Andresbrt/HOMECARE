@@ -349,6 +349,7 @@ export default function AppNavigator() {
           <Stack.Screen name="ProfHistory" component={HistoryScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfNotifications" component={NotificationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminPanel"      component={AdminPanelScreen}     options={{ headerShown: false }} />
+          <Stack.Screen name="PaymentBricks"   component={PaymentBricksScreen}  options={{ headerShown: false }} />
           <Stack.Screen name="Subscription"    component={SubscriptionScreen}   options={{ headerShown: false }} />
           <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PremiumServices" component={PremiumServicesScreen} options={{ headerShown: false }} />
