@@ -125,7 +125,7 @@ function RequestCard({ request, index, onPress }) {
 
 export default function AvailableRequestsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { location } = useLocation();
+  const { location, getCurrentLocation } = useLocation();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -134,12 +134,30 @@ export default function AvailableRequestsScreen({ navigation }) {
 
   const fetchRequests = useCallback(async (pageNum = 0, append = false) => {
     try {
-      const lat = location?.coords?.latitude ?? 4.6097;
-      const lng = location?.coords?.longitude ?? -74.0817;
+      let activeLocation = location;
+      if (!activeLocation?.coords?.latitude && getCurrentLocation) {
+        const fresh = await getCurrentLocation();
+        if (fresh) activeLocation = { coords: fresh };
+      }
+
+      let lat = activeLocation?.coords?.latitude ?? activeLocation?.latitude ?? 6.2442;
+      let lng = activeLocation?.coords?.longitude ?? activeLocation?.longitude ?? -75.5812;
+
+      // Si las coordenadas quedaron por error en Bogotá (lat < 5.5), reubicar en Medellín
+      if (lat < 5.5) {
+        lat = 6.2442;
+        lng = -75.5812;
+      }
+
+      if (__DEV__) {
+        console.log(`📡 [AvailableRequests] Consultando radar ${SEARCH_RADIUS_KM}km en Medellín:`, lat, lng);
+      }
+
       const { data } = await apiClient.get('/solicitudes/cercanas', {
-        params: { latitud: lat, longitud: lng, radioKm: SEARCH_RADIUS_KM, page: pageNum, size: 15 },
+        params: { latitud: lat, longitud: lng, radioKm: SEARCH_RADIUS_KM, page: pageNum, size: 20 },
       });
       const content = Array.isArray(data) ? data : data?.content ?? [];
+
       setRequests(append ? (prev) => [...prev, ...content] : content);
       setHasMore(data.last === false);
       setPage(pageNum);
@@ -149,7 +167,7 @@ export default function AvailableRequestsScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [location]);
+  }, [location, getCurrentLocation]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
@@ -202,12 +220,26 @@ export default function AvailableRequestsScreen({ navigation }) {
           ListEmptyComponent={
             <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="search-outline" size={44} color={PROF.textMuted} />
+                <Ionicons name="navigate-outline" size={40} color={PROF.accent} />
               </View>
-              <Text style={styles.emptyTitle}>Sin solicitudes cercanas</Text>
+              <Text style={styles.emptyTitle}>Sin solicitudes a {SEARCH_RADIUS_KM} km</Text>
               <Text style={styles.emptyDesc}>
-                No hay solicitudes abiertas en tu zona ahora mismo.{'\n'}Activa tu disponibilidad y espera nuevas solicitudes.
+                {location?.coords?.latitude
+                  ? `Tu GPS: ${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}\n\nCuando el cliente cree una solicitud desde su celular en esta zona, aparecerá aquí inmediatamente.`
+                  : `Buscando solicitudes en un radio de ${SEARCH_RADIUS_KM} km...`}
               </Text>
+              <TouchableOpacity
+                style={styles.gpsSyncBtn}
+                onPress={async () => {
+                  setRefreshing(true);
+                  if (getCurrentLocation) await getCurrentLocation();
+                  fetchRequests(0);
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh" size={16} color="#001B38" />
+                <Text style={styles.gpsSyncText}>Actualizar mi GPS</Text>
+              </TouchableOpacity>
             </Animated.View>
           }
         />
@@ -408,5 +440,20 @@ const styles = StyleSheet.create({
     color: PROF.textMuted,
     textAlign: 'center',
     lineHeight: 21,
+  },
+  gpsSyncBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: PROF.accent,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginTop: 16,
+  },
+  gpsSyncText: {
+    color: '#001B38',
+    fontWeight: '700',
+    fontSize: TYPOGRAPHY.sm,
   },
 });

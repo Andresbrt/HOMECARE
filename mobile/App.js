@@ -40,22 +40,20 @@ export default function App() {
   }
 
   return (
-    <RootSiblingParent>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <AuthProvider>
-            <LocationProvider>
-              <NotificationProvider>
-                <NavigationContainer linking={linking}>
-                  <StatusBar style="light" />
-                  <AppNavigator />
-                </NavigationContainer>
-              </NotificationProvider>
-            </LocationProvider>
-          </AuthProvider>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </RootSiblingParent>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <LocationProvider>
+            <NotificationProvider>
+              <NavigationContainer linking={linking}>
+                <StatusBar style="light" />
+                <AppNavigator />
+              </NavigationContainer>
+            </NotificationProvider>
+          </LocationProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

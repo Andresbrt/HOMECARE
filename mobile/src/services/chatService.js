@@ -42,8 +42,8 @@ export async function activarChat({
     // Mensaje de sistema para romper el hielo vía backend
     await apiClient.post('/mensajes', {
       solicitudId,
-      destinatarioId: usuarioId,
-      contenido: `¡Hola! Soy ${profesionalNombre}. Estoy listo para atenderte 🤝`,
+      destinatarioId: profesionalId,
+      contenido: `¡Hola! He aceptado tu oferta para este servicio 🤝`,
       tipoMensaje: 'TEXTO',
     });
   } catch (e) {

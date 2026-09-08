@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   View,
@@ -30,9 +30,11 @@ if (Platform.OS !== 'web') {
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { useLocation } from '../../context/LocationContext';
 import apiClient from '../../services/apiClient';
 import { inicializarChat, buildChatId } from '../../services/chatService';
+import { searchMedellinAddresses } from '../../services/addressAutocompleteService';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS, BORDER_RADIUS, PROF } from '../../constants/theme';
 
 // Solo loguear en desarrollo — no-op en producción
@@ -56,11 +58,11 @@ export default function CreateRequestScreen({ navigation, route }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    servicioId: '',
+    servicioId: 'general',
     titulo: '',
     descripcion: '',
-    tipoLimpieza: '',
-    ciudad: '',
+    tipoLimpieza: 'BASICA',
+    ciudad: 'Medellín',
     barrio: '',
     direccion: '',
     tipoPropiedad: 'APARTAMENTO',
@@ -83,7 +85,7 @@ export default function CreateRequestScreen({ navigation, route }) {
     if (selectedService) {
       const tipoMapeado = selectedService.tipoLimpieza ||
                          (selectedService.title?.toUpperCase().includes('BÁSICA')    ? 'BASICA'    :
-                          selectedService.title?.toUpperCase().includes('PROFUNDA')  ? 'PROFUNDA'  : '');
+                          selectedService.title?.toUpperCase().includes('PROFUNDA')  ? 'PROFUNDA'  : 'BASICA');
       const tituloNorm = (selectedService.titulo || selectedService.title || '').toLowerCase();
       const esHoras = tituloNorm.includes('hora') || selectedService.esPorHoras;
       const sid = esHoras ? 'horas'
@@ -101,16 +103,129 @@ export default function CreateRequestScreen({ navigation, route }) {
   const [isConfirmingLocation, setIsConfirmingLocation] = useState(false);
   const [geocodedCoords, setGeocodedCoords] = useState(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+  const searchTimeoutRef = useRef(null);
+
+  // Inicializar automáticamente con la posición del contexto de ubicación y reverse geocode
+  useEffect(() => {
+    const coords = location?.coords || (location?.latitude ? location : null);
+    if (coords?.latitude && coords?.longitude && !geocodedCoords) {
+      const parsedCoords = {
+        latitude: parseFloat(coords.latitude.toFixed(6)),
+        longitude: parseFloat(coords.longitude.toFixed(6)),
+      };
+      setGeocodedCoords(parsedCoords);
+
+      Location.reverseGeocodeAsync(parsedCoords)
+        .then(rev => {
+          if (rev && rev.length > 0) {
+            const p = rev[0];
+            const ciudadDet = p.city || p.subregion || p.region || 'Medellín';
+            const barrioDet = p.district || p.subregion || '';
+            const dirDet = [p.street, p.streetNumber].filter(Boolean).join(' ') || p.name || '';
+            setForm(prev => ({
+              ...prev,
+              ciudad: prev.ciudad || ciudadDet,
+              barrio: prev.barrio || barrioDet,
+              direccion: prev.direccion || dirDet || `GPS (${parsedCoords.latitude}, ${parsedCoords.longitude})`,
+            }));
+          }
+        })
+        .catch(() => {
+          setForm(prev => ({
+            ...prev,
+            ciudad: prev.ciudad || 'Medellín',
+            direccion: prev.direccion || `GPS (${parsedCoords.latitude}, ${parsedCoords.longitude})`,
+          }));
+        });
+    }
+  }, [location]);
+
+  const useCurrentPhoneLocation = async (silent = false) => {
+    setIsLocating(true);
+    try {
+      if (!silent) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        if (!silent) Alert.alert('Permiso necesario', 'Debes permitir el acceso a tu ubicación para obtener las coordenadas de tu celular.');
+        return;
+      }
+
+      // 1. Obtener coordenadas reales del GPS del celular
+      let pos = await Location.getLastKnownPositionAsync({});
+      if (!pos || !pos.coords) {
+        pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      }
+
+      if (pos && pos.coords) {
+        const { latitude, longitude } = pos.coords;
+        const coords = {
+          latitude: parseFloat(latitude.toFixed(6)),
+          longitude: parseFloat(longitude.toFixed(6)),
+        };
+        setGeocodedCoords(coords);
+
+        // 2. Reverse geocoding para rellenar dirección y ciudad automáticamente
+        try {
+          const rev = await Location.reverseGeocodeAsync(coords);
+          if (rev && rev.length > 0) {
+            const p = rev[0];
+            const ciudadDet = p.city || p.subregion || p.region || 'Medellín';
+            const barrioDet = p.district || p.subregion || '';
+            const dirDet = [p.street, p.streetNumber].filter(Boolean).join(' ') || p.name || '';
+            setForm(prev => ({
+              ...prev,
+              ciudad: ciudadDet,
+              barrio: barrioDet || prev.barrio,
+              direccion: dirDet || prev.direccion || `GPS: ${coords.latitude}, ${coords.longitude}`,
+            }));
+          }
+        } catch (revErr) {
+          if (!form.direccion) {
+            setForm(prev => ({ ...prev, direccion: `GPS (${coords.latitude}, ${coords.longitude})` }));
+          }
+        }
+
+        if (!silent) {
+          Alert.alert(
+            '📍 GPS Capturado',
+            `Se capturó la ubicación exacta de tu celular:\nLat: ${coords.latitude}\nLng: ${coords.longitude}`
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Error obteniendo GPS:', err);
+      if (!silent) {
+        Alert.alert('Error GPS', 'No se pudo leer la ubicación del celular. Verifica que el GPS esté activo.');
+      }
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   const geocodeAddress = async () => {
     if (!form.direccion.trim() || !form.ciudad.trim()) return;
     setIsGeocoding(true);
     try {
-      const { default: Location } = await import('expo-location');
-      const fullAddress = [form.direccion.trim(), form.barrio.trim(), form.ciudad.trim()].filter(Boolean).join(', ');
+      const ciudadLimpia = form.ciudad.trim() || 'Medellín';
+      const fullAddress = `${form.direccion.trim()}, ${form.barrio.trim() ? form.barrio.trim() + ', ' : ''}${ciudadLimpia}, Antioquia, Colombia`;
       const results = await Location.geocodeAsync(fullAddress);
       if (results && results.length > 0) {
-        setGeocodedCoords({ latitude: results[0].latitude, longitude: results[0].longitude });
+        let lat = parseFloat(results[0].latitude.toFixed(6));
+        let lng = parseFloat(results[0].longitude.toFixed(6));
+
+        // Si la búsqueda devolvió Bogotá (lat < 5.5 o lng > -74.8) pero la ciudad es Medellín, forzar Medellín
+        if (ciudadLimpia.toLowerCase().includes('medell') && (lat < 5.5 || lng > -74.8)) {
+          lat = 6.2442;
+          lng = -75.5812;
+        }
+
+        setGeocodedCoords({
+          latitude: lat,
+          longitude: lng,
+        });
       }
     } catch (_) {
       // silently fail — GPS coords will be used as fallback
@@ -119,15 +234,103 @@ export default function CreateRequestScreen({ navigation, route }) {
     }
   };
 
-  const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const handleDireccionChange = (text) => {
+    updateField('direccion', text);
+    setGeocodedCoords(null);
 
-  const handleSubmit = async () => {
-    if (!form.titulo.trim() || !form.servicioId || !form.ciudad.trim() || !form.direccion.trim()) {
-      Alert.alert('Campos requeridos', 'Completa título, tipo de servicio, ciudad y dirección.');
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!text || text.trim().length < 3) {
+      setSuggestions([]);
+      setIsSearchingSuggestions(false);
       return;
     }
 
-    if (form.servicioId === 'horas') {
+    setIsSearchingSuggestions(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchMedellinAddresses(text);
+        setSuggestions(results);
+      } catch (err) {
+        setSuggestions([]);
+      } finally {
+        setIsSearchingSuggestions(false);
+      }
+    }, 320);
+  };
+
+  const handleSelectSuggestion = (item) => {
+    Haptics.selectionAsync();
+    setForm(prev => ({
+      ...prev,
+      direccion: item.primaryText,
+      barrio: item.barrio || prev.barrio,
+      ciudad: item.ciudad || 'Medellín',
+    }));
+    setGeocodedCoords({
+      latitude: item.latitude,
+      longitude: item.longitude,
+    });
+    setSuggestions([]);
+  };
+
+  const clearDireccion = () => {
+    updateField('direccion', '');
+    setSuggestions([]);
+    setGeocodedCoords(null);
+  };
+
+  const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async () => {
+    // 1. Tipo de servicio: si no hay ninguno seleccionado, asignar 'general' por defecto
+    let currentServicioId = form.servicioId || 'general';
+    let currentTipoLimpieza = form.tipoLimpieza || 'BASICA';
+    if (!form.servicioId) {
+      updateField('servicioId', 'general');
+      updateField('tipoLimpieza', 'BASICA');
+    }
+
+    // 2. Título: si el usuario no escribió título, auto-generar uno claro y descriptivo
+    let currentTitulo = form.titulo.trim();
+    if (!currentTitulo) {
+      const propLabel = form.tipoPropiedad === 'CASA' ? 'Casa' : 'Apartamento';
+      currentTitulo = `Limpieza ${propLabel} (${form.cantidadHabitaciones || 2} hab, ${form.cantidadBanos || 1} bñ)`;
+      updateField('titulo', currentTitulo);
+    }
+
+    // 3. Ciudad: si está vacía, asignar 'Medellín' por defecto
+    let currentCiudad = form.ciudad.trim();
+    if (!currentCiudad) {
+      currentCiudad = 'Medellín';
+      updateField('ciudad', 'Medellín');
+    }
+
+    // 4. Dirección: si está vacía, usar GPS o pedir solo la dirección específicamente
+    let currentDireccion = form.direccion.trim();
+    if (!currentDireccion) {
+      if (geocodedCoords?.latitude && geocodedCoords?.longitude) {
+        currentDireccion = `Ubicación GPS (${geocodedCoords.latitude.toFixed(4)}, ${geocodedCoords.longitude.toFixed(4)})`;
+        updateField('direccion', currentDireccion);
+      } else if (location?.coords?.latitude && location?.coords?.longitude) {
+        currentDireccion = `Ubicación GPS (${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)})`;
+        updateField('direccion', currentDireccion);
+      } else {
+        Alert.alert(
+          'Dirección requerida',
+          'Por favor escribe la dirección de tu domicilio o toca "📍 Usar ubicación GPS de mi celular" para detectarla automáticamente.',
+          [
+            { text: '📍 Usar GPS', onPress: () => useCurrentPhoneLocation(false) },
+            { text: 'Escribir dirección', style: 'cancel' }
+          ]
+        );
+        return;
+      }
+    }
+
+    if (currentServicioId === 'horas') {
       if (!form.cantidadHoras || !form.precioPorHora) {
         Alert.alert('Campos requeridos', 'Ingresa la cantidad de horas y el valor por hora.');
         return;
@@ -165,32 +368,66 @@ export default function CreateRequestScreen({ navigation, route }) {
         ? parseInt(form.cantidadHoras || 2) * 60
         : (parseInt(form.duracionEstimada, 10) || 60);
 
-      const latitud = location?.coords?.latitude
-        ? parseFloat(location.coords.latitude.toFixed(6))
-        : null;
-      const longitud = location?.coords?.longitude
-        ? parseFloat(location.coords.longitude.toFixed(6))
-        : null;
+      // Asegurar fecha futura (mañana) para cumplir validación @Future del backend
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const fechaServicioStr = tomorrow.toISOString().split('T')[0];
 
-      if (!latitud || !longitud) {
-        Alert.alert('Ubicación requerida', 'No se pudo obtener tu ubicación. Activa el GPS e intenta de nuevo.');
-        setLoading(false);
-        return;
+      // 1. Prioridad: Coordenadas GPS del celular (geocodedCoords o location del celular)
+      let resolvedLat = geocodedCoords?.latitude;
+      let resolvedLng = geocodedCoords?.longitude;
+
+      if (!resolvedLat || !resolvedLng) {
+        if (location?.coords?.latitude && location?.coords?.longitude) {
+          resolvedLat = location.coords.latitude;
+          resolvedLng = location.coords.longitude;
+        } else if (location?.latitude && location?.longitude) {
+          resolvedLat = location.latitude;
+          resolvedLng = location.longitude;
+        }
+      }
+
+      // 2. Fallback garantizado en Medellín
+      const ciudadText = `${form.ciudad || ''} ${form.direccion || ''}`.toLowerCase();
+      if (!resolvedLat || !resolvedLng) {
+        if (ciudadText.includes('cali')) {
+          resolvedLat = 3.4516;
+          resolvedLng = -76.5320;
+        } else if (ciudadText.includes('bogot')) {
+          resolvedLat = 4.6768;
+          resolvedLng = -74.0483;
+        } else {
+          // Por defecto Medellín (Centro / Laureles / Poblado)
+          resolvedLat = 6.2442;
+          resolvedLng = -75.5812;
+        }
+      }
+
+      // Si la ciudad es Medellín pero las coordenadas quedaron en Bogotá (error de geocoder), corregir a Medellín
+      if ((!ciudadText || ciudadText.includes('medell') || ciudadText.includes('antioquia')) && resolvedLat < 5.5) {
+        resolvedLat = 6.2442;
+        resolvedLng = -75.5812;
+      }
+
+      const finalLat = parseFloat(Number(resolvedLat).toFixed(6));
+      const finalLng = parseFloat(Number(resolvedLng).toFixed(6));
+
+      if (__DEV__) {
+        console.log('📍 [CreateRequest] Coordenadas finales enviadas al backend:', finalLat, finalLng);
       }
 
       const payload = {
-        titulo: form.titulo.trim(),
-        descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza}`,
-        tipoLimpieza: form.tipoLimpieza,
-        direccion: [form.direccion.trim(), form.barrio.trim(), form.ciudad.trim()].filter(Boolean).join(', '),
-        latitud: geocodedCoords?.latitude ?? (location?.coords?.latitude ? parseFloat(location.coords.latitude.toFixed(6)) : 4.6097),
-        longitud: geocodedCoords?.longitude ?? (location?.coords?.longitude ? parseFloat(location.coords.longitude.toFixed(6)) : -74.0817),
+        titulo: form.titulo.trim() || 'Servicio de Limpieza',
+        descripcion: form.descripcion.trim() || `Servicio de ${form.tipoLimpieza || 'Limpieza General'}`,
+        tipoLimpieza: form.tipoLimpieza || 'BASICA',
+        direccion: [form.direccion.trim(), form.barrio.trim(), form.ciudad.trim()].filter(Boolean).join(', ') || 'Medellín, Colombia',
+        latitud: finalLat,
+        longitud: finalLng,
         metrosCuadrados: form.metrosCuadrados ? parseFloat(form.metrosCuadrados) : (form.tipoPropiedad === 'CASA' ? 100 : 60),
         cantidadHabitaciones: form.cantidadHabitaciones ? parseInt(form.cantidadHabitaciones, 10) : 2,
         cantidadBanos: form.cantidadBanos ? parseInt(form.cantidadBanos, 10) : 1,
         tieneMascotas: form.tieneMascotas,
         precioMaximo: precioFinal,
-        fechaServicio: futureDate.toISOString().split('T')[0],
+        fechaServicio: fechaServicioStr,
         horaInicio: futureDate.toTimeString().split(' ')[0].substring(0, 5),
         duracionEstimada: duracion,
         instruccionesEspeciales: esHoras
@@ -208,27 +445,31 @@ export default function CreateRequestScreen({ navigation, route }) {
         inicializarChat({
           solicitudId,
           usuarioId: user.id,
-          tituloServicio: form.titulo.trim(),
+          tituloServicio: form.titulo.trim() || 'Servicio de Limpieza',
         }).catch((e) => __DEV_LOG__('[CreateRequest] inicializarChat error:', e.message));
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // 3. Navegar directamente al chat (modo "pending" mientras espera profesional)
+      // 3. Navegar a la pantalla de ofertas recibidas (espera de propuestas estilo InDriver)
       if (solicitudId) {
-        navigation.replace('UserChat', {
+        navigation.replace('ViewOffers', {
           solicitudId,
-          destinatarioId: null,   // aún no hay profesional asignado
-          titulo: 'Buscando profesional…',
-          pendiente: true,        // ChatScreen muestra banner de espera
         });
       } else {
         // Fallback si el backend no devuelve el ID
         navigation.goBack();
       }
     } catch (error) {
-      const msg = error.response?.data?.message || 'Error al conectar con el servidor.';
-      Alert.alert('Error', msg);
+      const resData = error.response?.data;
+      let msg = resData?.message || resData?.mensaje;
+      if (!msg && resData?.fieldErrors && typeof resData.fieldErrors === 'object') {
+        msg = Object.entries(resData.fieldErrors).map(([k, v]) => `${k}: ${v}`).join('\n');
+      }
+      if (!msg && resData?.error) {
+        msg = resData.error;
+      }
+      Alert.alert('Error al crear solicitud', msg || 'Error al conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -338,46 +579,122 @@ export default function CreateRequestScreen({ navigation, route }) {
           />
 
           {/* Dirección */}
-          <Text style={styles.label}>Ciudad *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej: Bogotá"
-            placeholderTextColor={COLORS.textDisabled}
-            value={form.ciudad}
-            onChangeText={v => { updateField('ciudad', v); setGeocodedCoords(null); }}
-          />
-          <Text style={styles.label}>Barrio</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej: Chapinero"
-            placeholderTextColor={COLORS.textDisabled}
-            value={form.barrio}
-            onChangeText={v => { updateField('barrio', v); setGeocodedCoords(null); }}
-          />
-          <Text style={styles.label}>Dirección específica *</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.gpsSection}>
+            <TouchableOpacity
+              style={[styles.gpsButton, isLocating && styles.gpsButtonLoading]}
+              onPress={() => useCurrentPhoneLocation(false)}
+              disabled={isLocating}
+              activeOpacity={0.85}
+            >
+              {isLocating ? (
+                <>
+                  <ActivityIndicator size="small" color="#001B38" />
+                  <Text style={styles.gpsButtonText}>Obteniendo GPS de tu celular...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="navigate-circle" size={22} color="#001B38" />
+                  <Text style={styles.gpsButtonText}>📍 Usar ubicación GPS de mi celular</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {geocodedCoords ? (
+              <View style={styles.gpsBadge}>
+                <Ionicons name="checkmark-circle" size={16} color="#49C0BC" />
+                <Text style={styles.gpsBadgeText}>
+                  GPS activo: {geocodedCoords.latitude.toFixed(4)}, {geocodedCoords.longitude.toFixed(4)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Dirección específica y Autocompletado estilo Google Maps */}
+          <Text style={styles.label}>Dirección específica en Medellín *</Text>
+          <View style={styles.addressInputContainer}>
+            <Ionicons name="search" size={18} color="#49C0BC" style={{ marginLeft: 12 }} />
             <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Calle 45 # 12-34, apto 501"
+              style={styles.addressInput}
+              placeholder="Escribe tu dirección (ej: Cra 75 # 96-24 o Calle 10 # 40)..."
               placeholderTextColor={COLORS.textDisabled}
               value={form.direccion}
-              onChangeText={v => { updateField('direccion', v); setGeocodedCoords(null); }}
+              onChangeText={handleDireccionChange}
               onBlur={geocodeAddress}
               returnKeyType="done"
               onSubmitEditing={geocodeAddress}
             />
-            <TouchableOpacity onPress={geocodeAddress} style={{ padding: 8 }}>
-              {isGeocoding
-                ? <ActivityIndicator size="small" color={COLORS.accent} />
-                : <Ionicons name="location-outline" size={22} color={geocodedCoords ? COLORS.accent : COLORS.textDisabled} />
-              }
-            </TouchableOpacity>
+            {isSearchingSuggestions ? (
+              <ActivityIndicator size="small" color="#49C0BC" style={{ marginRight: 12 }} />
+            ) : form.direccion?.length > 0 ? (
+              <TouchableOpacity onPress={clearDireccion} style={{ padding: 8, marginRight: 4 }}>
+                <Ionicons name="close-circle" size={18} color="#90A4AE" />
+              </TouchableOpacity>
+            ) : null}
           </View>
-          {geocodedCoords && (
-            <Text style={{ color: COLORS.accent, fontSize: 12, marginTop: -8, marginBottom: 8 }}>
-              Ubicación encontrada ✓
-            </Text>
+
+          {/* LISTA DE SUGERENCIAS DESPLEGABLE ESTILO GOOGLE MAPS */}
+          {suggestions.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              <View style={styles.suggestionsHeader}>
+                <Ionicons name="compass-outline" size={14} color="#49C0BC" />
+                <Text style={styles.suggestionsHeaderText}>Selecciona tu barrio en Medellín / Valle de Aburrá</Text>
+              </View>
+              {suggestions.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectSuggestion(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.suggestionIconWrap}>
+                    <Ionicons name="location" size={16} color="#49C0BC" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.suggestionPrimaryText} numberOfLines={1}>
+                      {item.primaryText}
+                    </Text>
+                    <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+                      {item.secondaryText}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#546E7A" />
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
+
+          {geocodedCoords && (
+            <View style={styles.verifiedAddressBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#49C0BC" />
+              <Text style={styles.verifiedAddressText}>
+                {form.barrio ? `${form.barrio}, ` : ''}{form.ciudad || 'Medellín'} ✓ Coordenadas fijadas ({geocodedCoords.latitude.toFixed(4)}, {geocodedCoords.longitude.toFixed(4)})
+              </Text>
+            </View>
+          )}
+
+          {/* Barrio y Ciudad en fila */}
+          <View style={styles.row}>
+            <View style={styles.halfField}>
+              <Text style={styles.label}>Barrio</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej: Castilla, Laureles..."
+                placeholderTextColor={COLORS.textDisabled}
+                value={form.barrio}
+                onChangeText={v => updateField('barrio', v)}
+              />
+            </View>
+            <View style={styles.halfField}>
+              <Text style={styles.label}>Ciudad *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Medellín"
+                placeholderTextColor={COLORS.textDisabled}
+                value={form.ciudad}
+                onChangeText={v => updateField('ciudad', v)}
+              />
+            </View>
+          </View>
 
           {/* Detalles del espacio */}
           <Text style={styles.sectionTitle}>Detalles del espacio</Text>
@@ -512,11 +829,11 @@ export default function CreateRequestScreen({ navigation, route }) {
             
             <View style={styles.miniMapWrap}>
               <MapView
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                 style={styles.miniMap}
                 initialRegion={{
-                  latitude: location?.coords?.latitude || 4.6097,
-                  longitude: location?.coords?.longitude || -74.0817,
+                  latitude: geocodedCoords?.latitude || location?.coords?.latitude || 6.2442,
+                  longitude: geocodedCoords?.longitude || location?.coords?.longitude || -75.5812,
                   latitudeDelta: 0.005,
                   longitudeDelta: 0.005,
                 }}
@@ -525,8 +842,8 @@ export default function CreateRequestScreen({ navigation, route }) {
               >
                 <Marker
                   coordinate={{
-                    latitude: location?.coords?.latitude || 4.6097,
-                    longitude: location?.coords?.longitude || -74.0817,
+                    latitude: geocodedCoords?.latitude || location?.coords?.latitude || 6.2442,
+                    longitude: geocodedCoords?.longitude || location?.coords?.longitude || -75.5812,
                   }}
                 >
                   <View style={styles.markerCircle}>
@@ -737,5 +1054,144 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: COLORS.white,
+  },
+
+  // ── GPS Celular ───────────────────────────────────────────────────────────
+  gpsSection: {
+    marginBottom: SPACING.md,
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#49C0BC',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#49C0BC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  gpsButtonLoading: {
+    opacity: 0.75,
+  },
+  gpsButtonText: {
+    color: '#001B38',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  gpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(73, 192, 188, 0.12)',
+    borderWidth: 1,
+    borderColor: '#49C0BC',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 6,
+  },
+  gpsBadgeText: {
+    color: '#49C0BC',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ── Autocompletado de Direcciones ──────────────────────────────────────────
+  addressInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#001B38',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(73, 192, 188, 0.4)',
+    marginBottom: 6,
+  },
+  addressInput: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#001B38',
+    borderRadius: 14,
+    marginTop: 4,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(73, 192, 188, 0.45)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  suggestionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: 'rgba(73, 192, 188, 0.12)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(73, 192, 188, 0.2)',
+  },
+  suggestionsHeaderText: {
+    fontSize: 11,
+    color: '#49C0BC',
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 12,
+  },
+  suggestionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(73, 192, 188, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionPrimaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  suggestionSecondaryText: {
+    fontSize: 12,
+    color: '#90A4AE',
+    marginTop: 2,
+  },
+  verifiedAddressBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(73, 192, 188, 0.12)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#49C0BC',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  verifiedAddressText: {
+    color: '#49C0BC',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
   },
 });

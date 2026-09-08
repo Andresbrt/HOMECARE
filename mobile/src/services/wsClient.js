@@ -40,14 +40,19 @@ function _buildClient(token) {
   const wsUrl = toWsUrl(WS_URL);
 
   return new Client({
-    // React Native: use native WebSocket (not SockJS)
-    webSocketFactory: () => new WebSocket(wsUrl),
+    // React Native: use native WebSocket with STOMP subprotocols and allowed origin
+    webSocketFactory: () =>
+      new WebSocket(
+        wsUrl,
+        ['v10.stomp', 'v11.stomp', 'v12.stomp'],
+        { headers: { Origin: 'http://localhost:8081' } }
+      ),
     connectHeaders: {
       Authorization: `Bearer ${token}`,
       // Some Spring configs also check 'login' header
       login: token,
     },
-    reconnectDelay: 3000,
+    reconnectDelay: 15000,
     heartbeatIncoming: 25000,
     heartbeatOutgoing: 25000,
     // Required for some React Native environments
@@ -61,15 +66,12 @@ function _buildClient(token) {
       _onConnectCallbacks = [];
     },
     onDisconnect: () => {
-      __DEV_LOG__('[WS] Disconnected');
       _connectPromise = null;
     },
     onStompError: (frame) => {
-      __DEV_LOG__('[WS] STOMP error:', frame.headers?.message);
       _connectPromise = null;
     },
     onWebSocketError: (error) => {
-      __DEV_LOG__('[WS] WebSocket error:', error?.message || error);
       _connectPromise = null;
     },
   });

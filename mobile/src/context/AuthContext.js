@@ -297,13 +297,18 @@ export const AuthProvider = ({ children }) => {
     if (!__DEV__) return { success: false, message: 'Función no disponible en producción' };
 
     const devCredentials = {
-      SERVICE_PROVIDER: { email: 'profesional@test.com', password: 'Test123!' },
+      SERVICE_PROVIDER: { email: 'profesional.demo@test.com', password: 'Test123!' },
       CUSTOMER: { email: 'usuario@test.com', password: 'Test123!' },
     };
 
     const credentials = devCredentials[role];
     if (!credentials) return { success: false, message: 'Rol inválido' };
-    return login(credentials.email, credentials.password);
+    const res = await login(credentials.email, credentials.password);
+    if (!res.success && role === 'SERVICE_PROVIDER') {
+      // Fallback a cuenta alternativa de profesional si existe
+      return login('profesional@test.com', credentials.password);
+    }
+    return res;
   };
 
   return (

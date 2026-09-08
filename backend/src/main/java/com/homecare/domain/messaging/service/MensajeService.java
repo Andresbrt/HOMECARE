@@ -99,6 +99,7 @@ public class MensajeService {
         return response;
     }
 
+    @Transactional(readOnly = true)
     public List<MensajeDTO.Response> obtenerMensajes(Long solicitudId, Long usuarioId) {
         Solicitud solicitud = solicitudRepository.findById(solicitudId)
                 .orElseThrow(() -> new NotFoundException("Solicitud no encontrada"));
@@ -167,6 +168,7 @@ public class MensajeService {
      * Obtener lista de conversaciones del usuario
      */
     @Cacheable(cacheNames = "conversationList", key = "#usuarioId")
+    @Transactional(readOnly = true)
     public List<MensajeDTO.Conversacion> obtenerConversaciones(Long usuarioId) {
         // Obtener todas las solicitudes donde el usuario ha enviado o recibido mensajes
         List<Solicitud> solicitudesConMensajes = mensajeRepository.findSolicitudesConMensajes(usuarioId);

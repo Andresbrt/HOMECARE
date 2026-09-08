@@ -24,8 +24,10 @@ export const WS_URL =
 export const GOOGLE_CLIENT_ID = _cfg.googleClientId ?? '';
 export const API_TIMEOUT = 30000;
 
-// MercadoPago public key — usa MERCADOPAGO_PUBLIC_KEY de constants/payment.js
-// No se duplica aquí: la key canónica está en src/constants/payment.js
+import { MERCADOPAGO_PUBLIC_KEY } from '../constants/payment';
+
+// MercadoPago public key
+export const MP_PUBLIC_KEY = MERCADOPAGO_PUBLIC_KEY;
 export const PAGE_SIZE = 20;
 export const SEARCH_RADIUS_KM = 10;
 

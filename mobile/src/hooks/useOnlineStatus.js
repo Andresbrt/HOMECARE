@@ -74,3 +74,5 @@ export function useOnlineStatus(otherUserId) {
     };
   }, [user?.id, otherUserId]);
 }
+
+export { formatLastSeen } from '../utils/chatUtils';

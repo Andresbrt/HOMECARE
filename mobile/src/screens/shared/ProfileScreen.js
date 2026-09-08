@@ -1,95 +1,125 @@
 /**
- * ProfileScreen — Perfil completo Homecare 2026
- * Refactorizado: usa computeLevel() compartido, avatar real, componentes extraídos.
+ * ProfileScreen — Perfil Minimalista Homecare 2026
+ * Diseño limpio, sobrio y ergonómico (estilo Apple / Airbnb).
+ * Soporta modo Cliente (fondo claro, elegante) y Profesional (modo oscuro ejecutivo, sin saturación de neón).
  */
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  Alert,
+  Image,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient }    from 'expo-linear-gradient';
-import Animated, {
-  FadeInDown, FadeIn,
-  useSharedValue, useAnimatedStyle, withSpring,
-} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import GlassCard    from '../../components/shared/GlassCard';
-import ProfileHeader     from '../../components/profile/ProfileHeader';
-import QuickActionButtons from '../../components/profile/QuickActionButtons';
-import LegalModal from '../../components/shared/LegalModal';
-import apiClient from '../../services/apiClient';
-import { useAuth }  from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import useModeStore from '../../store/modeStore';
-import { PROF, SPACING, BORDER_RADIUS } from '../../constants/theme';
-import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
+import apiClient from '../../services/apiClient';
+import LegalModal from '../../components/shared/LegalModal';
+import { COLORS, PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
+import { computeLevel } from '../../utils/levelUtils';
 
-// ─── Fila de menú ─────────────────────────────────────────────────────────────
-function MenuRow({ icon, title, subtitle, onPress, delay, accent, danger, badge }) {
-  const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const ic    = danger ? PROF.error : accent ? PROF.accent : PROF.textSecondary;
-  const bg    = danger ? 'rgba(255,91,91,0.12)' : accent ? 'rgba(73,192,188,0.15)' : 'rgba(255,255,255,0.06)';
+// ─── Fila de Menú Minimalista ────────────────────────────────────────────────
+function MinimalMenuItem({ icon, title, subtitle, onPress, isDark, isDanger, isAccent, badge }) {
+  const iconColor = isDanger
+    ? '#EF4444'
+    : isAccent
+    ? (isDark ? '#49C0BC' : '#0E4D68')
+    : (isDark ? 'rgba(255,255,255,0.75)' : '#475569');
+
+  const iconBg = isDanger
+    ? 'rgba(239,68,68,0.1)'
+    : isAccent
+    ? (isDark ? 'rgba(73,192,188,0.15)' : 'rgba(14,77,104,0.08)')
+    : (isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9');
+
+  const titleColor = isDanger
+    ? '#EF4444'
+    : isAccent
+    ? (isDark ? '#49C0BC' : '#001B38')
+    : (isDark ? '#FFFFFF' : '#0F172A');
+
+  const subColor = isDark ? 'rgba(255,255,255,0.45)' : '#64748B';
+
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(16)} style={anim}>
-      <TouchableOpacity
-        onPress={() => {
-          scale.value = withSpring(0.97, { damping: 16 }, () => { scale.value = withSpring(1); });
-          Haptics.selectionAsync();
-          onPress?.();
-        }}
-        activeOpacity={1} style={styles.menuRow}
-      >
-        <View style={[styles.menuIcon, { backgroundColor: bg }]}>
-          <Ionicons name={icon} size={19} color={ic} />
+    <TouchableOpacity
+      style={styles.menuItem}
+      onPress={() => {
+        Haptics.selectionAsync();
+        onPress?.();
+      }}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.menuIconBox, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
+
+      <View style={styles.menuTextCol}>
+        <Text style={[styles.menuTitle, { color: titleColor }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.menuSub, { color: subColor }]}>{subtitle}</Text> : null}
+      </View>
+
+      {badge ? (
+        <View style={[styles.badge, { backgroundColor: isDark ? PROF.accent : COLORS.accent }]}>
+          <Text style={styles.badgeText}>{badge}</Text>
         </View>
-        <View style={styles.menuText}>
-          <Text style={[styles.menuTitle, danger && { color: PROF.error }, accent && { color: PROF.accent }]}>{title}</Text>
-          {subtitle ? <Text style={styles.menuSub}>{subtitle}</Text> : null}
-        </View>
-        {badge ? (
-          <View style={styles.menuBadge}><Text style={styles.menuBadgeText}>{badge}</Text></View>
-        ) : (
-          <Ionicons name="chevron-forward" size={16} color={PROF.textMuted} />
-        )}
-      </TouchableOpacity>
-    </Animated.View>
+      ) : (
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={isDark ? 'rgba(255,255,255,0.25)' : '#CBD5E1'}
+        />
+      )}
+    </TouchableOpacity>
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation }) {
-  const insets        = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const mode          = useModeStore(s => s.mode);
-  const isUsuario     = mode === 'usuario';
+  const { mode, setMode } = useModeStore();
+  const isUsuario = mode === 'usuario';
+  const isDark = !isUsuario;
 
-  // Datos de nivel para profesionales
-  const profLevel = !isUsuario
-    ? computeLevel(user?.serviciosCompletados ?? 0)
-    : null;
-  const quarterLabel = getQuarterLabel();
+  const [legalVisible, setLegalVisible] = useState(false);
+  const [legalType, setLegalType] = useState('terms');
 
-  const logoutScale = useSharedValue(1);
-  const logoutAnim  = useAnimatedStyle(() => ({ transform: [{ scale: logoutScale.value }] }));
+  // Datos de usuario
+  const nombre = user?.nombre || 'Usuario';
+  const apellido = user?.apellido || '';
+  const fullName = `${nombre} ${apellido}`.trim();
+  const email = user?.email || '';
+  const telefono = user?.telefono || '';
+  const completedServices = user?.serviciosCompletados ?? user?.totalServicios ?? 0;
+  const rating = user?.calificacionPromedio ? Number(user.calificacionPromedio).toFixed(1) : '5.0';
 
+  const initials = [nombre, apellido]
+    .filter(Boolean)
+    .map((s) => s[0]?.toUpperCase())
+    .join('') || 'U';
+
+  const profLevel = !isUsuario ? computeLevel(completedServices) : null;
+
+  // Handlers
   const handleLogout = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Cerrar sesión', '¿Estás seguro?', [
+    Alert.alert('Cerrar sesión', '¿Deseas salir de tu cuenta?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Cerrar sesión', style: 'destructive', onPress: () => logout() },
     ]);
   }, [logout]);
 
-  const [legalVisible, setLegalVisible] = useState(false);
-  const [legalType, setLegalType]       = useState('terms');
-
   const handleDeleteAccount = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
-      'Eliminar Cuenta',
-      '¿Estás seguro de que deseas eliminar tu cuenta permanentemente? Esta acción desactivará y anonimizará tus datos en cumplimiento con la normativa de privacidad.',
+      'Eliminar cuenta',
+      'Tu cuenta y datos se desactivarán permanentemente conforme a las normativas de privacidad.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -98,10 +128,10 @@ export default function ProfileScreen({ navigation }) {
           onPress: async () => {
             try {
               await apiClient.delete('/usuarios/me');
-              Alert.alert('Cuenta eliminada', 'Tu cuenta ha sido desactivada correctamente.');
+              Alert.alert('Cuenta eliminada', 'Tu cuenta ha sido desactivada.');
               logout();
             } catch (err) {
-              Alert.alert('Error', err.response?.data?.message || 'No se pudo eliminar la cuenta. Inténtalo de nuevo.');
+              Alert.alert('Error', err.response?.data?.message || 'No se pudo eliminar la cuenta.');
             }
           },
         },
@@ -109,212 +139,297 @@ export default function ProfileScreen({ navigation }) {
     );
   }, [logout]);
 
-  const navigate = useCallback((screen) => navigation.navigate(screen), [navigation]);
-
-  // Navegación consciente del modo: cada rol tiene su propia ruta nombrada
-  const navSecurity    = isUsuario ? 'UserSecurity'      : 'ProfSecurity';
-  const navHelp        = isUsuario ? 'UserHelpSupport'   : 'ProfHelpSupport';
-  const navHistory     = isUsuario ? 'UserHistory'       : 'ProfHistory';
-  const navNotifs      = isUsuario ? 'UserNotifications' : 'ProfNotifications';
-
-  // Navegar a EditProfile
-  const handleEditProfile = useCallback(() => {
-    navigation.navigate('EditProfile');
-  }, [navigation]);
+  const handleSwitchMode = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const nextMode = isUsuario ? 'profesional' : 'usuario';
+    setMode(nextMode);
+  };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={PROF.bgDeep} />
-      <LinearGradient colors={[PROF.bgDeep,'#0a2235', PROF.bg]} style={StyleSheet.absoluteFill} locations={[0,0.3,1]} />
+    <View style={[styles.screen, { backgroundColor: isDark ? '#001326' : '#F8FAFC' }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={isDark ? '#001326' : '#F8FAFC'}
+      />
 
-      {/* Header */}
-      <Animated.View entering={FadeIn.duration(350)} style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Ionicons name="chevron-back" size={22} color={PROF.textPrimary} />
+      {/* Top Header */}
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) }]}>
+        <TouchableOpacity
+          style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF' }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={isDark ? '#FFFFFF' : '#0F172A'} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Mi Perfil</Text>
-        <View style={[styles.modeBadge, !isUsuario && styles.modeBadgePro]}>
-          <Ionicons name={isUsuario ? 'person-outline' : 'briefcase-outline'} size={11} color={isUsuario ? PROF.accent : '#FFD700'} />
-          <Text style={[styles.modeBadgeText, !isUsuario && { color:'#FFD700' }]}>{isUsuario ? 'Usuario' : 'Profesional'}</Text>
-        </View>
-      </Animated.View>
+        <Text style={[styles.topBarTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+          Perfil
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.modeChip,
+            { backgroundColor: isDark ? 'rgba(73,192,188,0.12)' : 'rgba(14,77,104,0.08)' },
+          ]}
+          onPress={handleSwitchMode}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={isUsuario ? 'person' : 'briefcase'}
+            size={12}
+            color={isDark ? '#49C0BC' : '#0E4D68'}
+          />
+          <Text style={[styles.modeChipText, { color: isDark ? '#49C0BC' : '#0E4D68' }]}>
+            {isUsuario ? 'Modo Cliente' : 'Modo Profesional'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Avatar + nombre ── */}
-        <Animated.View entering={FadeInDown.delay(80).springify().damping(16)}>
-          <ProfileHeader user={user} onEditPress={handleEditProfile} />
-        </Animated.View>
-
-        {/* ── Quick Action Buttons (reuse component) ── */}
-      <Animated.View entering={FadeInDown.delay(260).springify().damping(16)}>
-        <QuickActionButtons navigation={navigation} />
-      </Animated.View>
-        <Animated.View entering={FadeInDown.delay(260).springify().damping(16)}>
-          <TouchableOpacity
-            onPress={handleEditProfile}
-            activeOpacity={0.85}
-          >
-            <GlassCard variant="accent" style={styles.editProfileCard}>
-              <Ionicons name="create-outline" size={20} color={PROF.accent} />
-              <Text style={styles.editProfileText}>Editar Perfil</Text>
-              <Ionicons name="chevron-forward" size={18} color={PROF.accent} />
-            </GlassCard>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* (Removed duplicate QuickActionButtons) */}
-        {isUsuario && (
-          <Animated.View entering={FadeInDown.delay(280).springify().damping(16)}>
-            <QuickActionButtons navigation={navigation} />
-          </Animated.View>
-        )}
-
-        {/* ── TARJETA DE NIVEL (solo profesionales) ── */}
-        {/* ── Nivel card (solo profesionales) ── */}
-      {!isUsuario && profLevel && (
-          <Animated.View entering={FadeInDown.delay(290).springify().damping(16)}>
-            {/* Card de nivel con barra de progreso y bonificación */}
-            <GlassCard variant="elevated" style={styles.levelCard}>
-              <LinearGradient
-                colors={[`${profLevel.color}18`, `${profLevel.color}06`]}
-                start={{x:0,y:0}} end={{x:1,y:1}}
-                style={styles.levelGrad}
+        {/* ── CARD PRINCIPAL DE PERFIL ── */}
+        <View
+          style={[
+            styles.profileCard,
+            {
+              backgroundColor: isDark ? '#001B38' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+            },
+          ]}
+        >
+          <View style={styles.profileHeaderRow}>
+            {/* Avatar */}
+            <View style={styles.avatarWrap}>
+              {user?.fotoPerfil ? (
+                <Image source={{ uri: user.fotoPerfil }} style={styles.avatarImg} />
+              ) : (
+                <View
+                  style={[
+                    styles.avatarInitials,
+                    { backgroundColor: isDark ? '#0E4D68' : '#E0F2FE' },
+                  ]}
+                >
+                  <Text style={[styles.initialsText, { color: isDark ? '#49C0BC' : '#0369A1' }]}>
+                    {initials}
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.editAvatarBtn}
+                onPress={() => navigation.navigate('EditProfile')}
+                activeOpacity={0.8}
               >
-                {/* Fila superior: badge + bonus */}
-                <View style={styles.levelTop}>
-                  <LinearGradient colors={profLevel.gradColors} style={styles.levelBadge}>
-                    <Ionicons name={profLevel.icon} size={14} color="#fff" />
-                    <Text style={styles.levelBadgeText}>{profLevel.label.toUpperCase()}</Text>
-                  </LinearGradient>
-                  <View style={[styles.visiBadge, { borderColor: `${profLevel.color}55`, backgroundColor: `${profLevel.color}14` }]}>
-                    <Ionicons name="eye" size={12} color={profLevel.color} />
-                    <Text style={[styles.visiText, { color: profLevel.color }]}>
-                      {profLevel.visibilityBonus > 0 ? `+${profLevel.visibilityBonus}% visibilidad` : 'Visibilidad base'}
-                    </Text>
-                  </View>
+                <Ionicons name="pencil" size={12} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Info */}
+            <View style={styles.profileInfo}>
+              <View style={styles.nameRow}>
+                <Text style={[styles.profileName, { color: isDark ? '#FFFFFF' : '#0F172A' }]} numberOfLines={1}>
+                  {fullName}
+                </Text>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+              </View>
+              <Text style={[styles.profileSub, { color: isDark ? 'rgba(255,255,255,0.6)' : '#64748B' }]} numberOfLines={1}>
+                {email}
+              </Text>
+              {telefono ? (
+                <Text style={[styles.profilePhone, { color: isDark ? 'rgba(255,255,255,0.45)' : '#94A3B8' }]}>
+                  {telefono}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Métricas Minimalistas */}
+          <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: isDark ? '#49C0BC' : '#0E4D68' }]}>
+                {completedServices}
+              </Text>
+              <Text style={[styles.statLbl, { color: isDark ? 'rgba(255,255,255,0.5)' : '#64748B' }]}>
+                {isUsuario ? 'Servicios pedidos' : 'Completados'}
+              </Text>
+            </View>
+
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }]} />
+
+            <View style={styles.statBox}>
+              <View style={styles.ratingValRow}>
+                <Ionicons name="star" size={14} color="#F59E0B" />
+                <Text style={[styles.statNum, { color: isDark ? '#FFFFFF' : '#0F172A', marginLeft: 3 }]}>
+                  {rating}
+                </Text>
+              </View>
+              <Text style={[styles.statLbl, { color: isDark ? 'rgba(255,255,255,0.5)' : '#64748B' }]}>
+                Calificación
+              </Text>
+            </View>
+
+            {!isUsuario && profLevel && (
+              <>
+                <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }]} />
+                <View style={styles.statBox}>
+                  <Text style={[styles.statNum, { color: '#F59E0B' }]}>
+                    {profLevel.label}
+                  </Text>
+                  <Text style={[styles.statLbl, { color: isDark ? 'rgba(255,255,255,0.5)' : '#64748B' }]}>
+                    Nivel Pro
+                  </Text>
                 </View>
+              </>
+            )}
+          </View>
+        </View>
 
-                {/* Barra de progreso */}
-                {profLevel.nextLabel && (
-                  <>
-                    <View style={styles.levelBarRow}>
-                      <Text style={styles.levelBarLabel}>
-                        {user?.serviciosCompletados ?? 0} servicios → {profLevel.next} para {profLevel.nextLabel}
-                      </Text>
-                      <Text style={[styles.levelBarPct, { color: profLevel.color }]}>
-                        {Math.round(profLevel.progress * 100)}%
-                      </Text>
-                    </View>
-                    <View style={styles.levelTrack}>
-                      <LinearGradient
-                        colors={profLevel.gradColors}
-                        start={{x:0,y:0}} end={{x:1,y:0}}
-                        style={[styles.levelFill, { width: `${Math.round(profLevel.progress * 100)}%` }]}
-                      />
-                    </View>
-                  </>
-                )}
+        {/* ── SECCIÓN 1: MI CUENTA ── */}
+        <Text style={[styles.groupTitle, { color: isDark ? 'rgba(255,255,255,0.45)' : '#94A3B8' }]}>
+          CUENTA
+        </Text>
+        <View
+          style={[
+            styles.groupCard,
+            {
+              backgroundColor: isDark ? '#001B38' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+            },
+          ]}
+        >
+          <MinimalMenuItem
+            icon="person-outline"
+            title="Editar Información"
+            subtitle="Nombre, teléfono y foto"
+            onPress={() => navigation.navigate('EditProfile')}
+            isDark={isDark}
+            isAccent
+          />
+          <View style={[styles.itemDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }]} />
+          <MinimalMenuItem
+            icon="time-outline"
+            title="Historial de Servicios"
+            subtitle="Servicios completados y activos"
+            onPress={() => navigation.navigate(isUsuario ? 'UserHistory' : 'ProfHistory')}
+            isDark={isDark}
+          />
+          <View style={[styles.itemDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }]} />
+          <MinimalMenuItem
+            icon="shield-checkmark-outline"
+            title="Seguridad y Contraseña"
+            subtitle="Acceso y privacidad de cuenta"
+            onPress={() => navigation.navigate(isUsuario ? 'UserSecurity' : 'ProfSecurity')}
+            isDark={isDark}
+          />
+        </View>
 
-                {/* Motivo */}
-                <Text style={styles.levelMotivo}>{profLevel.motivo}</Text>
+        {/* ── SECCIÓN 2: PREFERENCIAS ── */}
+        <Text style={[styles.groupTitle, { color: isDark ? 'rgba(255,255,255,0.45)' : '#94A3B8' }]}>
+          PREFERENCIAS
+        </Text>
+        <View
+          style={[
+            styles.groupCard,
+            {
+              backgroundColor: isDark ? '#001B38' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+            },
+          ]}
+        >
+          <MinimalMenuItem
+            icon="notifications-outline"
+            title="Notificaciones"
+            subtitle="Alertas de solicitudes y avisos"
+            onPress={() => navigation.navigate(isUsuario ? 'UserNotifications' : 'ProfNotifications')}
+            isDark={isDark}
+          />
+          <View style={[styles.itemDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }]} />
+          <MinimalMenuItem
+            icon="sync-outline"
+            title={isUsuario ? 'Cambiar a Profesional' : 'Cambiar a Cliente'}
+            subtitle={isUsuario ? 'Ofrece tus servicios en la app' : 'Solicita servicios para tu hogar'}
+            onPress={handleSwitchMode}
+            isDark={isDark}
+            isAccent
+          />
+        </View>
 
-                {/* Stats rápidos */}
-                <View style={styles.levelStats}>
-                  <View style={styles.levelStat}>
-                    <Text style={[styles.levelStatVal, { color: profLevel.color }]}>{user?.serviciosCompletados ?? 0}</Text>
-                    <Text style={styles.levelStatLabel}>Servicios{`\n`}trimestre</Text>
-                  </View>
-                  <View style={styles.levelDivider} />
-                  <View style={styles.levelStat}>
-                    <Text style={styles.levelStatVal}>{profLevel.remaining > 0 ? profLevel.remaining : '★'}</Text>
-                    <Text style={styles.levelStatLabel}>{profLevel.remaining > 0 ? `Para ${profLevel.nextLabel}` : 'Nível\nmáximo'}</Text>
-                  </View>
-                  <View style={styles.levelDivider} />
-                  <View style={styles.levelStat}>
-                    <Text style={styles.levelStatVal}>{profLevel.visibilityBonus > 0 ? `+${profLevel.visibilityBonus}%` : 'Base'}</Text>
-                    <Text style={styles.levelStatLabel}>Bono{`\n`}visibilidad</Text>
-                  </View>
-                </View>
+        {/* ── SECCIÓN 3: SOPORTE Y LEGAL ── */}
+        <Text style={[styles.groupTitle, { color: isDark ? 'rgba(255,255,255,0.45)' : '#94A3B8' }]}>
+          SOPORTE Y LEGAL
+        </Text>
+        <View
+          style={[
+            styles.groupCard,
+            {
+              backgroundColor: isDark ? '#001B38' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+            },
+          ]}
+        >
+          <MinimalMenuItem
+            icon="help-circle-outline"
+            title="Ayuda y Soporte"
+            subtitle="Preguntas frecuentes y contacto"
+            onPress={() => navigation.navigate(isUsuario ? 'UserHelpSupport' : 'ProfHelpSupport')}
+            isDark={isDark}
+          />
+          <View style={[styles.itemDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }]} />
+          <MinimalMenuItem
+            icon="document-text-outline"
+            title="Términos y Condiciones"
+            onPress={() => {
+              setLegalType('terms');
+              setLegalVisible(true);
+            }}
+            isDark={isDark}
+          />
+          <View style={[styles.itemDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }]} />
+          <MinimalMenuItem
+            icon="lock-closed-outline"
+            title="Política de Privacidad"
+            onPress={() => {
+              setLegalType('privacy');
+              setLegalVisible(true);
+            }}
+            isDark={isDark}
+          />
+        </View>
 
-                {/* Trimestre */}
-                <Text style={styles.levelQuarter}>Trimestre actual: {quarterLabel}</Text>
-              </LinearGradient>
-            </GlassCard>
-
-            {/* Tarjeta motivacional */}
-            <GlassCard variant="accent" style={styles.motivoCard}>
-              <Ionicons name="flash" size={18} color="#FFD700" />
-              <Text style={styles.motivoText}>{MOTIVATIONAL_TEXT}</Text>
-            </GlassCard>
-          </Animated.View>
-        )}
-
-        {/* ── Nivel card (solo profesionales) ── */}
-        <Text style={styles.sectionLabel}>Actividad</Text>
-        <GlassCard variant="default" style={styles.menuCard}>
-          {isUsuario ? (
-            <>
-              <MenuRow icon="flash-outline"        title="Solicitar servicio"    subtitle="Limpieza General, Premium o Por Horas" onPress={() => navigate('UserQuickActions')} delay={340} accent />
-              <View style={styles.sep} />
-            </>
-          ) : null}
-          <MenuRow icon="time-outline"           title="Historial"             subtitle="Ver mis servicios pasados"  onPress={() => navigate(navHistory)}       delay={360} />
-          <View style={styles.sep} />
-          <MenuRow icon="notifications-outline"  title="Notificaciones"        subtitle="Alertas y avisos"           onPress={() => navigate(navNotifs)}  delay={380} />
-        </GlassCard>
-
-        {/* ── Menú servicios ── */}
-        <Text style={styles.sectionLabel}>Servicios</Text>
-        <GlassCard variant="default" style={styles.menuCard}>
-          <MenuRow icon="diamond-outline"  title="Servicios Premium"  subtitle="Catálogo completo de servicios"    onPress={() => navigate('PremiumServices')}  delay={400} />
-          <View style={styles.sep} />
-          <MenuRow icon="star-outline"     title="Suscripción"         subtitle="Ver y cambiar tu plan"             onPress={() => navigate('Subscription')}    delay={420} />
-          <View style={styles.sep} />
-          <MenuRow icon="bulb-outline"     title="Recomendaciones"     subtitle="Consejos de limpieza y cuidado"    onPress={() => navigate('Recommendations')} delay={440} />
-          {user?.rol === 'SUPER_ADMIN' && (
-            <>
-              <View style={styles.sep} />
-              <MenuRow icon="shield-checkmark-outline" title="Panel Admin" subtitle="Gestión y estadísticas" onPress={() => navigate('AdminPanel')} delay={460} accent />
-            </>
-          )}
-        </GlassCard>
-
-        {/* ── Menú cuenta ── */}
-        <Text style={styles.sectionLabel}>Cuenta y Seguridad</Text>
-        <GlassCard variant="default" style={styles.menuCard}>
-          <MenuRow icon="shield-checkmark-outline" title="Seguridad"        subtitle="Contraseña, 2FA y dispositivos" onPress={() => navigate(navSecurity)}    delay={480} />
-          <View style={styles.sep} />
-          <MenuRow icon="help-circle-outline"      title="Ayuda y Soporte"  subtitle="FAQ, IA y contacto"             onPress={() => navigate(navHelp)}  delay={500} />
-          <View style={styles.sep} />
-          <MenuRow icon="document-text-outline"    title="Términos y Condiciones" subtitle="Condiciones de uso del servicio" onPress={() => { setLegalType('terms'); setLegalVisible(true); }} delay={520} />
-          <View style={styles.sep} />
-          <MenuRow icon="lock-closed-outline"      title="Política de Privacidad"  subtitle="Tratamiento de datos personales" onPress={() => { setLegalType('privacy'); setLegalVisible(true); }} delay={540} />
-          <View style={styles.sep} />
-          <MenuRow icon="trash-outline"            title="Eliminar mi cuenta"      subtitle="Desactivación y anonimización de datos" onPress={handleDeleteAccount} delay={560} danger />
-        </GlassCard>
-
-        {/* ── Logout ── */}
-        <Animated.View entering={FadeInDown.delay(450).springify()} style={logoutAnim}>
+        {/* ── SECCIÓN 4: ACCIONES DE CUENTA ── */}
+        <View style={styles.dangerGroup}>
           <TouchableOpacity
-            style={styles.logoutBtn}
+            style={[
+              styles.logoutBtn,
+              {
+                backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : '#FEE2E2',
+                borderColor: isDark ? 'rgba(239,68,68,0.2)' : '#FECACA',
+              },
+            ]}
             onPress={handleLogout}
-            onPressIn={() => { logoutScale.value = withSpring(0.96, { damping: 14 }); }}
-            onPressOut={() => { logoutScale.value = withSpring(1,    { damping: 14 }); }}
-            activeOpacity={1}
+            activeOpacity={0.75}
           >
-            <Ionicons name="log-out-outline" size={20} color={PROF.error} />
-            <Text style={styles.logoutText}>Cerrar sesión</Text>
+            <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+            <Text style={styles.logoutText}>Cerrar Sesión</Text>
           </TouchableOpacity>
-        </Animated.View>
 
-        <Text style={styles.version}>Homecare v1.0.0 · 2026</Text>
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.deleteText, { color: isDark ? 'rgba(255,255,255,0.35)' : '#94A3B8' }]}>
+              Eliminar mi cuenta
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.versionText, { color: isDark ? 'rgba(255,255,255,0.25)' : '#94A3B8' }]}>
+          Homecare · Medellín v1.0.0
+        </Text>
       </ScrollView>
 
-      {/* Modal de Términos y Privacidad */}
+      {/* Modal Legal */}
       <LegalModal
         visible={legalVisible}
         type={legalType}
@@ -324,65 +439,238 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen:        { flex: 1, backgroundColor: PROF.bgDeep },
-  scroll:        { flex: 1 },
-  scrollContent: { paddingHorizontal: SPACING.lg, paddingTop: 8 },
+  screen: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: 10,
+    gap: 10,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  modeChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: 8,
+  },
 
-  // Top bar
-  topBar:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingBottom: 12 },
-  backBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },
-  topBarTitle:   { flex: 1, fontSize: 18, fontWeight: '700', color: PROF.textPrimary },
-  modeBadge:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(73,192,188,0.15)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(73,192,188,0.3)' },
-  modeBadgePro:  { backgroundColor: 'rgba(255,215,0,0.12)', borderColor: 'rgba(255,215,0,0.3)' },
-  modeBadgeText: { fontSize: 11, fontWeight: '600', color: PROF.accent },
+  // Profile Card
+  profileCard: {
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.md,
+    borderWidth: 1,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  profileHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
+  avatarWrap: {
+    position: 'relative',
+  },
+  avatarImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarInitials: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initialsText: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  editAvatarBtn: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#0E4D68',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  profileName: {
+    fontSize: 17,
+    fontWeight: '800',
+    flexShrink: 1,
+  },
+  profileSub: {
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  profilePhone: {
+    fontSize: 12,
+  },
 
-  // Edit profile button
-  editProfileCard: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-  editProfileText: { flex: 1, fontSize: 15, fontWeight: '700', color: PROF.accent },
+  // Stats
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    paddingTop: 12,
+  },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNum: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  statLbl: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  ratingValRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+  },
 
-  // Level card (profesionales)
-  levelCard:       { marginBottom: 12, overflow: 'hidden' },
-  levelGrad:       { padding: SPACING.md, borderRadius: BORDER_RADIUS.lg },
-  levelTop:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.sm },
-  levelBadge:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: BORDER_RADIUS.full },
-  levelBadgeText:  { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 1 },
-  visiBadge:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: BORDER_RADIUS.full, borderWidth: 1 },
-  visiText:        { fontSize: 11, fontWeight: '700' },
-  levelBarRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  levelBarLabel:   { fontSize: 11, color: PROF.textSecondary },
-  levelBarPct:     { fontSize: 12, fontWeight: '700' },
-  levelTrack:      { height: 7, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden', marginBottom: SPACING.sm },
-  levelFill:       { height: '100%', borderRadius: 999 },
-  levelMotivo:     { fontSize: 12, color: PROF.textSecondary, lineHeight: 17, marginBottom: SPACING.sm },
-  levelStats:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: SPACING.xs },
-  levelStat:       { alignItems: 'center', flex: 1 },
-  levelStatVal:    { fontSize: 20, fontWeight: '800', color: PROF.textPrimary },
-  levelStatLabel:  { fontSize: 10, color: PROF.textMuted, textAlign: 'center', marginTop: 2, lineHeight: 13 },
-  levelDivider:    { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.08)' },
-  levelQuarter:    { fontSize: 10, color: PROF.textMuted, textAlign: 'center', marginTop: SPACING.sm, fontStyle: 'italic' },
+  // Groups
+  groupTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  groupCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  menuIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuTextCol: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  menuSub: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  itemDivider: {
+    height: 1,
+    marginLeft: 60,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
 
-  // Motivational card
-  motivoCard:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, paddingVertical: SPACING.sm + 2 },
-  motivoText:      { flex: 1, fontSize: 13, fontWeight: '600', color: PROF.textPrimary, lineHeight: 18 },
-
-  // Quick buttons
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: PROF.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10, marginTop: 12 },
-
-  // Menu
-  menuCard: { marginBottom: 4 },
-  menuRow:  { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 4, gap: SPACING.sm },
-  menuIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  menuText: { flex: 1 },
-  menuTitle:{ fontSize: 14, fontWeight: '600', color: PROF.textPrimary },
-  menuSub:  { fontSize: 12, color: PROF.textSecondary, marginTop: 1 },
-  menuBadge:{ backgroundColor: PROF.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  menuBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
-  sep:      { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: 48 },
-
-  // Logout
-  logoutBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24, paddingVertical: 14, borderRadius: BORDER_RADIUS.lg, backgroundColor: 'rgba(255,91,91,0.1)', borderWidth: 1, borderColor: 'rgba(255,91,91,0.2)' },
-  logoutText: { fontSize: 15, fontWeight: '700', color: PROF.error },
-  version:    { textAlign: 'center', fontSize: 11, color: PROF.textMuted, marginTop: 20 },
+  // Danger / Bottom
+  dangerGroup: {
+    marginTop: 8,
+    gap: 12,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    gap: 8,
+  },
+  logoutText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  deleteBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  deleteText: {
+    fontSize: 12,
+    textDecorationLine: 'underline',
+  },
+  versionText: {
+    textAlign: 'center',
+    fontSize: 11,
+    marginTop: 16,
+  },
 });

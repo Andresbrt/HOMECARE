@@ -222,11 +222,22 @@ public class OfertaService {
         servicio.setEstado(ServicioAceptado.EstadoServicio.CONFIRMADO);
         servicio = servicioAceptadoRepository.save(servicio);
 
+        Map<String, String> notifData = new HashMap<>();
+        notifData.put("servicioId", String.valueOf(servicio.getId()));
+        notifData.put("solicitudId", String.valueOf(solicitud.getId()));
+        notifData.put("clienteNombre", solicitud.getCliente().getNombre());
+        notifData.put("direccion", solicitud.getDireccion() != null ? solicitud.getDireccion() : "Medellín");
+        notifData.put("precio", String.valueOf(oferta.getPrecioOfrecido()));
+        notifData.put("tipo", "OFERTA_ACEPTADA");
+        notifData.put("click_action", "OPEN_ACTIVE_SERVICE");
+        notifData.put("screen", "ActiveServiceTracking");
+
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .usuarioId(oferta.getProveedor().getId())
-                .titulo("¡Tu oferta ha sido aceptada!")
-                .cuerpo("El cliente " + solicitud.getCliente().getNombre() + " ha aceptado tu oferta para el servicio de " + solicitud.getTitulo())
+                .titulo("¡Tu oferta ha sido aceptada! 🎉")
+                .cuerpo("El cliente " + solicitud.getCliente().getNombre() + " ha aceptado tu oferta para " + solicitud.getTitulo())
                 .tipo("OFERTA_ACEPTADA")
+                .data(notifData)
                 .build());
 
         aiService.registrarFeedbackPrecio(oferta);
@@ -244,6 +255,7 @@ public class OfertaService {
                 .build();
     }
 
+    @Transactional
     public List<OfertaDTO.Response> obtenerOfertasPorSolicitud(Long solicitudId, Long clienteId) {
         Solicitud solicitud = solicitudRepository.findById(solicitudId)
                 .orElseThrow(() -> new NotFoundException("Solicitud no encontrada"));
@@ -266,6 +278,7 @@ public class OfertaService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<OfertaDTO.Response> obtenerMisOfertas(Long proveedorId, EstadoOferta estado) {
         List<Oferta> ofertas;
 
@@ -280,6 +293,7 @@ public class OfertaService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public OfertaDTO.Response obtenerOferta(Long ofertaId, Long usuarioId) {
         Oferta oferta = ofertaRepository.findById(ofertaId)
                 .orElseThrow(() -> new NotFoundException("Oferta no encontrada"));

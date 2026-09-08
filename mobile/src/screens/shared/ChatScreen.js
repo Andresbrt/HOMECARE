@@ -16,6 +16,7 @@ import {
   Alert,
   KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,8 +25,9 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../hooks/useChat';
 import { useTyping } from '../../hooks/useTyping';
-import { useOnlineStatus, formatLastSeen } from '../../hooks/useOnlineStatus';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import useChatStore from '../../store/chatStore';
+import useActiveServiceStore from '../../store/activeServiceStore';
 
 import GlassCard from '../../components/shared/GlassCard'; // ← nuevo: usamos GlassCard
 import MessageBubble from '../../components/chat/MessageBubble';
@@ -33,7 +35,7 @@ import TypingIndicator from '../../components/chat/TypingIndicator';
 import ChatInput from '../../components/chat/ChatInput';
 
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
-import { formatSectionDate } from '../../utils/chatUtils';
+import { formatSectionDate, formatLastSeen } from '../../utils/chatUtils';
 
 // Date separator con glass sutil
 function DateSeparator({ label }) {
@@ -45,7 +47,7 @@ function DateSeparator({ label }) {
 }
 
 // Header con GlassCard + glow en dot online
-function ChatHeader({ titulo, isOnline, lastSeen, onBack }) {
+function ChatHeader({ titulo, isOnline, lastSeen, onBack, onPressTracking, isProfessional, topInset = 0 }) {
   const subtitle = isOnline ? 'En línea' : formatLastSeen(lastSeen, false);
 
   const dotStyle = useMemo(
@@ -58,12 +60,13 @@ function ChatHeader({ titulo, isOnline, lastSeen, onBack }) {
   );
 
   return (
-    <GlassCard variant="elevated" glow style={styles.header}>
-      <StatusBar barStyle="light-content" backgroundColor={PROF.bg} />
-      <View style={styles.headerInner}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Ionicons name="chevron-back" size={28} color={PROF.textPrimary} />
-        </TouchableOpacity>
+    <View style={[styles.headerWrapper, { paddingTop: Math.max(topInset, Platform.OS === 'ios' ? 44 : 16) }]}>
+      <GlassCard variant="elevated" glow style={styles.header}>
+        <StatusBar barStyle="light-content" backgroundColor={PROF.bg} />
+        <View style={styles.headerInner}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+            <Ionicons name="chevron-back" size={28} color={PROF.textPrimary} />
+          </TouchableOpacity>
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>
@@ -75,9 +78,23 @@ function ChatHeader({ titulo, isOnline, lastSeen, onBack }) {
           </View>
         </View>
 
-        <View style={{ width: 48 }} /> {/* spacer */}
+        {onPressTracking ? (
+          <TouchableOpacity
+            style={styles.trackingHeaderBtn}
+            onPress={onPressTracking}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="navigate" size={14} color={PROF.accent} />
+            <Text style={styles.trackingHeaderBtnText}>
+              {isProfessional ? 'Ruta' : 'Mapa'}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 48 }} />
+        )}
       </View>
     </GlassCard>
+    </View>
   );
 }
 
@@ -107,9 +124,9 @@ export default function ChatScreen({ route, navigation }) {
     error,
     sendText,
     pickImageFromLibrary,
-    takePhoto,
+    takePhotoWithCamera: takePhoto,
     loadMore,
-    notifyTyping,
+    sendTyping: notifyTyping,
   } = useChat(solicitudId, destinatarioId);
 
   const { isOtherTyping } = useTyping(solicitudId);
@@ -131,6 +148,18 @@ export default function ChatScreen({ route, navigation }) {
     const distFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
     setShowScrollBtn(distFromBottom > 100);
   }, []);
+
+  const { activeService } = useActiveServiceStore();
+  const isProfessional = user?.rol === 'SERVICE_PROVIDER' || user?.role === 'SERVICE_PROVIDER';
+
+  const handleGoToTracking = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isProfessional) {
+      navigation.navigate('ActiveServiceTracking', { service: activeService });
+    } else {
+      navigation.navigate('ServiceTracking', { servicioId: solicitudId });
+    }
+  }, [isProfessional, activeService, solicitudId, navigation]);
 
   const handleScrollToBottom = useCallback(() => {
     Haptics.selectionAsync();
@@ -164,6 +193,8 @@ export default function ChatScreen({ route, navigation }) {
     [user?.id, titulo]
   );
 
+  const insets = useSafeAreaInsets();
+
   if (loading) {
     return (
       <LinearGradient colors={PROF.gradMain} style={styles.loadingContainer}>
@@ -174,17 +205,29 @@ export default function ChatScreen({ route, navigation }) {
 
   return (
     <LinearGradient colors={PROF.gradMain} style={styles.screen}>
-      <ChatHeader titulo={titulo} isOnline={isOnline} lastSeen={lastSeen} onBack={() => navigation.goBack()} />
+      <ChatHeader
+        titulo={titulo}
+        isOnline={isOnline}
+        lastSeen={lastSeen}
+        onBack={() => navigation.goBack()}
+        onPressTracking={handleGoToTracking}
+        isProfessional={isProfessional}
+        topInset={insets.top}
+      />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
         <View style={{ flex: 1 }}>
-          {error && (
+          {Boolean(error) && (
             <GlassCard variant="accent" style={styles.errorBanner}>
               <Text style={styles.errorText}>{error}</Text>
             </GlassCard>
           )}
 
-          {(uploadingImage || sending) && (
+          {Boolean(uploadingImage || sending) && (
             <GlassCard variant="elevated" style={styles.uploadBanner}>
               <ActivityIndicator size="small" color={PROF.accent} />
               <Text style={styles.uploadText}>{uploadingImage ? 'Subiendo imagen…' : 'Enviando…'}</Text>
@@ -240,7 +283,8 @@ export default function ChatScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { marginTop: Platform.OS === 'ios' ? 0 : 8, marginHorizontal: SPACING.md, marginBottom: SPACING.sm },
+  headerWrapper: { width: '100%' },
+  header: { marginHorizontal: SPACING.sm, marginBottom: SPACING.xs },
   headerInner: { flexDirection: 'row', alignItems: 'center', padding: SPACING.sm },
   backBtn: { padding: SPACING.sm },
   headerCenter: { flex: 1, alignItems: 'center' },
@@ -248,7 +292,23 @@ const styles = StyleSheet.create({
   onlineRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
   onlineDot: { width: 10, height: 10, borderRadius: 5 },
   subtitleText: { color: PROF.textSecondary, fontSize: TYPOGRAPHY.sm },
-  listContent: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl + 80 },
+  trackingHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(73, 192, 188, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: 'rgba(73, 192, 188, 0.3)',
+  },
+  trackingHeaderBtnText: {
+    color: PROF.accent,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  listContent: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.md },
   dateSep: { alignSelf: 'center', marginVertical: SPACING.md, paddingHorizontal: SPACING.lg },
   dateLabel: { color: PROF.textMuted, fontSize: TYPOGRAPHY.sm },
   loadMoreBtn: { alignItems: 'center', padding: SPACING.md },

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Professional MapScreen  Mapa Futurista Homecare 2026
  * Mapa Google oscuro + toggle disponibilidad (identical al Dashboard)
  * FAB pulsante con glow turquesa + overlay glassmorphism + pines premium
@@ -43,36 +43,34 @@ import * as Location from 'expo-location';
 import { apiFetch } from '../../config/api';
 import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
+import useActiveServiceStore from '../../store/activeServiceStore';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 
 //  Estilo oscuro futurista Google Maps 
+// Estilo oscuro elegante y legible (slate dark)
 const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#0a1628' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3d4' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a1628' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#0e2a45' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a4060' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1a3d5c' }] },
-  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#49C0BC' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#001524' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#0b1f33' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#3a7a8a' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#0e2a45' }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#06111f' }] },
+  { elementType: 'geometry', stylers: [{ color: '#0B132B' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#94A3B8' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0B132B' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1C2541' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0B132B' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2B3A67' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#E2E8F0' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000F22' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#131F3A' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#64748B' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1C2541' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#080E20' }] },
 ];
 
-//  Pin personalizado Homecare (casa + colorimetría turquesa) 
+// Pin limpio y profesional
 function HomecareMarker({ isMe = false }) {
   return (
     <View style={markerStyles.container}>
-      <LinearGradient
-        colors={isMe ? PROF.gradAccent : PROF.gradCard}
-        style={[markerStyles.circle, isMe && markerStyles.circleMe]}
-      >
-        <Ionicons name="home" size={isMe ? 18 : 13} color="#fff" />
-      </LinearGradient>
-      {isMe && <View style={markerStyles.pulseRingStatic} />}
-      <View style={[markerStyles.arrow, isMe && markerStyles.arrowAccent]} />
+      <View style={[markerStyles.circle, isMe && markerStyles.circleMe]}>
+        <Ionicons name={isMe ? 'person' : 'home'} size={isMe ? 18 : 14} color="#fff" />
+      </View>
+      <View style={[markerStyles.arrow, isMe && markerStyles.arrowMe]} />
     </View>
   );
 }
@@ -80,55 +78,53 @@ function HomecareMarker({ isMe = false }) {
 const markerStyles = StyleSheet.create({
   container: { alignItems: 'center' },
   circle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0E4D68',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: PROF.accent,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   circleMe: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 3,
-    ...SHADOWS.glow,
-    shadowColor: PROF.accent,
-  },
-  pulseRingStatic: {
-    position: 'absolute',
-    top: -8,
-    left: -8,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: PROF.accentGlow,
-    backgroundColor: 'transparent',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#49C0BC',
+    borderColor: '#FFFFFF',
+    borderWidth: 2.5,
   },
   arrow: {
     width: 0,
     height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 10,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 7,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: PROF.secondary,
+    borderTopColor: '#0E4D68',
     marginTop: -1,
   },
-  arrowAccent: { borderTopColor: PROF.accent },
+  arrowMe: {
+    borderTopColor: '#49C0BC',
+  },
 });
 
-const BOGOTA = { latitude: 4.7109886, longitude: -74.072092, latitudeDelta: 0.035, longitudeDelta: 0.035 };
+const MEDELLIN = { latitude: 6.2442, longitude: -75.5812, latitudeDelta: 0.04, longitudeDelta: 0.04 };
 
 // 
 export default function MapScreen({ navigation }) {
   const { user } = useAuth();
+  const { activeService } = useActiveServiceStore();
   const mapRef = useRef(null);
   const [isAvailable, setIsAvailable] = useState(true);
-  const [zone] = useState('Bogotá D.C.');
+  const [zone] = useState('Medellín, Antioquia');
   const [nearby, setNearby] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
 
@@ -141,18 +137,31 @@ export default function MapScreen({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        const { latitude, longitude } = loc.coords;
+        let latitude = 6.2442;
+        let longitude = -75.5812;
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const rawLat = loc.coords.latitude;
+            const rawLng = loc.coords.longitude;
+            const isCalifornia = rawLat >= 36.0 && rawLat <= 39.0 && rawLng >= -124.0 && rawLng <= -120.0;
+            const isOutsideColombia = rawLat < -4.5 || rawLat > 14.0 || rawLng < -82.0 || rawLng > -66.0;
+            if (!isCalifornia && !isOutsideColombia) {
+              latitude = rawLat;
+              longitude = rawLng;
+            }
+          }
+        } catch (_) {}
+
         setUserLocation({ latitude, longitude });
-        const data = await apiFetch(`/solicitudes/cercanas?lat=${latitude}&lng=${longitude}&radioKm=5`);
-        const list = Array.isArray(data) ? data : (data?.content ?? []);
+        const res = await apiFetch(`/solicitudes/cercanas?latitud=${latitude}&longitud=${longitude}&radioKm=10`);
+        const list = (res && res.ok && Array.isArray(res.data)) ? res.data : (res?.data?.content ?? []);
         setNearby(list.map((s) => ({
           id: s.id,
           lat: s.latitud ?? s.lat,
           lng: s.longitud ?? s.lng,
-          title: s.tipoServicio ?? s.descripcion ?? 'Solicitud',
+          title: s.tipoLimpieza ?? s.tipoServicio ?? s.titulo ?? s.descripcion ?? 'Solicitud',
         })));
       } catch (_) {
         // Si falla, el mapa sigue sin pines pero no bloquea
@@ -215,12 +224,12 @@ export default function MapScreen({ navigation }) {
         style={StyleSheet.absoluteFill}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         customMapStyle={DARK_MAP_STYLE}
-        initialRegion={BOGOTA}
+        initialRegion={MEDELLIN}
         showsUserLocation
         showsMyLocationButton={false}
         mapType="standard"
       >
-        <Marker coordinate={{ latitude: BOGOTA.latitude, longitude: BOGOTA.longitude }} anchor={{ x: 0.5, y: 1 }}>
+        <Marker coordinate={{ latitude: MEDELLIN.latitude, longitude: MEDELLIN.longitude }} anchor={{ x: 0.5, y: 1 }}>
           <HomecareMarker isMe />
         </Marker>
         {isAvailable && nearby.map((s) => (
@@ -290,27 +299,51 @@ export default function MapScreen({ navigation }) {
         </Animated.View>
       </Animated.View>
 
-      {/* FAB  "Disponible" con glow pulsante */}
-      <View style={styles.fabWrapper}>
-        <Animated.View style={[styles.pulseRing, pulseStyle]} />
-        <Animated.View style={[styles.fabGlowWrap, glowStyle]}>
-          <TouchableOpacity onPress={handleToggle} activeOpacity={0.85} style={styles.fabOuter}>
+      {/* Botón recentrar mapa */}
+      <TouchableOpacity
+        style={styles.recenterBtn}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (userLocation && mapRef.current) {
+            mapRef.current.animateToRegion({
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+              latitudeDelta: 0.03,
+              longitudeDelta: 0.03,
+            }, 600);
+          }
+        }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="locate" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* BANNER FLOTANTE DE SERVICIO ACTIVO (si existe) */}
+      {activeService && (
+        <View style={styles.activeServiceBanner}>
+          <TouchableOpacity
+            style={styles.activeServiceBtn}
+            onPress={() => navigation.navigate('ActiveServiceTracking', { service: activeService })}
+            activeOpacity={0.9}
+          >
             <LinearGradient
-              colors={isAvailable ? PROF.gradAccent : ['rgba(14,77,104,0.8)', 'rgba(0,27,56,0.95)']}
-              style={styles.fabGradient}
+              colors={['#0E4D68', '#001B38']}
+              style={styles.activeServiceGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <Ionicons
-                name={isAvailable ? 'checkmark-circle' : 'close-circle-outline'}
-                size={26}
-                color="#fff"
-              />
-              <Text style={styles.fabLabel}>
-                {isAvailable ? 'Disponible' : 'Activar'}
-              </Text>
+              <View style={styles.activeServiceDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.activeServiceTitle}>⚡ SERVICIO EN CURSO</Text>
+                <Text style={styles.activeServiceSub} numberOfLines={1}>
+                  {activeService.clienteNombre || 'Cliente'} · {activeService.direccion || 'Medellín'}
+                </Text>
+              </View>
+              <Ionicons name="navigate-circle" size={28} color={PROF.accent} />
             </LinearGradient>
           </TouchableOpacity>
-        </Animated.View>
-      </View>
+        </View>
+      )}
 
       {/* PANEL INFERIOR  estadísticas cuando disponible */}
       {isAvailable && (
@@ -412,35 +445,26 @@ const styles = StyleSheet.create({
   toggleSub: { fontSize: TYPOGRAPHY.xs, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
 
-  // FAB
-  fabWrapper: {
+  // Recenter button
+  recenterBtn: {
     position: 'absolute',
-    bottom: 148,
-    right: SPACING.lg,
+    bottom: 120,
+    right: SPACING.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0E4D68',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
     zIndex: 10,
   },
-  pulseRing: {
-    position: 'absolute',
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: PROF.accentGlow,
-    borderWidth: 2, borderColor: PROF.accent,
-  },
-  fabGlowWrap: {
-    ...SHADOWS.glowStrong,
-    shadowColor: PROF.accent,
-    borderRadius: BORDER_RADIUS.full,
-  },
-  fabOuter: { borderRadius: BORDER_RADIUS.full, overflow: 'hidden' },
-  fabGradient: {
-    paddingHorizontal: SPACING.md + 4,
-    paddingVertical: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  fabLabel: { fontSize: TYPOGRAPHY.sm, fontWeight: TYPOGRAPHY.bold, color: '#fff' },
 
   // Bottom panel
   bottomPanel: {
@@ -458,4 +482,45 @@ const styles = StyleSheet.create({
   bottomVal: { fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.bold, color: PROF.textPrimary },
   bottomLabel: { fontSize: TYPOGRAPHY.xs, color: PROF.textMuted },
   bottomDivider: { width: 1, height: 38, backgroundColor: PROF.border },
+
+  // Active service floating banner
+  activeServiceBanner: {
+    position: 'absolute',
+    bottom: 120,
+    left: SPACING.md,
+    right: SPACING.md,
+    zIndex: 20,
+    ...SHADOWS.lg,
+  },
+  activeServiceBtn: {
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: PROF.accent,
+  },
+  activeServiceGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  activeServiceDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#00D09E',
+  },
+  activeServiceTitle: {
+    color: '#49C0BC',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  activeServiceSub: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+  },
 });

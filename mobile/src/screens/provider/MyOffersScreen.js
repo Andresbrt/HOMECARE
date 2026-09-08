@@ -27,7 +27,7 @@ const FILTERS = [
   { value: 'ACEPTADA', label: 'Aceptadas' },
 ];
 
-function OfferCard({ offer }) {
+function OfferCard({ offer, navigation }) {
   const estado = ESTADO_CONFIG[offer.estado] || ESTADO_CONFIG.PENDIENTE;
 
   return (
@@ -72,6 +72,35 @@ function OfferCard({ offer }) {
           </View>
         )}
       </View>
+
+      {offer.estado === 'ACEPTADA' && (
+        <View style={styles.acceptedActionRow}>
+          <TouchableOpacity
+            style={styles.trackingBtn}
+            onPress={() =>
+              navigation.navigate('ActiveServiceTracking', {
+                servicioId: offer.servicioId || offer.solicitudId,
+                solicitudId: offer.solicitudId,
+              })
+            }
+          >
+            <Ionicons name="navigate" size={15} color="#fff" />
+            <Text style={styles.trackingBtnText}>Ver Ruta y Navegar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.chatBtn}
+            onPress={() =>
+              navigation.navigate('Chat', {
+                solicitudId: offer.solicitudId,
+                destinatarioId: offer.clienteId,
+                titulo: 'Cliente',
+              })
+            }
+          >
+            <Ionicons name="chatbubble-ellipses" size={16} color={COLORS.accent} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -125,7 +154,7 @@ export default function MyOffersScreen({ navigation }) {
       <FlatList
         data={offers}
         keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => <OfferCard offer={item} />}
+        renderItem={({ item }) => <OfferCard offer={item} navigation={navigation} />}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.accent} />}
         ListEmptyComponent={
@@ -164,6 +193,40 @@ const styles = StyleSheet.create({
   cardFooter: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm },
   footerChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: COLORS.backgroundSecondary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: BORDER_RADIUS.full },
   footerText: { fontSize: TYPOGRAPHY.xs, color: COLORS.textSecondary },
+  acceptedActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  trackingBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    paddingVertical: 10,
+    borderRadius: BORDER_RADIUS.md,
+    gap: 6,
+  },
+  trackingBtnText: {
+    color: '#fff',
+    fontSize: TYPOGRAPHY.sm,
+    fontWeight: '700',
+  },
+  chatBtn: {
+    width: 40,
+    height: 38,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: 'rgba(73, 192, 188, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(73, 192, 188, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyState: { alignItems: 'center', paddingTop: SPACING.xxl * 2 },
   emptyTitle: { fontSize: TYPOGRAPHY.lg, fontWeight: TYPOGRAPHY.semibold, color: COLORS.textPrimary, marginTop: SPACING.md },
   emptyDesc: { fontSize: TYPOGRAPHY.sm, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.xs, paddingHorizontal: SPACING.xl },

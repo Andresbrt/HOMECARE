@@ -13,10 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiClient';
 import SkeletonLoader from '../../components/shared/SkeletonLoader';
-import { COLORS, PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../constants/theme';
+import { COLORS, PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
 
 const SERVICE_ICONS = {
   BASICA: 'home-outline',
@@ -35,6 +36,7 @@ const SERVICE_LABELS = {
 
 const STATUS_CONFIG = {
   ABIERTA: { color: '#49C0BC', bg: 'rgba(73,192,188,0.12)', label: 'Abierta', icon: 'radio-button-on' },
+  ACEPTADA: { color: '#10B981', bg: 'rgba(16,185,129,0.12)', label: 'Asignado', icon: 'checkmark-circle' },
   EN_PROCESO: { color: '#F5A623', bg: 'rgba(245,166,35,0.12)', label: 'En proceso', icon: 'timer-outline' },
   COMPLETADA: { color: '#4CAF50', bg: 'rgba(76,175,80,0.12)', label: 'Completada', icon: 'checkmark-circle' },
   CANCELADA: { color: '#EF5350', bg: 'rgba(239,83,80,0.12)', label: 'Cancelada', icon: 'close-circle' },
@@ -97,18 +99,18 @@ function RequestCard({ item, onViewOffers, onViewTracking }) {
             ) : (
               <>
                 <ActivityIndicator size={10} color={COLORS.textSecondary} style={{ marginRight: 4 }} />
-                <Text style={[styles.actionBtnText, { color: COLORS.textSecondary }]}>Esperando...</Text>
+                <Text style={[styles.actionBtnText, { color: COLORS.textSecondary }]}>Esperando ofertas...</Text>
               </>
             )}
           </TouchableOpacity>
-        ) : item.estado === 'EN_PROCESO' ? (
+        ) : (item.estado === 'ACEPTADA' || item.estado === 'EN_PROCESO') ? (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: 'rgba(245,166,35,0.15)', borderColor: 'rgba(245,166,35,0.3)' }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onViewTracking(item); }}
+            style={[styles.actionBtn, { backgroundColor: '#10B981', borderColor: '#059669' }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onViewTracking(item); }}
             activeOpacity={0.8}
           >
-            <Ionicons name="navigate-outline" size={13} color="#F5A623" />
-            <Text style={[styles.actionBtnText, { color: '#F5A623' }]}>Ver seguimiento</Text>
+            <Ionicons name="navigate" size={13} color="#fff" />
+            <Text style={[styles.actionBtnText, { color: '#fff', fontWeight: '700' }]}>Ver seguimiento</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -120,16 +122,23 @@ export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState([]);
+  const [activeService, setActiveService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     try {
-      const { data } = await apiClient.get('/solicitudes/mis-solicitudes');
-      const arr = Array.isArray(data) ? data : data?.content ?? [];
-      setRequests(arr.slice(0, 5));
+      const [solRes, actRes] = await Promise.all([
+        apiClient.get('/solicitudes/mis-solicitudes').catch(() => ({ data: [] })),
+        apiClient.get('/servicios/activos').catch(() => ({ data: [] })),
+      ]);
+      const arr = Array.isArray(solRes.data) ? solRes.data : (solRes.data?.content ?? []);
+      setRequests(arr.slice(0, 10));
+
+      const activeList = Array.isArray(actRes.data) ? actRes.data : (actRes.data?.content ?? []);
+      const currentActive = activeList.find((s) => ['CONFIRMADO', 'EN_CAMINO', 'LLEGUE', 'EN_PROGRESO'].includes(s.estado)) || null;
+      setActiveService(currentActive);
     } catch {
-      // silencioso - puede que el endpoint difiera
       setRequests([]);
     } finally {
       setLoading(false);
@@ -137,11 +146,15 @@ export default function HomeScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { fetchRequests(); }, [fetchRequests]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchRequests();
+    }, [fetchRequests])
+  );
 
   const onRefresh = () => { setRefreshing(true); fetchRequests(); };
 
-  const activeRequests = requests.filter((r) => r.estado === 'ABIERTA' || r.estado === 'EN_PROCESO');
+  const activeRequests = requests.filter((r) => ['ABIERTA', 'ACEPTADA', 'EN_PROCESO'].includes(r.estado));
   const completedCount = requests.filter((r) => r.estado === 'COMPLETADA').length;
 
   return (
@@ -231,6 +244,93 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* ── SEGUIMIENTO EN VIVO ESTILO RAPPI (SI HAY SERVICIO ACTIVO) ── */}
+        {activeService && (
+          <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.rappiWrap}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.rappiCard}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                navigation.navigate('ServiceTracking', {
+                  servicioId: activeService.id,
+                  solicitudId: activeService.solicitudId,
+                });
+              }}
+            >
+              <LinearGradient colors={['#001B38', '#0E4D68']} style={styles.rappiGrad}>
+                <View style={styles.rappiTopRow}>
+                  <View style={styles.rappiBadge}>
+                    <View style={styles.rappiPulseDot} />
+                    <Text style={styles.rappiBadgeText}>
+                      {activeService.estado === 'EN_CAMINO'
+                        ? 'PROFESIONAL EN CAMINO'
+                        : activeService.estado === 'LLEGUE'
+                        ? '¡HA LLEGADO A TU PUERTA!'
+                        : activeService.estado === 'EN_PROGRESO'
+                        ? 'SERVICIO EN CURSO'
+                        : 'PROFESIONAL ASIGNADO'}
+                    </Text>
+                  </View>
+                  <Text style={styles.rappiEta}>
+                    {activeService.estado === 'LLEGUE'
+                      ? 'En la puerta 📍'
+                      : activeService.estado === 'EN_PROGRESO'
+                      ? 'En progreso 🧹'
+                      : 'Llega en ~8 min 🚗'}
+                  </Text>
+                </View>
+
+                <View style={styles.rappiProRow}>
+                  <LinearGradient colors={['#0E4D68', '#49C0BC']} style={styles.rappiAvatar}>
+                    <Text style={styles.rappiAvatarText}>
+                      {(activeService.proveedorNombre || 'P')[0].toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rappiProName}>
+                      {activeService.proveedorNombre || 'Profesional asignado'}
+                    </Text>
+                    <Text style={styles.rappiAddress} numberOfLines={1}>
+                      {activeService.direccion || 'Medellín, Antioquia'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.rappiActionsRow}>
+                  <TouchableOpacity
+                    style={styles.rappiMapBtn}
+                    onPress={() =>
+                      navigation.navigate('ServiceTracking', {
+                        servicioId: activeService.id,
+                        solicitudId: activeService.solicitudId,
+                      })
+                    }
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="map" size={15} color="#fff" />
+                    <Text style={styles.rappiMapBtnText}>Ver Mapa en Vivo</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.rappiChatBtn}
+                    onPress={() =>
+                      navigation.navigate('UserChat', {
+                        solicitudId: activeService.solicitudId || activeService.id,
+                        destinatarioId: activeService.proveedorId,
+                        titulo: activeService.proveedorNombre || 'Profesional',
+                      })
+                    }
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="chatbubble-ellipses" size={18} color={COLORS.accent} />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
         {/* ── Acciones rápidas ── */}
         <Animated.View entering={FadeInDown.duration(400).delay(140).springify()} style={styles.quickGrid}>
           {[
@@ -258,23 +358,21 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Mis solicitudes activas</Text>
             <TouchableOpacity onPress={() => navigation.navigate('UserHistory')} activeOpacity={0.7}>
-              <Text style={styles.seeAll}>Ver todas</Text>
+              <Text style={styles.seeAllText}>Ver todas</Text>
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <View style={{ gap: 12 }}>
-              {[1, 2].map((k) => (
-                <View key={k} style={[styles.requestCard, { padding: 16 }]}>
-                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+            <View style={styles.skeletonContainer}>
+              {[1, 2].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
                     <SkeletonLoader width={40} height={40} borderRadius={10} />
                     <View style={{ flex: 1, gap: 6 }}>
                       <SkeletonLoader width="60%" height={16} />
                       <SkeletonLoader width="40%" height={12} />
                     </View>
-                    <SkeletonLoader width={65} height={20} borderRadius={6} />
                   </View>
-                  <SkeletonLoader width="100%" height={28} borderRadius={6} />
                 </View>
               ))}
             </View>
@@ -290,7 +388,7 @@ export default function HomeScreen({ navigation }) {
                 key={item.id}
                 item={item}
                 onViewOffers={(r) => navigation.navigate('ViewOffers', { solicitudId: r.id })}
-                onViewTracking={(r) => navigation.navigate('ServiceTracking', { solicitudId: r.id })}
+                onViewTracking={(r) => navigation.navigate('ServiceTracking', { solicitudId: r.id, servicioId: r.ofertaAceptadaId || r.servicioId })}
               />
             ))
           )}
@@ -301,6 +399,113 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  // Rappi style Live Tracking Hero Card
+  rappiWrap: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+  },
+  rappiCard: {
+    borderRadius: BORDER_RADIUS.xl,
+    overflow: 'hidden',
+    ...SHADOWS.md,
+    borderWidth: 1.5,
+    borderColor: '#49C0BC',
+  },
+  rappiGrad: {
+    padding: SPACING.md,
+  },
+  rappiTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  rappiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(73, 192, 188, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  rappiPulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00D09E',
+  },
+  rappiBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#49C0BC',
+    letterSpacing: 0.5,
+  },
+  rappiEta: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#F5A623',
+  },
+  rappiProRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  rappiAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#49C0BC',
+  },
+  rappiAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  rappiProName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  rappiAddress: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  rappiActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  rappiMapBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#49C0BC',
+    paddingVertical: 10,
+    borderRadius: BORDER_RADIUS.lg,
+    gap: 6,
+  },
+  rappiMapBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  rappiChatBtn: {
+    width: 44,
+    height: 40,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(73, 192, 188, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(73, 192, 188, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   // Hero
   hero: {
     paddingHorizontal: SPACING.lg,

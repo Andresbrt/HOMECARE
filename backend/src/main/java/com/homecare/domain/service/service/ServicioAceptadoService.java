@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -58,7 +59,7 @@ public class ServicioAceptadoService {
         if (nuevoEstado == EstadoServicio.COMPLETADO) {
             boolean tieneFotoDespues = evidenciaRepository.existsByServicioIdAndTipo(servicioId, TipoEvidencia.DESPUES);
             if (!tieneFotoDespues) {
-                throw new ConflictBusinessException("EVIDENCIA_INSUFICIENTE", "No se puede completar el servicio sin al menos una evidencia de tipo DESPUES");
+                log.warn("Servicio {} completado sin foto de evidencia previa", servicioId);
             }
         }
 
@@ -104,6 +105,7 @@ public class ServicioAceptadoService {
         return mapToResponse(servicio);
     }
 
+    @Transactional(readOnly = true)
     public ServicioDTO.Response obtenerServicio(Long servicioId, Long usuarioId) {
         ServicioAceptado servicio = servicioRepository.findById(servicioId)
                 .orElseThrow(() -> new NotFoundException("Servicio no encontrado"));
@@ -116,11 +118,13 @@ public class ServicioAceptadoService {
         return mapToResponse(servicio);
     }
 
+    @Transactional(readOnly = true)
     public List<ServicioDTO.Response> obtenerServiciosActivos(Long usuarioId) {
         List<ServicioAceptado> servicios = servicioRepository.findServiciosActivosByUsuario(usuarioId);
         return servicios.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ServicioDTO.Response> obtenerHistorial(Long usuarioId, EstadoServicio estado) {
         List<ServicioAceptado> servicios;
 
@@ -319,6 +323,13 @@ public class ServicioAceptadoService {
     }
 
     private ServicioDTO.Response mapToResponse(ServicioAceptado servicio) {
+        List<String> fotosAntes = servicio.getFotosAntes() != null
+                ? new ArrayList<>(servicio.getFotosAntes())
+                : new ArrayList<>();
+        List<String> fotosDespues = servicio.getFotosDespues() != null
+                ? new ArrayList<>(servicio.getFotosDespues())
+                : new ArrayList<>();
+
         return new ServicioDTO.Response(
                 servicio.getId(),
                 servicio.getSolicitud().getId(),
@@ -343,9 +354,9 @@ public class ServicioAceptadoService {
                 servicio.getCompletadoAt() != null ? servicio.getCompletadoAt().toString() : null,
                 servicio.getCanceladoAt() != null ? servicio.getCanceladoAt().toString() : null,
                 servicio.getMotivoCancelacion(),
-                servicio.getFotosAntes(),
-                servicio.getFotosDespues(),
-                servicio.getCreatedAt().toString()
+                fotosAntes,
+                fotosDespues,
+                servicio.getCreatedAt() != null ? servicio.getCreatedAt().toString() : null
         );
     }
 }

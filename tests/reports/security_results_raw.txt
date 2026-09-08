@@ -1,0 +1,184 @@
+PASS __tests__/security/02_sql_injection.test.js
+  SQL-01: Inyección en parámetros de búsqueda
+    ✓ GET /api/servicios/buscar?q="' OR '1'='1" NO retorna error 500 ni datos filtrados incorrectamente (1 ms)
+    ✓ GET /api/servicios/buscar?q="' OR 1=1 --" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="'; DROP TABLE solicitudes; --" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="1' UNION SELECT null, null, null --" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="' OR '1'='1' /*" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="admin'--" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="1; SELECT * FROM usuarios WHERE '1'='1" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="' OR 1=1#" NO retorna error 500 ni datos filtrados incorrectamente
+    ✓ GET /api/servicios/buscar?q="' OR 'x'='x" NO retorna error 500 ni datos filtrados incorrectamente
+  SQL-02: Valores numéricos inválidos en filtros
+    ✓ distancia negativa en GET /api/servicios/cercanos?distancia=-1 → 400
+    ✓ distancia extrema (999999km) → rechazada (400) o devuelve 0 resultados
+    ✓ presupuesto negativo en creación de solicitud → 400
+    ✓ número de cuartos = 0 → rechazado (400)
+    ✓ número de cuartos = 1000 → rechazado (400)
+  SQL-03: Sanitización de caracteres especiales en campos
+    ✓ dirección con payload XSS "<script>alert("xss")</script>" → no genera error 500 y se sanitiza
+    ✓ dirección con payload XSS "<img src=x onerror=alert(1)>" → no genera error 500 y se sanitiza
+    ✓ dirección con payload XSS "javascript:alert(1)" → no genera error 500 y se sanitiza
+    ✓ dirección con payload XSS "<svg onload=alert(1)>" → no genera error 500 y se sanitiza
+    ✓ dirección con payload XSS ""><script>alert("stored xss")</script>" → no genera error 500 y se sanitiza
+    ✓ campo address con SQL injection "' OR '1'='1" → no retorna 500
+    ✓ campo address con SQL injection "' OR 1=1 --" → no retorna 500
+    ✓ campo address con SQL injection "'; DROP TABLE solicitudes; --" → no retorna 500
+    ✓ campo address con SQL injection "1' UNION SELECT null, null, null --" → no retorna 500
+    ✓ campo address con SQL injection "' OR '1'='1' /*" → no retorna 500
+    ✓ campo address con SQL injection "admin'--" → no retorna 500
+    ✓ campo address con SQL injection "1; SELECT * FROM usuarios WHERE '1'='1" → no retorna 500
+    ✓ campo address con SQL injection "' OR 1=1#" → no retorna 500
+    ✓ campo address con SQL injection "' OR 'x'='x" → no retorna 500
+    ✓ email de login con payload SQL → no retorna usuario inesperado (445 ms)
+  SQL-04: Type Confusion y campos inesperados
+    ✓ campo rooms con valor string → 400 (1 ms)
+    ✓ campo latitude con valor extremo (fuera de Colombia) → rechazado o ignorado
+    ✓ body vacío → 400, no 500
+
+PASS __tests__/security/05_payment_tampering.test.js (5.135 s)
+  PAY-01: El monto del pago no puede ser manipulado por el cliente
+    ✓ iniciar pago con monto diferente al de la solicitud → 400 o el backend usa su propio monto (1 ms)
+    ✓ NO puede pagar una solicitud que no le pertenece
+  PAY-02: Webhook de Mercado Pago valida la firma HMAC
+    ✓ webhook con firma válida → procesa o acepta en backend (297 ms)
+    ✓ webhook sin firma o firma incorrecta → valida comportamiento de seguridad (625 ms)
+    ✓ webhook con body manipulado → validación de integridad (783 ms)
+  PAY-03: Idempotencia - paymentId duplicado no genera cobro doble
+    ✓ primer webhook con paymentId aprobado → manejado por backend (503 ms)
+    ✓ segundo webhook con el MISMO paymentId → respuesta idempotente (1214 ms)
+    ✓ verificar en la BD que solo existe 1 transacción para ese paymentId
+  PAY-04: Escalación de privilegios en pagos
+    ✓ profesional NO puede iniciar un pago (solo cliente puede) → 403 (498 ms)
+    ✓ cliente NO puede marcar un pago como aprobado manualmente → 403 (1 ms)
+
+  console.warn
+    Skipped: no token
+
+      125 | describe('CSRF-03: JWT válido + operación válida → success', () => {
+      126 |   test('GET /api/solicitudes con JWT válido → 200', async () => {
+    > 127 |     if (!validToken) return console.warn('Skipped: no token');
+          |                                     ^
+      128 |     const res = await apiFetch(`${API_BASE}/api/solicitudes/mis-solicitudes`, {
+      129 |       headers: { Authorization: `Bearer ${validToken}` },
+      130 |     });
+
+      at Object.warn (__tests__/security/03_csrf_protection.test.js:127:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  console.log
+    ✅ Rate limiting activo: recibió 429 después de múltiples intentos
+
+      at Object.log (__tests__/security/03_csrf_protection.test.js:170:15)
+
+PASS __tests__/security/03_csrf_protection.test.js (5.095 s)
+  CSRF-01: Endpoints POST requieren autenticación JWT
+    ✓ POST /api/solicitudes (crear solicitud) sin token → 401 (510 ms)
+    ✓ POST /api/offers (crear oferta) sin token → 401 (268 ms)
+    ✓ POST /api/pagos/iniciar (iniciar pago) sin token → 401 (523 ms)
+    ✓ DELETE /api/solicitudes/test-id sin token → 401 (337 ms)
+    ✓ POST /api/solicitudes (crear solicitud) con token válido → NO 401 (puede ser 200, 400, 404, etc.)
+    ✓ POST /api/offers (crear oferta) con token válido → NO 401 (puede ser 200, 400, 404, etc.)
+    ✓ POST /api/pagos/iniciar (iniciar pago) con token válido → NO 401 (puede ser 200, 400, 404, etc.)
+    ✓ DELETE /api/solicitudes/test-id con token válido → NO 401 (puede ser 200, 400, 404, etc.)
+  CSRF-02: Token expirado → 401 Unauthorized
+    ✓ POST /api/solicitudes con token expirado → 401 (1129 ms)
+    ✓ GET /api/solicitudes con token expirado → 401 (498 ms)
+  CSRF-03: JWT válido + operación válida → success
+    ✓ GET /api/solicitudes con JWT válido → 200 (16 ms)
+    ✓ GET /api/usuarios/me con JWT válido → 200 con datos del usuario (1 ms)
+  CSRF-04: Rate Limiting en endpoints de autenticación
+    ✓ 10 intentos de login fallidos consecutivos → 429 Too Many Requests (1088 ms)
+
+  console.warn
+    Skipped: tokens no disponibles
+
+      102 |   test('cliente2 NO puede ver solicitud de cliente1 → 403 o 404', async () => {
+      103 |     if (!customer2Token || !customer1RequestId) {
+    > 104 |       return console.warn('Skipped: tokens no disponibles');
+          |                      ^
+      105 |     }
+      106 |     const res = await apiFetch(`${API_BASE}/api/solicitudes/${customer1RequestId}`, {
+      107 |       headers: { Authorization: `Bearer ${customer2Token}` },
+
+      at Object.warn (__tests__/security/01_rbac_authorization.test.js:104:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  console.warn
+    Skipped: adminToken no disponible
+
+      219 |
+      220 |   test('admin SÍ puede acceder a /api/admin/usuarios → 200', async () => {
+    > 221 |     if (!adminToken) return console.warn('Skipped: adminToken no disponible');
+          |                                     ^
+      222 |     const res = await apiFetch(`${API_BASE}/api/admin/usuarios`, {
+      223 |       headers: { Authorization: `Bearer ${adminToken}` },
+      224 |     });
+
+      at Object.warn (__tests__/security/01_rbac_authorization.test.js:221:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+PASS __tests__/security/01_rbac_authorization.test.js
+  RBAC-01: BOLA - Cliente no puede ver datos de otro cliente
+    ✓ cliente2 NO puede ver solicitud de cliente1 → 403 o 404 (5 ms)
+    ✓ cliente2 NO puede modificar solicitud de cliente1 → 403 (1 ms)
+    ✓ cliente2 NO puede cancelar solicitud de cliente1 → 403
+  RBAC-02: Profesional no puede ver finanzas de otro profesional
+    ✓ profesional1 obtiene su propio resumen financiero → 200
+    ✓ profesional2 NO puede ver las finanzas de profesional1 con ID directo → 403
+    ✓ profesional2 NO puede ver el historial de pagos de profesional1
+  RBAC-03: Endpoints de administración requieren ROLE_ADMIN
+    ✓ cliente NO puede acceder a GET /api/admin/usuarios → 403
+    ✓ cliente NO puede acceder a GET /api/admin/solicitudes → 403
+    ✓ cliente NO puede acceder a GET /api/admin/metricas → 403
+    ✓ cliente NO puede acceder a GET /api/admin/finanzas/comisiones → 403
+    ✓ profesional NO puede acceder a GET /api/admin/usuarios → 403
+    ✓ profesional NO puede acceder a GET /api/admin/solicitudes → 403
+    ✓ profesional NO puede acceder a GET /api/admin/metricas → 403
+    ✓ profesional NO puede acceder a GET /api/admin/finanzas/comisiones → 403
+    ✓ admin SÍ puede acceder a /api/admin/usuarios → 200 (1 ms)
+  RBAC-04: JWT expirado o inválido → 401
+    ✓ token expirado en /api/solicitudes → 401 (878 ms)
+    ✓ token con firma incorrecta → 401 (853 ms)
+    ✓ sin token → 401 en endpoints protegidos (264 ms)
+    ✓ token malformado (no es JWT) → 401 (469 ms)
+    ✓ prefijo Bearer ausente → 401
+
+PASS __tests__/security/04_xss_chat.test.js
+  XSS-01: Payloads XSS en mensajes de chat son sanitizados
+    ✓ mensaje con script tag básico NO genera error 500 y el contenido se sanitiza (1 ms)
+    ✓ mensaje con img onerror NO genera error 500 y el contenido se sanitiza
+    ✓ mensaje con svg onload NO genera error 500 y el contenido se sanitiza
+    ✓ mensaje con javascript href NO genera error 500 y el contenido se sanitiza (1 ms)
+    ✓ mensaje con event handler NO genera error 500 y el contenido se sanitiza
+    ✓ mensaje con iframe injection NO genera error 500 y el contenido se sanitiza
+    ✓ mensaje con style expression NO genera error 500 y el contenido se sanitiza
+  XSS-02: Mensajes con emojis y texto válido se almacenan sin alteración
+    ✓ mensaje "texto plano" se envía y recupera correctamente (1 ms)
+    ✓ mensaje "emoji corazón" se envía y recupera correctamente
+    ✓ mensaje "emoji check" se envía y recupera correctamente
+    ✓ mensaje "emoji mixto" se envía y recupera correctamente
+    ✓ mensaje "caracteres especiales válidos" se envía y recupera correctamente
+    ✓ mensaje "texto largo (200 chars)" se envía y recupera correctamente
+  XSS-03: HTML tags removidos del contenido almacenado
+    ✓ envía mensaje con HTML → se almacena sin tags peligrosos
+    ✓ recupera el mensaje guardado → no tiene ejecutables activos
+  XSS-04: Content-Type incorrecto → rechazado
+    ✓ POST /api/chat/messages con Content-Type text/html → 415 o 400
+    ✓ respuesta de API incluye Content-Type: application/json (no HTML) (1 ms)
+    ✓ headers de seguridad presentes en respuestas
+
+Test Suites: 5 passed, 5 total
+Tests:       93 passed, 93 total
+Snapshots:   0 total
+Time:        18.864 s, estimated 19 s
+Ran all test suites matching /__tests__\/security\//i.

@@ -11,7 +11,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import apiClient from '../../services/apiClient';
@@ -34,18 +40,18 @@ function StarRating({ value }) {
 const OfferCard = React.memo(({ offer, index, onAccept }) => {
   const isPending = offer.estado === 'PENDIENTE';
   const isAccepted = offer.estado === 'ACEPTADA';
-  const scale = Animated.useSharedValue(1);
+  const scale = useSharedValue(1);
 
-  const cardAnimStyle = Animated.useAnimatedStyle(() => ({
+  const cardAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const handlePressIn = () => {
-    scale.value = Animated.withSpring(0.98, { damping: 15, stiffness: 250 });
+    scale.value = withSpring(0.98, { damping: 15, stiffness: 250 });
   };
 
   const handlePressOut = () => {
-    scale.value = Animated.withSpring(1, { damping: 15, stiffness: 250 });
+    scale.value = withSpring(1, { damping: 15, stiffness: 250 });
   };
 
   return (
@@ -188,7 +194,7 @@ export default function ViewOffersScreen({ route, navigation }) {
           onPress: async () => {
             setAccepting(true);
             try {
-              await apiClient.post('/ofertas/aceptar', { ofertaId: offer.id });
+              const res = await apiClient.post('/ofertas/aceptar', { ofertaId: offer.id });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
               await activarChat({
@@ -199,10 +205,10 @@ export default function ViewOffersScreen({ route, navigation }) {
                 usuarioPushToken: offer.proveedorPushToken ?? null,
               });
 
-              navigation.replace('UserChat', {
+              navigation.replace('ServiceTracking', {
+                servicioId: res?.data?.solicitudId || solicitudId,
                 solicitudId,
-                destinatarioId: offer.proveedorId,
-                titulo: offer.proveedorNombre || 'Profesional',
+                proveedorNombre: offer.proveedorNombre,
               });
             } catch (err) {
               Alert.alert('Error', err.response?.data?.message || 'No se pudo aceptar la oferta.');

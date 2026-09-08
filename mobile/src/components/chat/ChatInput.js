@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ export default function ChatInput({
   onTyping,
   disabled = false,
 }) {
+  const insets = useSafeAreaInsets();
+  const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10;
   const [text, setText] = useState('');
   const sendScale = useSharedValue(1);
 
@@ -91,7 +94,7 @@ export default function ChatInput({
   );
 
   return (
-    <GlassCard variant="elevated" style={styles.container}>
+    <GlassCard variant="elevated" style={[styles.container, { marginBottom: bottomMargin }]}>
       {inputContent}
     </GlassCard>
   );
@@ -100,7 +103,6 @@ export default function ChatInput({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: SPACING.sm,
-    marginBottom: Platform.OS === 'ios' ? 24 : 12,
     borderRadius: BORDER_RADIUS.lg,
   },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: SPACING.sm, padding: SPACING.sm },

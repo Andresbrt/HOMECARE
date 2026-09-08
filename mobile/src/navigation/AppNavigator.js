@@ -21,6 +21,7 @@ import { COLORS, PROF } from '../constants/theme';
 import ProfDashboardScreen from '../screens/profesional/DashboardScreen';
 import ProfMapScreen from '../screens/profesional/MapScreen';
 import ProfFinancePerformanceScreen from '../screens/profesional/FinancePerformanceScreen';
+import ActiveServiceTrackingScreen from '../screens/profesional/ActiveServiceTrackingScreen';
 import DrawerContent from '../components/profesional/DrawerContent';
 
 // Auth Screens
@@ -339,6 +340,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="SendOffer" component={SendOfferScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ActiveServiceTracking" component={ActiveServiceTrackingScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfProfile" component={ProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfSecurity" component={SecurityScreen} options={{ headerShown: false }} />

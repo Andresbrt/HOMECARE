@@ -67,7 +67,13 @@ export function useChat(solicitudId, destinatarioId) {
         }
       } catch (err) {
         __DEV_LOG__('[useChat] Error al cargar mensajes:', err.message);
-        if (isMounted) setError('No se pudo cargar el chat');
+        if (isMounted) {
+          if (err.response?.status === 404 || !destinatarioId) {
+            setMessages(solicitudId, []);
+          } else {
+            setError('No se pudo cargar el chat');
+          }
+        }
       } finally {
         if (isMounted) setLoading(false);
       }

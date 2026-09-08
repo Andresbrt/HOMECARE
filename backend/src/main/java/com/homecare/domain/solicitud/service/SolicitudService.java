@@ -163,6 +163,7 @@ public class SolicitudService {
         log.info("Solicitud {} cancelada por cliente {}. Motivo: {}", solicitudId, clienteId, motivo);
     }
 
+    @Transactional(readOnly = true)
     public SolicitudDTO.DetailResponse obtenerSolicitud(Long solicitudId, Long usuarioId) {
         Solicitud solicitud = solicitudRepository.findById(solicitudId)
                 .orElseThrow(() -> new NotFoundException("Solicitud no encontrada"));
@@ -186,6 +187,7 @@ public class SolicitudService {
         return mapToDetailResponse(solicitud);
     }
 
+    @Transactional(readOnly = true)
     public List<SolicitudDTO.Response> obtenerMisSolicitudes(Long clienteId, EstadoSolicitud estado) {
         List<Solicitud> solicitudes;
 
@@ -200,6 +202,7 @@ public class SolicitudService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public Page<SolicitudDTO.Response> obtenerSolicitudesCercanas(
             Long proveedorId, BigDecimal latitud, BigDecimal longitud,
             Integer radioKm, Pageable pageable) {

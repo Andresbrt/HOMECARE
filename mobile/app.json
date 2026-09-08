@@ -108,13 +108,10 @@
     "extra": {
       "apiUrl": "https://homecare-backend.fly.dev/api",
       "wsUrl": "wss://homecare-backend.fly.dev/ws",
-      "mpSandbox": false,
+      "mpSandbox": true,
       "googleClientId": "630129948671-plv7lfm8e13lr8df1pec2fs9r5ppkf7i.apps.googleusercontent.com",
       "supabaseUrl": "https://mowqzkjbggfqfrnxgobn.supabase.co",
       "supabaseAnonKey": "sb_publishable_hMkwDI_JwDQBy8MdNuA2ow_BJAs9pT_",
-      "eas": {
-        "projectId": "homecare-1582c"
-      }
     }
   }
 }

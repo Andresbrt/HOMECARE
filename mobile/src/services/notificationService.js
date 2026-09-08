@@ -39,13 +39,21 @@ export const notificationService = {
       return;
     }
 
-    // projectId desde app.json extra (no hardcodeado)
+    // projectId desde app.json extra si está configurado
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      'homecare-1582c';
+      Constants.easConfig?.projectId;
 
-    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    let token;
+    try {
+      token = (
+        await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+        )
+      ).data;
+    } catch (err) {
+      __DEV_LOG__('[NotifService] Error obteniendo ExpoPushToken:', err.message);
+    }
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {

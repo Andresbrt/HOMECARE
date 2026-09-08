@@ -123,16 +123,17 @@ export function usePushNotifications() {
     // Crear canales Android
     await createAndroidChannels();
 
-    // projectId desde app.json extra (o fallback al valor conocido)
+    // projectId desde app.json extra si está configurado en EAS
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      'homecare-1582c';
+      Constants.easConfig?.projectId;
 
     // Obtener token
     let tokenData;
     try {
-      tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+      tokenData = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
     } catch (e) {
       __DEV_LOG__('[Push] Error obteniendo token:', e.message);
       return null;
@@ -177,10 +178,24 @@ export function usePushNotifications() {
           } else {
             navigation.navigate('ViewOffers', { solicitudId });
           }
-        } else if (click_action === 'OPEN_TRACKING' || screen === 'ServiceTracking') {
-          // ServiceTracking solo existe en UserModeStack; ignorar para profesionales
-          if (isProf) return;
-          navigation.navigate('ServiceTracking', { solicitudId });
+        } else if (
+          click_action === 'OPEN_TRACKING' ||
+          screen === 'ServiceTracking' ||
+          click_action === 'OPEN_ACTIVE_SERVICE' ||
+          screen === 'ActiveServiceTracking' ||
+          data?.tipo === 'OFERTA_ACEPTADA'
+        ) {
+          if (isProf) {
+            navigation.navigate('ActiveServiceTracking', {
+              servicioId: data.servicioId || data.id,
+              solicitudId: data.solicitudId || solicitudId,
+            });
+          } else {
+            navigation.navigate('ServiceTracking', {
+              solicitudId: data.solicitudId || solicitudId,
+              servicioId: data.servicioId || data.id,
+            });
+          }
         } else if (click_action === 'OPEN_REQUEST' || screen === 'AvailableRequests') {
           navigation.navigate('AvailableRequests', { solicitudId });
         } else if (screen) {

@@ -7,12 +7,33 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "jest"
+    "test": "jest",
+    "test:security": "API_URL=http://localhost:8080 jest __tests__/security/ --runInBand --verbose --testTimeout=30000",
+    "test:security:staging": "jest __tests__/security/ --runInBand --verbose --testTimeout=30000",
+    "e2e:build:ios": "detox build --configuration ios.sim.debug",
+    "e2e:build:android": "detox build --configuration android.emu.debug",
+    "e2e:test:ios": "detox test --configuration ios.sim.debug",
+    "e2e:test:android": "detox test --configuration android.emu.debug",
+    "e2e:test:ios:se": "detox test --configuration ios.se.debug",
+    "e2e:test:ios:max": "detox test --configuration ios.max.debug",
+    "e2e:customer": "detox test --configuration ios.sim.debug e2e/01_happy_path_customer.e2e.js",
+    "e2e:provider": "detox test --configuration ios.sim.debug e2e/02_happy_path_provider.e2e.js",
+    "e2e:concurrent": "detox test --configuration ios.sim.debug e2e/03_concurrent_acceptance.e2e.js",
+    "e2e:payment": "detox test --configuration ios.sim.debug e2e/04_payment_error_recovery.e2e.js",
+    "e2e:chat": "detox test --configuration ios.sim.debug e2e/05_chat_edge_cases.e2e.js",
+    "e2e:geo": "detox test --configuration ios.sim.debug e2e/06_geolocation_background.e2e.js",
+    "e2e:offline": "detox test --configuration ios.sim.debug e2e/07_offline_resilience.e2e.js",
+    "e2e:compliance": "detox test --configuration ios.sim.debug e2e/08_app_store_compliance.e2e.js"
   },
   "jest": {
     "preset": "jest-expo",
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/e2e/",
+      "_helpers.js"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|axios)"

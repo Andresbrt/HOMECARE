@@ -74,8 +74,8 @@ const CATEGORIES = [
 ];
 
 const TECHNICIANS = [
-  { id: '1', latitude: 4.7142, longitude: -74.0700, nombre: 'Carlos M.', rating: 4.9, available: true },
-  { id: '2', latitude: 4.7078, longitude: -74.0754, nombre: 'Ana R.', rating: 4.8, available: true },
+  { id: '1', latitude: 6.2482, longitude: -75.5780, nombre: 'Carlos M.', rating: 4.9, available: true },
+  { id: '2', latitude: 6.2395, longitude: -75.5840, nombre: 'Ana R.', rating: 4.8, available: true },
 ];
 
 function CategoryChip({ item, selected, onPress }) {
@@ -168,7 +168,7 @@ export default function UserMapScreen({ navigation }) {
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor="#000F22" />
 
-      <MapView ref={mapRef} style={StyleSheet.absoluteFillObject} provider={PROVIDER_GOOGLE} customMapStyle={DARK_MAP_STYLE}>
+      <MapView ref={mapRef} style={StyleSheet.absoluteFillObject} provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} customMapStyle={DARK_MAP_STYLE}>
         {location && (
           <Marker coordinate={{ latitude: location.latitude, longitude: location.longitude }}>
             <View style={styles.userDotBody}>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Mercado Pago — Credenciales de pago
  *
  * SEGURIDAD:
@@ -23,7 +23,7 @@ export const MP_SANDBOX =
 export const MERCADOPAGO_PUBLIC_KEY =
   process.env.EXPO_PUBLIC_MP_PUBLIC_KEY ??
   (MP_SANDBOX
-    ? 'TEST-2fc07872-5703-43d1-bf4d-485d988c3323'
+    ? 'TEST-2fc07872-5703-43d1-bf4d-485d988c3323'  // Sandbox — cuenta HOMECARE
     : 'APP_USR-84ad599f-98f1-4e77-8694-8c00ce281d20');
 
 // Moneda Colombia: Pesos Colombianos (COP)

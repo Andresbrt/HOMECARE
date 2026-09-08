@@ -47,12 +47,17 @@ function AvatarInitial({ name }) {
 
 // ─── Reaction row below bubble ────────────────────────────────────────────────
 function ReactionRow({ reactions, onToggle }) {
-  if (!reactions || reactions.size === 0) return null;
+  if (!reactions) return null;
+  const entries = reactions instanceof Map
+    ? Array.from(reactions.entries())
+    : Object.entries(reactions);
+
+  if (entries.length === 0) return null;
 
   return (
     <View style={styles.reactionRow}>
-      {Array.from(reactions.entries()).map(([emoji, users]) =>
-        users.length > 0 ? (
+      {entries.map(([emoji, users]) =>
+        Array.isArray(users) && users.length > 0 ? (
           <TouchableOpacity
             key={emoji}
             style={styles.reactionPill}
@@ -281,13 +286,13 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.bold,
   },
   bubbleWrapper: {
-    maxWidth: '78%',
+    maxWidth: '82%',
   },
   bubble: {
     borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingTop: SPACING.xs + 2,
-    paddingBottom: SPACING.xs,
+    paddingHorizontal: SPACING.sm + 4,
+    paddingTop: SPACING.xs + 3,
+    paddingBottom: SPACING.xs + 2,
     overflow: 'hidden',
   },
   bubbleOwn: {
@@ -335,10 +340,12 @@ const styles = StyleSheet.create({
     marginLeft: 1,
   },
   imageThumb: {
-    width: 200,
+    width: 220,
+    maxWidth: '100%',
     height: 160,
     borderRadius: BORDER_RADIUS.sm,
     marginBottom: 4,
+    resizeMode: 'cover',
   },
   // Reaction row
   reactionRow: {

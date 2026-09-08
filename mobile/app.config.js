@@ -32,10 +32,6 @@ export default ({ config }) => {
         config.extra?.wsUrl ||
         'wss://homecare-backend.fly.dev/ws',
       mpSandbox: isSandbox,
-      mpKeyProd: process.env.EXPO_PUBLIC_MP_KEY_PROD || null,
-      eas: {
-        projectId: 'homecare-1582c',
-      },
     },
   };
 };

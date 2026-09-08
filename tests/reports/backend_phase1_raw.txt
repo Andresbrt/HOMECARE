@@ -1,0 +1,1372 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------< com.homecare:homecare-backend >--------------------
+[INFO] Building HOMECARE Colorimetría - Backend API 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ homecare-backend ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 6 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ homecare-backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ homecare-backend ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ homecare-backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ homecare-backend ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.homecare.security.SupabaseJwtValidatorTest
+[INFO] Running com.homecare.security.SupabaseJwtValidatorTest$IsExpired
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.377 s -- in com.homecare.security.SupabaseJwtValidatorTest$IsExpired
+[INFO] Running com.homecare.security.SupabaseJwtValidatorTest$ExtractEmail
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.homecare.security.SupabaseJwtValidatorTest$ExtractEmail
+[INFO] Running com.homecare.security.SupabaseJwtValidatorTest$ExtractSubject
+16:00:11.108 [main] ERROR com.homecare.security.SupabaseJwtValidator -- Error consultando Supabase Auth API para validar token: null
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.152 s -- in com.homecare.security.SupabaseJwtValidatorTest$ExtractSubject
+[INFO] Running com.homecare.security.SupabaseJwtValidatorTest$IsValid
+16:00:11.115 [main] INFO com.homecare.security.SupabaseJwtValidator -- supabase.jwt-secret no configurado en dev — fallback a verificación directa Supabase API.
+16:00:11.117 [main] ERROR com.homecare.security.SupabaseJwtValidator -- Error consultando Supabase Auth API para validar token: null
+16:00:11.136 [main] ERROR com.homecare.security.SupabaseJwtValidator -- Error consultando Supabase Auth API para validar token: null
+16:00:11.140 [main] ERROR com.homecare.security.SupabaseJwtValidator -- Error consultando Supabase Auth API para validar token: null
+16:00:11.142 [main] ERROR com.homecare.security.SupabaseJwtValidator -- Error consultando Supabase Auth API para validar token: null
+16:00:11.148 [main] ERROR com.homecare.security.SupabaseJwtValidator -- Error consultando Supabase Auth API para validar token: null
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.038 s -- in com.homecare.security.SupabaseJwtValidatorTest$IsValid
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.593 s -- in com.homecare.security.SupabaseJwtValidatorTest
+[INFO] Running com.homecare.security.JwtAuthenticationFilterTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.071 s -- in com.homecare.security.JwtAuthenticationFilterTest
+[INFO] Running com.homecare.security.RateLimitFilterTest
+16:00:12.591 [main] WARN com.homecare.security.RateLimitFilter -- SECURITY | Rate limit exceeded ip=10.0.0.1 path=/api/usuarios
+16:00:12.615 [main] WARN com.homecare.security.RateLimitFilter -- SECURITY | Rate limit exceeded ip=192.168.1.100 path=/api/auth/login
+16:00:12.623 [main] WARN com.homecare.security.RateLimitFilter -- SECURITY | Rate limit exceeded ip=10.0.0.1 path=/api/auth/login
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.395 s -- in com.homecare.security.RateLimitFilterTest
+[INFO] Running com.homecare.security.JwtTokenProviderTest
+16:00:12.675 [main] ERROR com.homecare.security.JwtTokenProvider -- JWT claims string está vacío
+16:00:12.702 [main] ERROR com.homecare.security.JwtTokenProvider -- Token JWT inválido
+16:00:12.705 [main] ERROR com.homecare.security.JwtTokenProvider -- Firma JWT inválida
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.071 s -- in com.homecare.security.JwtTokenProviderTest
+[INFO] Running com.homecare.common.exception.GlobalExceptionHandlerWebClientTest
+[INFO] Running com.homecare.common.exception.GlobalExceptionHandlerWebClientTest$HandleWebClientRequest
+16:00:12.726 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error de conexión con Supabase: Timeout connecting to Supabase
+16:00:12.730 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error de conexión con Supabase: Connection refused
+16:00:12.737 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error de conexión con Supabase: Network unreachable
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in com.homecare.common.exception.GlobalExceptionHandlerWebClientTest$HandleWebClientRequest
+[INFO] Running com.homecare.common.exception.GlobalExceptionHandlerWebClientTest$HandleWebClientResponse
+16:00:12.751 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error Supabase API — status=403 FORBIDDEN body={"error":"RLS violation"}
+16:00:12.754 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error Supabase API — status=500 INTERNAL_SERVER_ERROR body={"error":"Storage down"}
+16:00:12.755 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error Supabase API — status=404 NOT_FOUND body={"error":"Object not found"}
+16:00:12.757 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error Supabase API — status=413 PAYLOAD_TOO_LARGE body={"error":"File too large"}
+16:00:12.758 [main] ERROR com.homecare.common.exception.GlobalExceptionHandler -- Error Supabase API — status=500 INTERNAL_SERVER_ERROR body={}
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in com.homecare.common.exception.GlobalExceptionHandlerWebClientTest$HandleWebClientResponse
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.050 s -- in com.homecare.common.exception.GlobalExceptionHandlerWebClientTest
+[INFO] Running com.homecare.performance.StressLoadPerformanceTest
+16:00:12.869 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.homecare.performance.StressLoadPerformanceTest]: StressLoadPerformanceTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+16:00:13.009 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.performance.StressLoadPerformanceTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.3)
+
+2026-09-04T16:00:14.658-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-04T16:00:14.660-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-04T16:00:14.838-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 169 ms. Found 24 JPA repository interfaces.
+2026-09-04T16:00:14.849-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-04T16:00:14.849-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-09-04T16:00:14.867-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.ArchivoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.867-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.DispositivoFCMRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.867-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.NotificacionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.868-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.WebhookSubscriptionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.868-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.location.repository.UbicacionProveedorRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.868-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.marketing.repository.CouponRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.868-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.marketing.repository.PromotionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.868-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.marketing.repository.ReferralRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.868-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.messaging.repository.MensajeRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.offer.repository.OfertaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.payment.repository.ConfiguracionComisionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.payment.repository.PagoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.payment.repository.SubscriptionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service.repository.ConformidadClienteRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service.repository.DisputaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service.repository.EvidenciaServicioRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.869-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service_order.repository.CalificacionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service_order.repository.ServicioAceptadoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.solicitud.repository.SolicitudRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.tracking.repository.UbicacionTrackingRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.RolRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.UserTokenRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.UsuarioRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.VerificacionProveedorRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:14.870-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 14 ms. Found 0 Redis repository interfaces.
+2026-09-04T16:00:15.627-05:00  INFO 4112 --- [homecare-api] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-04T16:00:15.667-05:00  INFO 4112 --- [homecare-api] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
+2026-09-04T16:00:15.689-05:00  INFO 4112 --- [homecare-api] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-04T16:00:15.763-05:00  INFO 4112 --- [homecare-api] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-04T16:00:15.779-05:00  INFO 4112 --- [homecare-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-04T16:00:15.912-05:00  INFO 4112 --- [homecare-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
+2026-09-04T16:00:15.913-05:00  INFO 4112 --- [homecare-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-09-04T16:00:15.927-05:00  WARN 4112 --- [homecare-api] [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-09-04T16:00:15.938-05:00  INFO 4112 --- [homecare-api] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-04T16:00:16.736-05:00  INFO 4112 --- [homecare-api] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-04T16:00:16.840-05:00  INFO 4112 --- [homecare-api] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-04T16:00:17.186-05:00  INFO 4112 --- [homecare-api] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-09-04T16:00:18.203-05:00 ERROR 4112 --- [homecare-api] [           main] i.n.r.d.DnsServerAddressStreamProviders  : Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This may result in incorrect DNS resolutions on MacOS. Check whether you have a dependency on 'io.netty:netty-resolver-dns-native-macos'. Use DEBUG level to see the full stack: java.lang.UnsatisfiedLinkError: failed to load the required native library
+2026-09-04T16:00:20.197-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.SupabaseClientConfig   : supabase.service-role-key no configurado. SupabaseStorageService no funcionará hasta que se defina SUPABASE_SERVICE_ROLE_KEY.
+2026-09-04T16:00:20.708-05:00  WARN 4112 --- [homecare-api] [           main] c.h.d.payment.service.PaymentService     : Mercado Pago Access Token no configurado o contiene valores de prueba
+2026-09-04T16:00:21.563-05:00  INFO 4112 --- [homecare-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-09-04T16:00:22.261-05:00  INFO 4112 --- [homecare-api] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-09-04T16:00:22.262-05:00  INFO 4112 --- [homecare-api] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@5f36625c]]
+2026-09-04T16:00:22.262-05:00  INFO 4112 --- [homecare-api] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : ⚠️ ADVERTENCIA: Variables de entorno recomendadas no configuradas:
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - JWT_SECRET (mínimo 32 caracteres para seguridad)
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - GOOGLE_MAPS_API_KEY (requerido para tracking y rutas)
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - MP_ACCESS_TOKEN (requerido para pagos)
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - MP_PUBLIC_KEY (requerido para pagos)
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - PAYMENT_CALLBACK_URL (requerido para callbacks de pago)
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : La app arrancó pero los endpoints que dependen de estas variables fallarán.
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : Configura estas variables en Railway → Variables para activar todas las funciones.
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : ⚠️ Advertencias de configuración:
+2026-09-04T16:00:22.335-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - AWS credentials no configuradas - almacenamiento local habilitado para desarrollo
+=========================================================
+🚀 RESULTADOS DE LA PRUEBA DE ESTRÉS (ALTA CONCURRENCIA)
+=========================================================
+• Hilos concurrentes:        100
+• Peticiones totales:        1000
+• Peticiones exitosas:       1000 (100,00%)
+• Peticiones fallidas:       0
+• Tiempo total de ejecución: 12249 ms
+• Throughput (RPS):          81,64 req/seg
+• Latencia promedio:         1167,27 ms
+• Latencia P50 (Mediana):    1175 ms
+• Latencia P95:              3158 ms
+• Latencia P99:              4249 ms
+=========================================================
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 22.10 s -- in com.homecare.performance.StressLoadPerformanceTest
+[INFO] Running com.homecare.domain.offer.service.OfertaServiceIntegrationTest
+2026-09-04T16:00:34.888-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.offer.service.OfertaServiceIntegrationTest]: OfertaServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:34.902-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.offer.service.OfertaServiceIntegrationTest
+2026-09-04T16:00:34.934-05:00  INFO 4112 --- [homecare-api] [           main] .s.a.AnnotationAsyncExecutionInterceptor : More than one TaskExecutor bean found within the context, and none is named 'taskExecutor'. Mark one of them as primary or name it 'taskExecutor' (possibly as an alias) in order to use it for async processing: [asyncExecutor, clientInboundChannelExecutor, clientOutboundChannelExecutor, brokerChannelExecutor, messageBrokerTaskScheduler]
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.218 s -- in com.homecare.domain.offer.service.OfertaServiceIntegrationTest
+[INFO] Running com.homecare.domain.service_order.service.CalificacionServiceTest
+[INFO] Running com.homecare.domain.service_order.service.CalificacionServiceTest$CalificarTests
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.161 s -- in com.homecare.domain.service_order.service.CalificacionServiceTest$CalificarTests
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.162 s -- in com.homecare.domain.service_order.service.CalificacionServiceTest
+[INFO] Running com.homecare.domain.location.LocationHaversineTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.homecare.domain.location.LocationHaversineTest
+[INFO] Running com.homecare.domain.payment.controller.PaymentControllerTest
+2026-09-04T16:00:35.280-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.payment.controller.PaymentControllerTest]: PaymentControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:35.302-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.payment.controller.PaymentControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.3)
+
+2026-09-04T16:00:35.665-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-04T16:00:35.665-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-04T16:00:35.696-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 30 ms. Found 24 JPA repository interfaces.
+2026-09-04T16:00:35.698-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-04T16:00:35.698-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.ArchivoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.DispositivoFCMRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.NotificacionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.common.repository.WebhookSubscriptionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.location.repository.UbicacionProveedorRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.marketing.repository.CouponRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.marketing.repository.PromotionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.marketing.repository.ReferralRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.messaging.repository.MensajeRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.offer.repository.OfertaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.payment.repository.ConfiguracionComisionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.payment.repository.PagoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.payment.repository.SubscriptionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service.repository.ConformidadClienteRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.708-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service.repository.DisputaRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service.repository.EvidenciaServicioRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service_order.repository.CalificacionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.service_order.repository.ServicioAceptadoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.solicitud.repository.SolicitudRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.tracking.repository.UbicacionTrackingRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.RolRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.UserTokenRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.UsuarioRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.homecare.domain.user.repository.VerificacionProveedorRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-09-04T16:00:35.709-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 10 ms. Found 0 Redis repository interfaces.
+2026-09-04T16:00:35.868-05:00  INFO 4112 --- [homecare-api] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-04T16:00:35.870-05:00  INFO 4112 --- [homecare-api] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-04T16:00:35.877-05:00  INFO 4112 --- [homecare-api] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-04T16:00:35.878-05:00  INFO 4112 --- [homecare-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-09-04T16:00:35.879-05:00  INFO 4112 --- [homecare-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection conn10: url=jdbc:h2:mem:testdb user=SA
+2026-09-04T16:00:35.879-05:00  INFO 4112 --- [homecare-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-09-04T16:00:35.880-05:00  WARN 4112 --- [homecare-api] [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-09-04T16:00:35.880-05:00  INFO 4112 --- [homecare-api] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-2)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-04T16:00:36.147-05:00  INFO 4112 --- [homecare-api] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-04T16:00:36.188-05:00  INFO 4112 --- [homecare-api] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-04T16:00:36.800-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.SupabaseClientConfig   : supabase.service-role-key no configurado. SupabaseStorageService no funcionará hasta que se defina SUPABASE_SERVICE_ROLE_KEY.
+2026-09-04T16:00:37.390-05:00  INFO 4112 --- [homecare-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-09-04T16:00:37.809-05:00  INFO 4112 --- [homecare-api] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-09-04T16:00:37.809-05:00  INFO 4112 --- [homecare-api] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-09-04T16:00:37.810-05:00  INFO 4112 --- [homecare-api] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-09-04T16:00:37.846-05:00  INFO 4112 --- [homecare-api] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-09-04T16:00:37.846-05:00  INFO 4112 --- [homecare-api] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@76afe0f]]
+2026-09-04T16:00:37.846-05:00  INFO 4112 --- [homecare-api] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : ⚠️ ADVERTENCIA: Variables de entorno recomendadas no configuradas:
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - JWT_SECRET (mínimo 32 caracteres para seguridad)
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - GOOGLE_MAPS_API_KEY (requerido para tracking y rutas)
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - MP_ACCESS_TOKEN (requerido para pagos)
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - MP_PUBLIC_KEY (requerido para pagos)
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - PAYMENT_CALLBACK_URL (requerido para callbacks de pago)
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : La app arrancó pero los endpoints que dependen de estas variables fallarán.
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : Configura estas variables en Railway → Variables para activar todas las funciones.
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   : ⚠️ Advertencias de configuración:
+2026-09-04T16:00:37.859-05:00  WARN 4112 --- [homecare-api] [           main] c.homecare.config.EnvironmentValidator   :    - AWS credentials no configuradas - almacenamiento local habilitado para desarrollo
+2026-09-04T16:00:38.273-05:00  WARN 4112 --- [homecare-api] [           main] c.h.d.p.controller.PaymentController     : Firma de webhook MP inválida — xSignature=ts=123,v1=invalidsig
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.000 s -- in com.homecare.domain.payment.controller.PaymentControllerTest
+[INFO] Running com.homecare.domain.payment.service.PaymentServiceIntegrationTest
+2026-09-04T16:00:38.281-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.payment.service.PaymentServiceIntegrationTest]: PaymentServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:38.303-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.payment.service.PaymentServiceIntegrationTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.064 s -- in com.homecare.domain.payment.service.PaymentServiceIntegrationTest
+[INFO] Running com.homecare.domain.payment.service.ConfiguracionComisionServiceTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.075 s -- in com.homecare.domain.payment.service.ConfiguracionComisionServiceTest
+[INFO] Running com.homecare.domain.payment.service.PaymentServiceWebhookTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.homecare.domain.payment.service.PaymentServiceWebhookTest
+[INFO] Running com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest
+2026-09-04T16:00:38.428-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest]: UsuarioRepositorySupabaseTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:38.450-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest
+[INFO] Running com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$UniqueConstraint
+2026-09-04T16:00:38.454-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$UniqueConstraint]: UniqueConstraint does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:38.459-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$UniqueConstraint
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.3)
+
+2026-09-04T16:00:38.586-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-09-04T16:00:38.586-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-04T16:00:38.619-05:00  INFO 4112 --- [homecare-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 32 ms. Found 24 JPA repository interfaces.
+2026-09-04T16:00:38.629-05:00  INFO 4112 --- [homecare-api] [           main] beddedDataSourceBeanFactoryPostProcessor : Replacing 'dataSource' DataSource bean with embedded version
+2026-09-04T16:00:38.641-05:00  INFO 4112 --- [homecare-api] [           main] o.s.j.d.e.EmbeddedDatabaseFactory        : Starting embedded database: url='jdbc:h2:mem:41379009-0e81-4106-9379-1cd15a7fbf26;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
+2026-09-04T16:00:38.660-05:00  INFO 4112 --- [homecare-api] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-09-04T16:00:38.661-05:00  INFO 4112 --- [homecare-api] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-09-04T16:00:38.668-05:00  INFO 4112 --- [homecare-api] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-04T16:00:38.669-05:00  WARN 4112 --- [homecare-api] [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-09-04T16:00:38.670-05:00  INFO 4112 --- [homecare-api] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory$EmbeddedDataSourceProxy@4c6a2c6c']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-04T16:00:38.904-05:00  INFO 4112 --- [homecare-api] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: 
+    drop table if exists archivos cascade 
+Hibernate: 
+    drop table if exists calificaciones cascade 
+Hibernate: 
+    drop table if exists configuracion_comisiones cascade 
+Hibernate: 
+    drop table if exists conformidades_cliente cascade 
+Hibernate: 
+    drop table if exists cupones cascade 
+Hibernate: 
+    drop table if exists dispositivos_fcm cascade 
+Hibernate: 
+    drop table if exists disputas cascade 
+Hibernate: 
+    drop table if exists evidencias_servicio cascade 
+Hibernate: 
+    drop table if exists mensajes cascade 
+Hibernate: 
+    drop table if exists notificaciones cascade 
+Hibernate: 
+    drop table if exists ofertas cascade 
+Hibernate: 
+    drop table if exists pagos cascade 
+Hibernate: 
+    drop table if exists promociones cascade 
+Hibernate: 
+    drop table if exists referidos cascade 
+Hibernate: 
+    drop table if exists roles cascade 
+Hibernate: 
+    drop table if exists servicio_fotos_antes cascade 
+Hibernate: 
+    drop table if exists servicio_fotos_despues cascade 
+Hibernate: 
+    drop table if exists servicios_aceptados cascade 
+Hibernate: 
+    drop table if exists solicitudes cascade 
+Hibernate: 
+    drop table if exists suscripciones cascade 
+Hibernate: 
+    drop table if exists ubicaciones_proveedor cascade 
+Hibernate: 
+    drop table if exists ubicaciones_tracking cascade 
+Hibernate: 
+    drop table if exists user_tokens cascade 
+Hibernate: 
+    drop table if exists usuario_roles cascade 
+Hibernate: 
+    drop table if exists usuarios cascade 
+Hibernate: 
+    drop table if exists verificaciones_proveedor cascade 
+Hibernate: 
+    drop table if exists webhook_eventos cascade 
+Hibernate: 
+    drop table if exists webhook_subscriptions cascade 
+Hibernate: 
+    create table archivos (
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        servicio_id bigint,
+        solicitud_id bigint,
+        tamanio_bytes bigint,
+        updated_at timestamp(6),
+        usuario_id bigint,
+        mime_type varchar(255),
+        nombre_almacenado varchar(255) not null unique,
+        nombre_original varchar(255) not null,
+        ruta_s3 varchar(255) not null,
+        url_publica varchar(255),
+        estado enum ('ACTIVO','ELIMINADO','TEMPORAL'),
+        tipo_archivo enum ('CERTIFICADO','COMPROBANTE_PAGO','DOCUMENTO_IDENTIDAD','FOTO_ANTES','FOTO_DESPUES','FOTO_DURANTE','FOTO_PERFIL','OTRO'),
+        primary key (id)
+    )
+Hibernate: 
+    create table calificaciones (
+        puntuacion integer not null,
+        calificado_id bigint not null,
+        calificador_id bigint not null,
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        servicio_id bigint not null,
+        comentario TEXT,
+        tipo enum ('CLIENTE_A_PROVEEDOR','PROVEEDOR_A_CLIENTE') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table configuracion_comisiones (
+        porcentaje_comision numeric(5,4) not null,
+        vigencia_desde date,
+        vigencia_hasta date,
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        updated_at timestamp(6),
+        tipo_servicio varchar(50),
+        primary key (id)
+    )
+Hibernate: 
+    create table conformidades_cliente (
+        aceptado boolean not null,
+        cliente_id bigint not null,
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        servicio_id bigint not null,
+        ip_origen varchar(100),
+        comentario TEXT,
+        primary key (id)
+    )
+Hibernate: 
+    create table cupones (
+        usado boolean not null,
+        fecha_creacion timestamp(6) not null,
+        id bigint generated by default as identity,
+        promocion_id bigint not null,
+        usado_at timestamp(6),
+        usuario_id bigint not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table dispositivos_fcm (
+        activo boolean,
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        ultimo_uso timestamp(6),
+        usuario_id bigint not null,
+        token_fcm varchar(500) not null unique,
+        modelo_dispositivo varchar(255),
+        version_app varchar(255),
+        plataforma enum ('ANDROID','IOS','WEB'),
+        primary key (id)
+    )
+Hibernate: 
+    create table disputas (
+        admin_id bigint,
+        cliente_id bigint not null,
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        iniciado_por bigint not null,
+        proveedor_id bigint not null,
+        servicio_id bigint not null,
+        updated_at timestamp(6),
+        motivo varchar(150) not null,
+        comentario_resolucion TEXT,
+        descripcion TEXT,
+        resolucion TEXT,
+        estado enum ('ABIERTA','CERRADA','EN_REVISION','RESUELTA') not null,
+        resultado enum ('A_FAVOR_CLIENTE','A_FAVOR_PROVEEDOR','REEMBOLSO','SIN_RESOLUCION') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table evidencias_servicio (
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        servicio_id bigint not null,
+        subido_por bigint not null,
+        url_archivo varchar(1000) not null,
+        descripcion TEXT,
+        tipo enum ('ANTES','DESPUES','DURANTE') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table mensajes (
+        leido boolean,
+        created_at timestamp(6),
+        destinatario_id bigint not null,
+        id bigint generated by default as identity,
+        leido_at timestamp(6),
+        remitente_id bigint not null,
+        solicitud_id bigint not null,
+        archivo_url varchar(500),
+        contenido TEXT not null,
+        tipo enum ('ARCHIVO','IMAGEN','TEXTO'),
+        primary key (id)
+    )
+Hibernate: 
+    create table notificaciones (
+        enviada boolean,
+        leida boolean,
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        leida_at timestamp(6),
+        oferta_id bigint,
+        servicio_id bigint,
+        solicitud_id bigint,
+        usuario_id bigint not null,
+        tipo varchar(50) not null,
+        titulo varchar(200) not null,
+        mensaje TEXT not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table ofertas (
+        materiales_incluidos boolean,
+        precio_ofrecido numeric(10,2) not null,
+        tiempo_llegada_minutos integer,
+        vista_por_cliente boolean,
+        aceptada_at timestamp(6),
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        proveedor_id bigint not null,
+        solicitud_id bigint not null,
+        updated_at timestamp(6),
+        version bigint,
+        mensaje_oferta TEXT,
+        estado enum ('ACEPTADA','PENDIENTE','RECHAZADA','RETIRADA') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table pagos (
+        comision_plataforma numeric(10,2) not null,
+        monto_proveedor numeric(10,2) not null,
+        monto_total numeric(10,2) not null,
+        aprobado_at timestamp(6),
+        cliente_id bigint not null,
+        created_at timestamp(6),
+        fecha_liberacion timestamp(6),
+        id bigint generated by default as identity,
+        proveedor_id bigint not null,
+        rechazado_at timestamp(6),
+        reembolsado_at timestamp(6),
+        servicio_id bigint not null,
+        updated_at timestamp(6),
+        metodo_pago varchar(50),
+        metodo_pago_detalle varchar(100),
+        preferencia_id varchar(100),
+        transaccion_externa_id varchar(100),
+        payment_link varchar(1000),
+        mensaje_error TEXT,
+        motivo_rechazo TEXT,
+        referencia varchar(255) unique,
+        transaccion_id varchar(255) unique,
+        estado enum ('APROBADO','EXPIRADO','FALLIDO','PENDIENTE','PROCESANDO','RECHAZADO','REEMBOLSADO') not null,
+        estado_retencion enum ('LIBERADO','REEMBOLSADO','RETENIDO') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table promociones (
+        activa boolean not null,
+        descuento_fijo numeric(10,2),
+        descuento_porcentaje numeric(5,2),
+        fecha_fin date not null,
+        fecha_inicio date not null,
+        monto_minimo numeric(10,2),
+        primeros_usuarios boolean not null,
+        uso_actual integer not null,
+        uso_maximo integer not null,
+        id bigint generated by default as identity,
+        codigo varchar(20) not null unique,
+        descripcion varchar(255),
+        aplicaa enum ('ALL','CUSTOMER','SERVICE_PROVIDER','SERVICIOS','SUSCRIPCIONES') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table referidos (
+        activo boolean not null,
+        bonus_ganado integer not null,
+        bonus_referee numeric(10,2),
+        bonus_referrer numeric(10,2),
+        max_usos integer not null,
+        usado boolean not null,
+        usos integer not null,
+        fecha_creacion timestamp(6) not null,
+        fecha_ultimo_uso timestamp(6),
+        id bigint generated by default as identity,
+        referred_id bigint,
+        referrer_id bigint not null,
+        codigo varchar(10) not null unique,
+        primary key (id)
+    )
+Hibernate: 
+    create table roles (
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        nombre varchar(50) not null unique,
+        descripcion TEXT,
+        primary key (id)
+    )
+Hibernate: 
+    create table servicio_fotos_antes (
+        servicio_id bigint not null,
+        foto_url varchar(255)
+    )
+Hibernate: 
+    create table servicio_fotos_despues (
+        servicio_id bigint not null,
+        foto_url varchar(255)
+    )
+Hibernate: 
+    create table servicios_aceptados (
+        precio_acordado numeric(10,2) not null,
+        cancelado_at timestamp(6),
+        cliente_id bigint not null,
+        completado_at timestamp(6),
+        confirmado_at timestamp(6),
+        created_at timestamp(6),
+        en_camino_at timestamp(6),
+        id bigint generated by default as identity,
+        iniciado_at timestamp(6),
+        llegue_at timestamp(6),
+        oferta_id bigint not null unique,
+        proveedor_id bigint not null,
+        solicitud_id bigint not null unique,
+        updated_at timestamp(6),
+        motivo_cancelacion TEXT,
+        estado enum ('CANCELADO','COMPLETADO','CONFIRMADO','EN_CAMINO','EN_PROGRESO','LLEGUE') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table solicitudes (
+        cantidad_banos integer,
+        cantidad_habitaciones integer,
+        cantidad_ofertas integer,
+        duracion_estimada integer,
+        fecha_servicio date not null,
+        hora_inicio time(6) not null,
+        latitud numeric(10,8) not null,
+        longitud numeric(11,8) not null,
+        metros_cuadrados numeric(8,2),
+        precio_maximo numeric(10,2),
+        tiene_mascotas boolean,
+        cliente_id bigint not null,
+        created_at timestamp(6),
+        expira_en timestamp(6),
+        id bigint generated by default as identity,
+        oferta_aceptada_id bigint,
+        updated_at timestamp(6),
+        version bigint,
+        titulo varchar(200) not null,
+        descripcion TEXT not null,
+        direccion TEXT not null,
+        instrucciones_especiales TEXT,
+        referencia_direccion TEXT,
+        estado enum ('ABIERTA','ACEPTADA','CANCELADA','COMPLETADA','EN_NEGOCIACION','EN_PROGRESO','EXPIRADA') not null,
+        tipo_limpieza enum ('BASICA','DESINFECCION','MUDANZA','OFICINA','POST_CONSTRUCCION','PROFUNDA') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table suscripciones (
+        auto_renovar boolean not null,
+        fecha_fin date,
+        fecha_inicio date not null,
+        precio_mensual numeric(10,2) not null,
+        id bigint generated by default as identity,
+        usuario_id bigint not null,
+        metodo_pago_id varchar(255),
+        transaction_id varchar(255),
+        estado enum ('ACTIVA','CANCELADA','FALLIDA','PENDIENTE_PAGO','VENCIDA') not null,
+        plan enum ('PREMIUM') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table ubicaciones_proveedor (
+        bateria_dispositivo integer,
+        distancia_restante_metros float(53),
+        en_segundo_plano boolean,
+        eta_minutos integer,
+        latitud float(53) not null,
+        longitud float(53) not null,
+        precision_metros float(53),
+        rumbo_grados float(53),
+        velocidad_kmh float(53),
+        id bigint generated by default as identity,
+        proveedor_id bigint not null,
+        solicitud_id bigint not null,
+        timestamp timestamp(6) not null,
+        tipo_transporte varchar(50),
+        estado enum ('DETENIDO','EN_RUTA','LLEGADO','LLEGANDO','REGRESANDO') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table ubicaciones_tracking (
+        altitud float(53),
+        bateria_porcentaje integer,
+        direccion float(53),
+        latitud numeric(10,8) not null,
+        longitud numeric(11,8) not null,
+        precision_metros float(53),
+        velocidad_kmh float(53),
+        created_at timestamp(6),
+        id bigint generated by default as identity,
+        proveedor_id bigint not null,
+        servicio_id bigint not null,
+        timestamp timestamp(6) not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table user_tokens (
+        attempts INTEGER DEFAULT 0 not null,
+        used boolean,
+        created_at timestamp(6),
+        expires_at timestamp(6) not null,
+        id bigint generated by default as identity,
+        used_at timestamp(6),
+        usuario_id bigint not null,
+        created_ip varchar(255),
+        token_hash varchar(255) not null unique,
+        user_agent TEXT,
+        token_type enum ('EMAIL_CHANGE','OTP_VERIFICATION','PASSWORD_RESET','TWO_FACTOR','VERIFICATION') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table usuario_roles (
+        rol_id bigint not null,
+        usuario_id bigint not null,
+        primary key (rol_id, usuario_id)
+    )
+Hibernate: 
+    create table usuarios (
+        activo boolean,
+        calificacion_promedio numeric(3,2),
+        disponible boolean,
+        experiencia_anos integer,
+        intento_verificacion_concluido boolean,
+        latitud numeric(10,8),
+        longitud numeric(11,8),
+        loyalty_points integer,
+        servicios_completados integer,
+        verificacion_ia_score float(53),
+        verificado boolean,
+        created_at timestamp(6),
+        fecha_verificacion timestamp(6),
+        id bigint generated by default as identity,
+        ultima_ubicacion timestamp(6),
+        ultimo_acceso timestamp(6),
+        updated_at timestamp(6),
+        telefono varchar(20),
+        supabase_uid varchar(36) unique,
+        documento_identidad varchar(50),
+        apellido varchar(100) not null,
+        nombre varchar(100) not null,
+        archivo_antecedentes varchar(500),
+        foto_cedula_frontal varchar(500),
+        foto_cedula_posterior varchar(500),
+        foto_perfil varchar(500),
+        foto_selfie_verificacion varchar(500),
+        comentarios_verificacion TEXT,
+        descripcion TEXT,
+        direccion TEXT,
+        email varchar(255) not null unique,
+        password varchar(255) not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table verificaciones_proveedor (
+        fecha_actualizacion timestamp(6),
+        fecha_creacion timestamp(6),
+        fecha_revision timestamp(6),
+        id bigint generated by default as identity,
+        proveedor_id bigint not null,
+        revisado_por bigint,
+        numero_documento varchar(100) not null,
+        tipo_documento varchar(100) not null,
+        url_documento_frontal varchar(1000),
+        url_documento_trasero varchar(1000),
+        url_selfie_verificacion varchar(1000),
+        motivo_rechazo TEXT,
+        estado enum ('APROBADO','PENDIENTE','RECHAZADO') not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table webhook_eventos (
+        webhook_id bigint not null,
+        evento varchar(255)
+    )
+Hibernate: 
+    create table webhook_subscriptions (
+        activo boolean not null,
+        envios_exitosos integer not null,
+        envios_fallidos integer not null,
+        total_envios integer not null,
+        fecha_creacion timestamp(6) not null,
+        id bigint generated by default as identity,
+        ultimo_envio timestamp(6),
+        ultimo_error timestamp(6),
+        url varchar(500) not null,
+        descripcion varchar(1000),
+        secret_key varchar(255) not null,
+        primary key (id)
+    )
+Hibernate: 
+    create index idx_solicitud_timestamp 
+       on ubicaciones_proveedor (solicitud_id, timestamp)
+Hibernate: 
+    create index idx_proveedor_timestamp 
+       on ubicaciones_proveedor (proveedor_id, timestamp)
+Hibernate: 
+    create index idx_timestamp 
+       on ubicaciones_proveedor (timestamp)
+Hibernate: 
+    alter table if exists archivos 
+       add constraint FK9ln9xmterctay28ms8gxgkxef 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists calificaciones 
+       add constraint FKrvqkkqbgttesxwbqks5tctaw3 
+       foreign key (calificado_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists calificaciones 
+       add constraint FK9c74njf0ldjoib4icdquc36rn 
+       foreign key (calificador_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists calificaciones 
+       add constraint FKoxvriryuuwmak76hwrrumyqid 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists conformidades_cliente 
+       add constraint FKlkw4eekkih3tlvtetu9rwdxr3 
+       foreign key (cliente_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists conformidades_cliente 
+       add constraint FKmd1wggsmjulaqs0d6kp7sd59d 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists cupones 
+       add constraint FK7nuf166q6ef0lvqygc94n03n7 
+       foreign key (promocion_id) 
+       references promociones
+Hibernate: 
+    alter table if exists cupones 
+       add constraint FK2nsiv01bwjj5xjtkompo3tjom 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists dispositivos_fcm 
+       add constraint FKt4nolrhadxh3tbfh5vfrt4t34 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists disputas 
+       add constraint FK1l8mdrq9ytk4k7xk1pvatao8h 
+       foreign key (admin_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists disputas 
+       add constraint FKdo7jr4s8j7aj5hn8f49q1yuhr 
+       foreign key (cliente_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists disputas 
+       add constraint FKcsimio8grkhxr33pvgsvppqo9 
+       foreign key (iniciado_por) 
+       references usuarios
+Hibernate: 
+    alter table if exists disputas 
+       add constraint FKf64maiyvk0bekvurlb5wnuh3e 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists disputas 
+       add constraint FK555xrt6xhtcswhscm08de7d7c 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists evidencias_servicio 
+       add constraint FK1cml7cp9kg3sxfe5xl0j056m 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists evidencias_servicio 
+       add constraint FK3y39g4t2gmo3io3fsx1jlid5g 
+       foreign key (subido_por) 
+       references usuarios
+Hibernate: 
+    alter table if exists mensajes 
+       add constraint FK3g336a9ui7web8l7t133q1k5s 
+       foreign key (destinatario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists mensajes 
+       add constraint FKlfsfnt3bahk64b9mjwy04eqx4 
+       foreign key (remitente_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists mensajes 
+       add constraint FKtcuvfnvpluna41t35dk8mx3no 
+       foreign key (solicitud_id) 
+       references solicitudes
+Hibernate: 
+    alter table if exists notificaciones 
+       add constraint FK1mxbjb81ft61gwlh0kabubndc 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists ofertas 
+       add constraint FKfuxmh5e7g03us5w3eba4uicbv 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists ofertas 
+       add constraint FK7h5m0ftd7ep087j8flx1ovnyb 
+       foreign key (solicitud_id) 
+       references solicitudes
+Hibernate: 
+    alter table if exists pagos 
+       add constraint FK5e9wwberb9nwrrqlbhpoxai2f 
+       foreign key (cliente_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists pagos 
+       add constraint FKdai67nunjijtjidwkah1kbts5 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists pagos 
+       add constraint FKrtox3jf9a80atlrhhc25rytmf 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists referidos 
+       add constraint FK2nbqsoww871sh5v1ia0cq1yg0 
+       foreign key (referred_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists referidos 
+       add constraint FKqe7g4s8va9qyssbuhadhtseio 
+       foreign key (referrer_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists servicio_fotos_antes 
+       add constraint FK9av3ie5yvyuo6wvwgp2ou6i95 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists servicio_fotos_despues 
+       add constraint FKiyluvpurupbukv86mexa2ub6m 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists servicios_aceptados 
+       add constraint FK5pv6kv3uk5409uhpotbrqkxq4 
+       foreign key (cliente_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists servicios_aceptados 
+       add constraint FKiks6ncf2v3qnp7629jw8ffx03 
+       foreign key (oferta_id) 
+       references ofertas
+Hibernate: 
+    alter table if exists servicios_aceptados 
+       add constraint FK6us8xss6lp19ss8u9n484vxr5 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists servicios_aceptados 
+       add constraint FKjsh8uncrudfyc8bujqmem729a 
+       foreign key (solicitud_id) 
+       references solicitudes
+Hibernate: 
+    alter table if exists solicitudes 
+       add constraint FKkadv41dcvxvwqi3bry78e0p1a 
+       foreign key (cliente_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists suscripciones 
+       add constraint FKrrsvcjm7l6p0pr4l8ehygsmuy 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists ubicaciones_proveedor 
+       add constraint FKshl3rrpehntca5e7fxkbbrj7i 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists ubicaciones_proveedor 
+       add constraint FKlst86mf6x2w4uw4fri41uc9w4 
+       foreign key (solicitud_id) 
+       references solicitudes
+Hibernate: 
+    alter table if exists ubicaciones_tracking 
+       add constraint FKhk73t9okfiyqc91bb5s501th2 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists ubicaciones_tracking 
+       add constraint FKtd0kc2qn0sbrycofow4xo5bm2 
+       foreign key (servicio_id) 
+       references servicios_aceptados
+Hibernate: 
+    alter table if exists user_tokens 
+       add constraint FKlutdyqncmcq9d0ye5el5kc7io 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists usuario_roles 
+       add constraint FKbt9i9yrb9ug88xnh82n9m60pr 
+       foreign key (rol_id) 
+       references roles
+Hibernate: 
+    alter table if exists usuario_roles 
+       add constraint FKuu9tea04xb29m2km5lwe46ua 
+       foreign key (usuario_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists verificaciones_proveedor 
+       add constraint FKkbxv19dnp5qf8yh3wuabvp8rv 
+       foreign key (proveedor_id) 
+       references usuarios
+Hibernate: 
+    alter table if exists verificaciones_proveedor 
+       add constraint FK913s4s8rwnq69n91ofn6htt58 
+       foreign key (revisado_por) 
+       references usuarios
+Hibernate: 
+    alter table if exists webhook_eventos 
+       add constraint FKa8utjxcddyx26bb9hyr8yiuae 
+       foreign key (webhook_id) 
+       references webhook_subscriptions
+2026-09-04T16:00:38.936-05:00  INFO 4112 --- [homecare-api] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    select
+        count(*) 
+    from
+        usuarios u1_0
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.activo,
+        u1_0.apellido,
+        u1_0.archivo_antecedentes,
+        u1_0.calificacion_promedio,
+        u1_0.comentarios_verificacion,
+        u1_0.created_at,
+        u1_0.descripcion,
+        u1_0.direccion,
+        u1_0.disponible,
+        u1_0.documento_identidad,
+        u1_0.email,
+        u1_0.experiencia_anos,
+        u1_0.fecha_verificacion,
+        u1_0.foto_cedula_frontal,
+        u1_0.foto_cedula_posterior,
+        u1_0.foto_perfil,
+        u1_0.foto_selfie_verificacion,
+        u1_0.intento_verificacion_concluido,
+        u1_0.latitud,
+        u1_0.longitud,
+        u1_0.loyalty_points,
+        u1_0.nombre,
+        u1_0.password,
+        u1_0.servicios_completados,
+        u1_0.supabase_uid,
+        u1_0.telefono,
+        u1_0.ultima_ubicacion,
+        u1_0.ultimo_acceso,
+        u1_0.updated_at,
+        u1_0.verificacion_ia_score,
+        u1_0.verificado 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.activo,
+        u1_0.apellido,
+        u1_0.archivo_antecedentes,
+        u1_0.calificacion_promedio,
+        u1_0.comentarios_verificacion,
+        u1_0.created_at,
+        u1_0.descripcion,
+        u1_0.direccion,
+        u1_0.disponible,
+        u1_0.documento_identidad,
+        u1_0.email,
+        u1_0.experiencia_anos,
+        u1_0.fecha_verificacion,
+        u1_0.foto_cedula_frontal,
+        u1_0.foto_cedula_posterior,
+        u1_0.foto_perfil,
+        u1_0.foto_selfie_verificacion,
+        u1_0.intento_verificacion_concluido,
+        u1_0.latitud,
+        u1_0.longitud,
+        u1_0.loyalty_points,
+        u1_0.nombre,
+        u1_0.password,
+        u1_0.servicios_completados,
+        u1_0.supabase_uid,
+        u1_0.telefono,
+        u1_0.ultima_ubicacion,
+        u1_0.ultimo_acceso,
+        u1_0.updated_at,
+        u1_0.verificacion_ia_score,
+        u1_0.verificado 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=?
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.748 s -- in com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$UniqueConstraint
+[INFO] Running com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$ExistsBySupabaseUid
+2026-09-04T16:00:39.202-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$ExistsBySupabaseUid]: ExistsBySupabaseUid does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:39.207-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$ExistsBySupabaseUid
+Hibernate: 
+    select
+        u1_0.id 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    select
+        u1_0.id 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    select
+        u1_0.id 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=? 
+    fetch
+        first ? rows only
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.024 s -- in com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$ExistsBySupabaseUid
+[INFO] Running com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$FindBySupabaseUid
+2026-09-04T16:00:39.228-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$FindBySupabaseUid]: FindBySupabaseUid does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:39.233-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$FindBySupabaseUid
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.activo,
+        u1_0.apellido,
+        u1_0.archivo_antecedentes,
+        u1_0.calificacion_promedio,
+        u1_0.comentarios_verificacion,
+        u1_0.created_at,
+        u1_0.descripcion,
+        u1_0.direccion,
+        u1_0.disponible,
+        u1_0.documento_identidad,
+        u1_0.email,
+        u1_0.experiencia_anos,
+        u1_0.fecha_verificacion,
+        u1_0.foto_cedula_frontal,
+        u1_0.foto_cedula_posterior,
+        u1_0.foto_perfil,
+        u1_0.foto_selfie_verificacion,
+        u1_0.intento_verificacion_concluido,
+        u1_0.latitud,
+        u1_0.longitud,
+        u1_0.loyalty_points,
+        u1_0.nombre,
+        u1_0.password,
+        u1_0.servicios_completados,
+        u1_0.supabase_uid,
+        u1_0.telefono,
+        u1_0.ultima_ubicacion,
+        u1_0.ultimo_acceso,
+        u1_0.updated_at,
+        u1_0.verificacion_ia_score,
+        u1_0.verificado 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.activo,
+        u1_0.apellido,
+        u1_0.archivo_antecedentes,
+        u1_0.calificacion_promedio,
+        u1_0.comentarios_verificacion,
+        u1_0.created_at,
+        u1_0.descripcion,
+        u1_0.direccion,
+        u1_0.disponible,
+        u1_0.documento_identidad,
+        u1_0.email,
+        u1_0.experiencia_anos,
+        u1_0.fecha_verificacion,
+        u1_0.foto_cedula_frontal,
+        u1_0.foto_cedula_posterior,
+        u1_0.foto_perfil,
+        u1_0.foto_selfie_verificacion,
+        u1_0.intento_verificacion_concluido,
+        u1_0.latitud,
+        u1_0.longitud,
+        u1_0.loyalty_points,
+        u1_0.nombre,
+        u1_0.password,
+        u1_0.servicios_completados,
+        u1_0.supabase_uid,
+        u1_0.telefono,
+        u1_0.ultima_ubicacion,
+        u1_0.ultimo_acceso,
+        u1_0.updated_at,
+        u1_0.verificacion_ia_score,
+        u1_0.verificado 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=?
+Hibernate: 
+    insert 
+    into
+        usuarios
+        (activo, apellido, archivo_antecedentes, calificacion_promedio, comentarios_verificacion, created_at, descripcion, direccion, disponible, documento_identidad, email, experiencia_anos, fecha_verificacion, foto_cedula_frontal, foto_cedula_posterior, foto_perfil, foto_selfie_verificacion, intento_verificacion_concluido, latitud, longitud, loyalty_points, nombre, password, servicios_completados, supabase_uid, telefono, ultima_ubicacion, ultimo_acceso, updated_at, verificacion_ia_score, verificado, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.activo,
+        u1_0.apellido,
+        u1_0.archivo_antecedentes,
+        u1_0.calificacion_promedio,
+        u1_0.comentarios_verificacion,
+        u1_0.created_at,
+        u1_0.descripcion,
+        u1_0.direccion,
+        u1_0.disponible,
+        u1_0.documento_identidad,
+        u1_0.email,
+        u1_0.experiencia_anos,
+        u1_0.fecha_verificacion,
+        u1_0.foto_cedula_frontal,
+        u1_0.foto_cedula_posterior,
+        u1_0.foto_perfil,
+        u1_0.foto_selfie_verificacion,
+        u1_0.intento_verificacion_concluido,
+        u1_0.latitud,
+        u1_0.longitud,
+        u1_0.loyalty_points,
+        u1_0.nombre,
+        u1_0.password,
+        u1_0.servicios_completados,
+        u1_0.supabase_uid,
+        u1_0.telefono,
+        u1_0.ultima_ubicacion,
+        u1_0.ultimo_acceso,
+        u1_0.updated_at,
+        u1_0.verificacion_ia_score,
+        u1_0.verificado 
+    from
+        usuarios u1_0 
+    where
+        u1_0.supabase_uid=?
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.030 s -- in com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest$FindBySupabaseUid
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.830 s -- in com.homecare.domain.user.repository.UsuarioRepositorySupabaseTest
+[INFO] Running com.homecare.domain.user.controller.AuthControllerTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.114 s -- in com.homecare.domain.user.controller.AuthControllerTest
+[INFO] Running com.homecare.domain.user.service.VerificacionProveedorServiceIntegrationTest
+2026-09-04T16:00:39.378-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.user.service.VerificacionProveedorServiceIntegrationTest]: VerificacionProveedorServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:39.401-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.user.service.VerificacionProveedorServiceIntegrationTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.056 s -- in com.homecare.domain.user.service.VerificacionProveedorServiceIntegrationTest
+[INFO] Running com.homecare.domain.user.service.UsuarioServiceTest
+[INFO] Running com.homecare.domain.user.service.UsuarioServiceTest$UbicacionTests
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.120 s -- in com.homecare.domain.user.service.UsuarioServiceTest$UbicacionTests
+[INFO] Running com.homecare.domain.user.service.UsuarioServiceTest$DisponibilidadTests
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.homecare.domain.user.service.UsuarioServiceTest$DisponibilidadTests
+[INFO] Running com.homecare.domain.user.service.UsuarioServiceTest$RankingTests
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in com.homecare.domain.user.service.UsuarioServiceTest$RankingTests
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.143 s -- in com.homecare.domain.user.service.UsuarioServiceTest
+[INFO] Running com.homecare.domain.user.service.AuthServiceSupabaseLoginTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.196 s -- in com.homecare.domain.user.service.AuthServiceSupabaseLoginTest
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest$ObtenerInfoTests
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.158 s -- in com.homecare.domain.user.service.AuthServiceTest$ObtenerInfoTests
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest$ResetPasswordTests
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.054 s -- in com.homecare.domain.user.service.AuthServiceTest$ResetPasswordTests
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest$CambiarPasswordTests
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.homecare.domain.user.service.AuthServiceTest$CambiarPasswordTests
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest$RefreshTokenTests
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.homecare.domain.user.service.AuthServiceTest$RefreshTokenTests
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest$LoginTests
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.homecare.domain.user.service.AuthServiceTest$LoginTests
+[INFO] Running com.homecare.domain.user.service.AuthServiceTest$RegistroTests
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.020 s -- in com.homecare.domain.user.service.AuthServiceTest$RegistroTests
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.254 s -- in com.homecare.domain.user.service.AuthServiceTest
+[INFO] Running com.homecare.domain.user.service.UsuarioDesactivarCuentaTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.homecare.domain.user.service.UsuarioDesactivarCuentaTest
+[INFO] Running com.homecare.domain.common.service.TokenBlacklistServiceTest
+2026-09-04T16:00:40.046-05:00  WARN 4112 --- [homecare-api] [           main] c.h.d.c.service.TokenBlacklistService    : No se pudo verificar blacklist (Redis no disponible): connection refused
+2026-09-04T16:00:40.049-05:00  WARN 4112 --- [homecare-api] [           main] c.h.d.c.service.TokenBlacklistService    : No se pudo agregar token a blacklist (Redis no disponible): connection refused
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in com.homecare.domain.common.service.TokenBlacklistServiceTest
+[INFO] Running com.homecare.domain.common.service.SupabaseStorageServiceTest
+[INFO] Running com.homecare.domain.common.service.SupabaseStorageServiceTest$EliminarArchivo
+2026-09-04T16:00:40.806-05:00  WARN 4112 --- [homecare-api] [ctor-http-nio-3] c.h.d.c.service.SupabaseStorageService   : No se pudo eliminar archivo de Storage — bucket=perfiles-usuarios path=uid/ghost.jpg: 404 Not Found from DELETE http://localhost:49824/storage/v1/object/perfiles-usuarios/uid%2Fghost.jpg
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.745 s -- in com.homecare.domain.common.service.SupabaseStorageServiceTest$EliminarArchivo
+[INFO] Running com.homecare.domain.common.service.SupabaseStorageServiceTest$GenerarUrlFirmada
+2026-09-04T16:00:40.835-05:00 ERROR 4112 --- [homecare-api] [           main] c.h.d.c.service.SupabaseStorageService   : Error Supabase generando URL firmada — status=500 INTERNAL_SERVER_ERROR path=path.jpg
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in com.homecare.domain.common.service.SupabaseStorageServiceTest$GenerarUrlFirmada
+[INFO] Running com.homecare.domain.common.service.SupabaseStorageServiceTest$SubirFotoEvidencia
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in com.homecare.domain.common.service.SupabaseStorageServiceTest$SubirFotoEvidencia
+[INFO] Running com.homecare.domain.common.service.SupabaseStorageServiceTest$SubirFotoPerfil
+2026-09-04T16:00:40.881-05:00 ERROR 4112 --- [homecare-api] [           main] c.h.d.c.service.SupabaseStorageService   : Error subiendo archivo a Supabase Storage — bucket=perfiles-usuarios status=403 FORBIDDEN body={"error":"Unauthorized"}
+2026-09-04T16:00:40.892-05:00 ERROR 4112 --- [homecare-api] [           main] c.h.d.c.service.SupabaseStorageService   : Error subiendo archivo a Supabase Storage — bucket=perfiles-usuarios status=413 PAYLOAD_TOO_LARGE body={"error":"Payload Too Large"}
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.030 s -- in com.homecare.domain.common.service.SupabaseStorageServiceTest$SubirFotoPerfil
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.835 s -- in com.homecare.domain.common.service.SupabaseStorageServiceTest
+[INFO] Running com.homecare.domain.service.service.ServicioAceptadoServiceIntegrationTest
+2026-09-04T16:00:40.900-05:00  INFO 4112 --- [homecare-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.homecare.domain.service.service.ServicioAceptadoServiceIntegrationTest]: ServicioAceptadoServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-09-04T16:00:40.913-05:00  INFO 4112 --- [homecare-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.homecare.HomeCareApplication for test class com.homecare.domain.service.service.ServicioAceptadoServiceIntegrationTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in com.homecare.domain.service.service.ServicioAceptadoServiceIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 166, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  37.298 s
+[INFO] Finished at: 2026-09-04T16:00:45-05:00
+[INFO] ------------------------------------------------------------------------

@@ -219,6 +219,17 @@ export default function PaymentBricksScreen({ route, navigation }) {
         </Text>
       </View>
 
+      {/* Demo Test Card Helper */}
+      <View style={styles.testCardBanner}>
+        <View style={styles.testCardHeader}>
+          <Ionicons name="card-outline" size={14} color={COLORS.accent} />
+          <Text style={styles.testCardTitle}>Tarjeta Demo Mercado Pago</Text>
+        </View>
+        <Text style={styles.testCardText}>
+          Tarjeta: <Text style={styles.testCardBold}>4509 9535 6623 3704</Text> · Venc: <Text style={styles.testCardBold}>11/28</Text> · CVV: <Text style={styles.testCardBold}>123</Text>
+        </Text>
+      </View>
+
       {/* WebView */}
       <View style={styles.webviewWrapper}>
         {!webviewReady && (
@@ -308,6 +319,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 22,
     fontWeight: '700',
+  },
+  testCardBanner: {
+    backgroundColor: 'rgba(73, 192, 188, 0.12)',
+    borderColor: 'rgba(73, 192, 188, 0.35)',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  testCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  testCardTitle: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  testCardText: {
+    color: '#D1E7E6',
+    fontSize: 11,
+  },
+  testCardBold: {
+    fontWeight: '700',
+    color: '#fff',
   },
   webviewWrapper: {
     flex: 1,

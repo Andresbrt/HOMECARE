@@ -57,7 +57,7 @@ public class SolicitudDTO {
         private BigDecimal precioMaximo; // Opcional
 
         @NotNull(message = "La fecha del servicio es obligatoria")
-        @Future(message = "La fecha debe ser futura")
+        @FutureOrPresent(message = "La fecha no puede ser en el pasado")
         private LocalDate fechaServicio;
 
         @NotNull(message = "La hora de inicio es obligatoria")
