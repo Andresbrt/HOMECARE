@@ -14,6 +14,8 @@ import com.homecare.domain.service.model.Disputa;
 import com.homecare.domain.service.repository.ConformidadClienteRepository;
 import com.homecare.domain.service.repository.DisputaRepository;
 import com.homecare.model.ServicioAceptado;
+import com.homecare.domain.user.model.Usuario;
+import com.homecare.domain.user.repository.UsuarioRepository;
 import com.homecare.domain.payment.repository.ConfiguracionComisionRepository;
 import com.homecare.domain.payment.repository.PagoRepository;
 import com.homecare.domain.service_order.repository.ServicioAceptadoRepository;
@@ -60,6 +62,7 @@ public class PaymentService {
     private final ConformidadClienteRepository conformidadRepository;
     private final DisputaRepository disputaRepository;
     private final NotificationService notificationService;
+    private final UsuarioRepository usuarioRepository;
 
     @Value("${mercadopago.access-token}")
     private String mpAccessToken;
@@ -210,7 +213,7 @@ public class PaymentService {
             com.mercadopago.client.payment.PaymentCreateRequest createRequest =
                 com.mercadopago.client.payment.PaymentCreateRequest.builder()
                     .token(request.getCardToken())
-                    .description("Pago de servicio HomeCare #" + pago.getServicio().getId())
+                    .description(pago.getServicio() != null ? ("Pago de servicio HomeCare #" + pago.getServicio().getId()) : ("Pago HomeCare " + pago.getReferencia()))
                     .installments(request.getInstallments() != null ? request.getInstallments() : 1)
                     .paymentMethodId(request.getPaymentMethodId())
                     .transactionAmount(pago.getMontoTotal())
@@ -218,7 +221,7 @@ public class PaymentService {
                     .notificationUrl(resolveNotificationUrl())
                     .issuerId(request.getIssuerId())
                     .payer(com.mercadopago.client.payment.PaymentPayerRequest.builder()
-                        .email(request.getEmail() != null ? request.getEmail() : pago.getCliente().getEmail())
+                        .email(request.getEmail() != null ? request.getEmail() : (pago.getCliente() != null ? pago.getCliente().getEmail() : "cliente@homecare.com"))
                         .build())
                     .build();
 
@@ -505,41 +508,65 @@ public class PaymentService {
     }
 
     private void notificarPagoExitoso(Pago pago) {
-        notificationService.enviarNotificacion(
-                pago.getServicio().getCliente().getId(),
-                "Pago Aprobado",
-                "Tu pago por el servicio #" + pago.getServicio().getId() + " fue aprobado exitosamente.",
-                Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_APROBADO"),
-                null
-        );
+        Long clienteId = (pago.getServicio() != null && pago.getServicio().getCliente() != null)
+                ? pago.getServicio().getCliente().getId()
+                : (pago.getCliente() != null ? pago.getCliente().getId() : null);
+        Long proveedorId = (pago.getServicio() != null && pago.getServicio().getProveedor() != null)
+                ? pago.getServicio().getProveedor().getId()
+                : (pago.getProveedor() != null ? pago.getProveedor().getId() : null);
+
+        String refDesc = pago.getServicio() != null ? ("el servicio #" + pago.getServicio().getId()) : ("la recarga de saldo (" + pago.getReferencia() + ")");
+
+        if (clienteId != null) {
+            notificationService.enviarNotificacion(
+                    clienteId,
+                    "Pago Aprobado",
+                    "Tu pago por " + refDesc + " fue aprobado exitosamente.",
+                    Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_APROBADO"),
+                    null
+            );
+        }
         
-        notificationService.enviarNotificacion(
-                pago.getServicio().getProveedor().getId(),
-                "Pago Recibido",
-                "Has recibido un pago de $" + pago.getMontoProveedor() + " por el servicio #" + pago.getServicio().getId(),
-                Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_RECIBIDO"),
-                null
-        );
+        if (proveedorId != null) {
+            notificationService.enviarNotificacion(
+                    proveedorId,
+                    "Pago Recibido",
+                    "Has recibido un abono de $" + pago.getMontoProveedor() + " por " + refDesc,
+                    Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_RECIBIDO"),
+                    null
+            );
+        }
     }
 
     private void notificarPagoRechazado(Pago pago, String motivo) {
-        notificationService.enviarNotificacion(
-                pago.getServicio().getCliente().getId(),
-                "Pago Rechazado",
-                "Tu pago fue rechazado. Motivo: " + motivo,
-                Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_RECHAZADO"),
-                null
-        );
+        Long clienteId = (pago.getServicio() != null && pago.getServicio().getCliente() != null)
+                ? pago.getServicio().getCliente().getId()
+                : (pago.getCliente() != null ? pago.getCliente().getId() : null);
+        if (clienteId != null) {
+            notificationService.enviarNotificacion(
+                    clienteId,
+                    "Pago Rechazado",
+                    "Tu pago fue rechazado. Motivo: " + (motivo != null ? motivo : "Transacción no procesada"),
+                    Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_RECHAZADO"),
+                    null
+            );
+        }
     }
 
     private void notificarReembolso(Pago pago, BigDecimal monto) {
-        notificationService.enviarNotificacion(
-                pago.getServicio().getCliente().getId(),
-                "Reembolso Procesado",
-                "Se ha procesado un reembolso de $" + monto + " por el servicio #" + pago.getServicio().getId(),
-                Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "REEMBOLSO"),
-                null
-        );
+        Long clienteId = (pago.getServicio() != null && pago.getServicio().getCliente() != null)
+                ? pago.getServicio().getCliente().getId()
+                : (pago.getCliente() != null ? pago.getCliente().getId() : null);
+        String refDesc = pago.getServicio() != null ? ("el servicio #" + pago.getServicio().getId()) : "la transacción";
+        if (clienteId != null) {
+            notificationService.enviarNotificacion(
+                    clienteId,
+                    "Reembolso Procesado",
+                    "Se ha procesado un reembolso de $" + monto + " por " + refDesc,
+                    Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "REEMBOLSO"),
+                    null
+            );
+        }
     }
 
     private void registrarAuditoria(Pago pago, EstadoPago anterior, EstadoPago nuevo, String evento) {
@@ -729,21 +756,33 @@ public class PaymentService {
         pago.setFechaLiberacion(LocalDateTime.now());
         pagoRepository.save(pago);
         log.info("AUDITORIA PAGO - ID: {}, Liberado: {}, Motivo: {}", pago.getId(), pago.getReferencia(), motivo);
-        notificationService.enviarNotificacion(
-                pago.getProveedor().getId(),
-                "Pago liberado",
-                "Tu pago por el servicio #" + pago.getServicio().getId() + " ha sido liberado. Monto: $" + pago.getMontoProveedor(),
-                Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_LIBERADO"),
-                null
-        );
+        if (pago.getProveedor() != null && pago.getProveedor().getId() != null) {
+            String servDesc = pago.getServicio() != null ? ("el servicio #" + pago.getServicio().getId()) : ("la recarga " + pago.getReferencia());
+            notificationService.enviarNotificacion(
+                    pago.getProveedor().getId(),
+                    "Pago liberado",
+                    "Tu pago por " + servDesc + " ha sido liberado. Monto: $" + pago.getMontoProveedor(),
+                    Map.of("pagoId", String.valueOf(pago.getId()), "tipo", "PAGO_LIBERADO"),
+                    null
+            );
+        }
     }
 
     public PagoDTO.PagoResponse obtenerPago(Long pagoId, Long usuarioId) {
         Pago pago = pagoRepository.findById(pagoId)
                 .orElseThrow(() -> new NotFoundException("Pago no encontrado"));
 
-        if (!pago.getServicio().getCliente().getId().equals(usuarioId) &&
-            !pago.getServicio().getProveedor().getId().equals(usuarioId)) {
+        Long clienteId = (pago.getServicio() != null && pago.getServicio().getCliente() != null)
+                ? pago.getServicio().getCliente().getId()
+                : (pago.getCliente() != null ? pago.getCliente().getId() : null);
+        Long proveedorId = (pago.getServicio() != null && pago.getServicio().getProveedor() != null)
+                ? pago.getServicio().getProveedor().getId()
+                : (pago.getProveedor() != null ? pago.getProveedor().getId() : null);
+
+        boolean esAutorizado = (clienteId != null && clienteId.equals(usuarioId)) ||
+                               (proveedorId != null && proveedorId.equals(usuarioId));
+
+        if (!esAutorizado) {
             throw new PaymentException("No autorizado para ver este pago");
         }
 
@@ -863,16 +902,31 @@ public class PaymentService {
 
         List<PagoDTO.ComisionCarritoItem> items = pendientes.stream()
                 .filter(p -> p.getComisionPlataforma() != null && p.getComisionPlataforma().compareTo(BigDecimal.ZERO) > 0)
-                .map(p -> new PagoDTO.ComisionCarritoItem(
-                        p.getId(),
-                        p.getServicio().getId(),
-                        p.getCliente() != null ? (p.getCliente().getNombre() + " " + (p.getCliente().getApellido() != null ? p.getCliente().getApellido() : "")) : "Cliente",
-                        p.getServicio().getConcepto() != null ? p.getServicio().getConcepto() : "Servicio #" + p.getServicio().getId(),
-                        p.getMontoTotal(),
-                        BigDecimal.valueOf(10.0), // 10% estándar de comisión
-                        p.getComisionPlataforma(),
-                        p.getCreatedAt()
-                ))
+                .map(p -> {
+                    String concepto = "Comisión de Plataforma";
+                    if (p.getServicio() != null) {
+                        if (p.getServicio().getSolicitud() != null && p.getServicio().getSolicitud().getTitulo() != null) {
+                            concepto = p.getServicio().getSolicitud().getTitulo();
+                        } else {
+                            concepto = "Servicio #" + p.getServicio().getId();
+                        }
+                    }
+                    Long servId = p.getServicio() != null ? p.getServicio().getId() : 0L;
+                    String clienteNom = p.getCliente() != null 
+                            ? (p.getCliente().getNombre() + " " + (p.getCliente().getApellido() != null ? p.getCliente().getApellido() : "")) 
+                            : "Cliente";
+
+                    return new PagoDTO.ComisionCarritoItem(
+                            p.getId(),
+                            servId,
+                            clienteNom,
+                            concepto,
+                            p.getMontoTotal(),
+                            BigDecimal.valueOf(10.0), // 10% estándar de comisión
+                            p.getComisionPlataforma(),
+                            p.getCreatedAt()
+                    );
+                })
                 .toList();
 
         BigDecimal total = items.stream()
@@ -1071,7 +1125,7 @@ public class PaymentService {
         }
 
         Usuario proveedor = usuarioRepository.findById(proveedorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado con id: " + proveedorId));
+                .orElseThrow(() -> new NotFoundException("Proveedor no encontrado con id: " + proveedorId));
 
         LocalDateTime now = LocalDateTime.now();
         Pago recarga = Pago.builder()
