@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SubscriptionScreen -- Suscripcion Premium
  * Plan unico: $35.700 COP/mes (30.000 base + 19% IVA)
  * Homecare Colorimetria - Colombia
@@ -564,7 +564,7 @@ const tbStyles = StyleSheet.create({
 // ============================================================================
 function PremiumActiveCard({ onClose }) {
   return (
-    <Animated.View entering={FadeInDown.duration(450).springify()}>
+    <Animated.View entering={FadeInDown.duration(200)}>
       <GlassCard variant="accent" style={paStyles.card}>
         <LinearGradient
           colors={['rgba(73,192,188,0.18)', 'rgba(73,192,188,0.03)']}
@@ -748,7 +748,7 @@ export default function SubscriptionScreen({ navigation }) {
         </Animated.View>
 
         {/* ---- Tarjeta precio + beneficios ---- */}
-        <Animated.View entering={FadeInDown.delay(80).duration(450).springify()}>
+        <Animated.View entering={FadeInDown.duration(200)}>
           <GlassCard variant="accent" style={s.priceCard}>
 
             {/* Shimmer diagonal decorativo */}
@@ -809,7 +809,7 @@ export default function SubscriptionScreen({ navigation }) {
         </Animated.View>
 
         {/* ---- Tarjeta promo para profesionales ---- */}
-        <Animated.View entering={FadeInDown.delay(300).duration(450).springify()}>
+        <Animated.View entering={FadeInDown.duration(200)}>
           <GlassCard style={s.promoCard}>
             <LinearGradient
               colors={['rgba(73,192,188,0.15)', 'rgba(73,192,188,0.03)']}
@@ -857,7 +857,7 @@ export default function SubscriptionScreen({ navigation }) {
         </Animated.View>
 
         {/* ---- Trust badges ---- */}
-        <Animated.View entering={FadeInDown.delay(420).duration(400)}>
+        <Animated.View entering={FadeInDown.duration(200)}>
           <TrustBadges />
         </Animated.View>
 
@@ -865,15 +865,13 @@ export default function SubscriptionScreen({ navigation }) {
         {isPremium ? (
           <PremiumActiveCard onClose={() => navigation.goBack()} />
         ) : (
-          <Animated.View entering={FadeInDown.delay(500).springify()} style={s.ctaWrap}>
+          <Animated.View entering={FadeInDown.duration(200)} style={s.ctaWrap}>
             <Animated.View style={[s.ctaGlow, glowStyle]} />
             <Animated.View style={scaleStyle}>
               <TouchableOpacity
                 onPress={handleSubscribe}
-                onPressIn={() => { btnScale.value = withSpring(0.96, { damping: 14 }); }}
-                onPressOut={() => { btnScale.value = withSpring(1.0, { damping: 14 }); }}
+                activeOpacity={0.85}
                 disabled={loading}
-                activeOpacity={1}
               >
                 <LinearGradient colors={PROF.gradAccent} style={s.ctaBtn}>
                   {loading

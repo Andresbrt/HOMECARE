@@ -25,6 +25,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     // Pagos del proveedor
     List<Pago> findByProveedorIdOrderByCreatedAtDesc(Long proveedorId);
 
+    // Pagos del proveedor por estado (incluyendo servicios y recargas de wallet)
+    List<Pago> findByProveedorIdAndEstado(Long proveedorId, Pago.EstadoPago estado);
+
     // Pago por transacción de Wompi
     Optional<Pago> findByTransaccionId(String transaccionId);
 

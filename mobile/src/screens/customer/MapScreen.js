@@ -100,10 +100,10 @@ function CategoryChip({ item, selected, onPress }) {
   );
 }
 
-function MenuOption({ icon, label, onPress, index }) {
+function MenuOption({ icon, label, onPress }) {
   return (
-    <Animated.View entering={FadeInLeft.delay(index * 100).springify().damping(15)}>
-      <TouchableOpacity style={styles.menuOption} onPress={onPress}>
+    <Animated.View entering={FadeIn.duration(200)}>
+      <TouchableOpacity style={styles.menuOption} onPress={onPress} activeOpacity={0.8}>
         <Ionicons name={icon} size={22} color="#fff" style={styles.menuOptionIcon} />
         <Text style={styles.menuOptionLabel}>{label}</Text>
       </TouchableOpacity>
@@ -241,7 +241,7 @@ export default function UserMapScreen({ navigation }) {
       )}
 
       {/* ── Panel inferior: 3 servicios de limpieza ─────────────────────── */}
-      <Animated.View entering={FadeInDown.delay(300).springify()} style={[styles.servicesBar, { bottom: insets.bottom + 16 }]}>
+      <Animated.View entering={FadeInDown.duration(200)} style={[styles.servicesBar, { bottom: insets.bottom + 16 }]}>
         {[
           { label: 'Limpieza\nGeneral',   tipo: 'BASICA',   titulo: 'Limpieza General del Hogar',     icon: 'sparkles-outline' },
           { label: 'Limpieza\nPremium',   tipo: 'PROFUNDA', titulo: 'Limpieza Premium Profunda',       icon: 'diamond-outline'  },

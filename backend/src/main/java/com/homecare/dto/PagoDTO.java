@@ -180,4 +180,30 @@ public class PagoDTO {
         private BigDecimal totalAPagar;
         private Integer itemsCount;
     }
+
+    /**
+     * Solicitud para recargar saldo a la billetera profesional.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecargaWalletRequest {
+        @NotNull(message = "El monto a recargar es requerido")
+        @DecimalMin(value = "1000.00", message = "El monto mínimo de recarga es $1.000 COP")
+        private BigDecimal monto;
+    }
+
+    /**
+     * Respuesta de recarga de billetera (preferencia de Mercado Pago).
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecargaWalletResponse {
+        private String preferenceId;
+        private String initPoint;
+        private String externalReference;
+        private BigDecimal monto;
+        private String mensaje;
+    }
 }

@@ -55,7 +55,7 @@ const OfferCard = React.memo(({ offer, index, onAccept }) => {
   };
 
   return (
-    <Animated.View entering={FadeInDown.duration(400).delay(index * 60).springify()} style={cardAnimStyle}>
+    <Animated.View entering={FadeInDown.duration(200)} style={cardAnimStyle}>
       <View 
         style={[styles.card, isAccepted && styles.cardAccepted]}
         onTouchStart={handlePressIn}
@@ -280,7 +280,7 @@ export default function ViewOffersScreen({ route, navigation }) {
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchOffers(); }} tintColor={COLORS.accent} />}
           ListEmptyComponent={
-            <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.emptyState}>
+            <Animated.View entering={FadeInDown.duration(200)} style={styles.emptyState}>
               <View style={styles.emptyIcon}>
                 <Ionicons name="hourglass-outline" size={48} color={COLORS.textDisabled} />
               </View>

@@ -57,7 +57,7 @@ function FormField({
 }) {
   const hasError = !!error;
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(16)} style={styles.fieldWrap}>
+    <Animated.View entering={FadeIn.duration(200)} style={styles.fieldWrap}>
       <Text style={styles.fieldLabel}>
         <Ionicons name={icon} size={13} color={hasError ? PROF.error : PROF.accent} />{'  '}
         {label}
@@ -258,7 +258,7 @@ export default function EditProfileScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Avatar ── */}
-          <Animated.View entering={FadeInDown.delay(60).springify().damping(16)} style={styles.avatarSection}>
+          <Animated.View entering={FadeIn.duration(200)} style={styles.avatarSection}>
             <Animated.View style={photoAnim}>
               <TouchableOpacity
                 onPress={handlePickPhoto}
@@ -300,7 +300,7 @@ export default function EditProfileScreen({ navigation }) {
           </Animated.View>
 
           {/* ── Formulario ── */}
-          <Animated.View entering={FadeInDown.delay(120).springify().damping(16)} style={styles.formSection}>
+          <Animated.View entering={FadeIn.duration(200)} style={styles.formSection}>
             <Text style={styles.sectionLabel}>Datos personales</Text>
             <GlassCard variant="default" padding={0} style={styles.formCard}>
               <View style={styles.formInner}>
@@ -311,7 +311,6 @@ export default function EditProfileScreen({ navigation }) {
                   value={nombre}
                   onChangeText={setNombre}
                   error={errors.nombre}
-                  delay={160}
                 />
                 <View style={styles.fieldSep} />
                 <FormField
@@ -321,7 +320,6 @@ export default function EditProfileScreen({ navigation }) {
                   value={apellido}
                   onChangeText={setApellido}
                   error={errors.apellido}
-                  delay={200}
                 />
                 <View style={styles.fieldSep} />
                 <FormField
@@ -332,7 +330,6 @@ export default function EditProfileScreen({ navigation }) {
                   onChangeText={setTelefono}
                   keyboardType="phone-pad"
                   error={errors.telefono}
-                  delay={240}
                 />
                 <View style={styles.fieldSep} />
                 <FormField
@@ -341,7 +338,6 @@ export default function EditProfileScreen({ navigation }) {
                   placeholder="Cra 15 #82-45, Bogotá"
                   value={direccion}
                   onChangeText={setDireccion}
-                  delay={280}
                 />
               </View>
             </GlassCard>
@@ -349,7 +345,7 @@ export default function EditProfileScreen({ navigation }) {
 
           {/* ── Email (solo lectura) ── */}
           {user?.email ? (
-            <Animated.View entering={FadeInDown.delay(320).springify().damping(16)}>
+            <Animated.View entering={FadeIn.duration(200)}>
               <GlassCard variant="default" style={styles.emailCard}>
                 <View style={styles.emailRow}>
                   <View style={styles.emailIcon}>

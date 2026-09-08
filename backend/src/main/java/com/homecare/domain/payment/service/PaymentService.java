@@ -740,7 +740,7 @@ public class PaymentService {
      * - totalGanado:      saldoDisponible + saldoRetenido
      */
     public PagoDTO.WalletResponse obtenerWalletProveedor(Long proveedorId) {
-        List<Pago> pagosAprobados = pagoRepository.findByServicioProveedorIdAndEstado(proveedorId, EstadoPago.APROBADO);
+        List<Pago> pagosAprobados = pagoRepository.findByProveedorIdAndEstado(proveedorId, EstadoPago.APROBADO);
 
         BigDecimal saldoDisponible = pagosAprobados.stream()
                 .filter(p -> p.getEstadoRetencion() == EstadoRetencion.LIBERADO)
@@ -947,5 +947,99 @@ public class PaymentService {
                 proveedorId, pendientes.size());
 
         return obtenerComisionesPendientes(proveedorId);
+    }
+
+    /**
+     * Genera una preferencia en Mercado Pago para recargar saldo a la billetera del profesional.
+     */
+    public PagoDTO.RecargaWalletResponse crearPreferenciaRecargaWallet(Long proveedorId, BigDecimal monto) {
+        if (monto == null || monto.compareTo(BigDecimal.valueOf(1000)) < 0) {
+            throw new PaymentException("El monto mínimo de recarga es $1.000 COP");
+        }
+
+        try {
+            PreferenceClient client = new PreferenceClient();
+            String externalReference = "HC-REC-" + proveedorId + "-" + System.currentTimeMillis();
+
+            List<PreferenceItemRequest> items = new ArrayList<>();
+            PreferenceItemRequest item = PreferenceItemRequest.builder()
+                    .title("Homecare - Recarga de Billetera Profesional")
+                    .description("Recarga de saldo para la cuenta profesional Homecare")
+                    .quantity(1)
+                    .unitPrice(monto)
+                    .currencyId("COP")
+                    .build();
+            items.add(item);
+
+            PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+                    .success(callbackUrl + "/payments/wallet/success")
+                    .pending(callbackUrl + "/payments/wallet/pending")
+                    .failure(callbackUrl + "/payments/wallet/failure")
+                    .build();
+
+            PreferenceRequest request = PreferenceRequest.builder()
+                    .items(items)
+                    .backUrls(backUrls)
+                    .externalReference(externalReference)
+                    .autoReturn("approved")
+                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .build();
+
+            Preference preference = client.create(request);
+
+            log.info("[WALLET RECARGA] Preferencia creada para proveedor {}: id={}, monto=${}",
+                    proveedorId, preference.getId(), monto);
+
+            return new PagoDTO.RecargaWalletResponse(
+                    preference.getId(),
+                    preference.getInitPoint(),
+                    externalReference,
+                    monto,
+                    "Preferencia generada exitosamente"
+            );
+        } catch (Exception e) {
+            log.warn("Mercado Pago API no disponible para recarga ({}), habilitando flujo directo", e.getMessage());
+            return new PagoDTO.RecargaWalletResponse(
+                    null,
+                    null,
+                    "HC-REC-" + proveedorId + "-" + System.currentTimeMillis(),
+                    monto,
+                    "Modo directo disponible"
+            );
+        }
+    }
+
+    /**
+     * Recarga directa / inmediata de la billetera del profesional (dev, simulación o confirmación).
+     */
+    @Transactional
+    public PagoDTO.WalletResponse recargarWalletDirecto(Long proveedorId, BigDecimal monto, String metodo) {
+        if (monto == null || monto.compareTo(BigDecimal.valueOf(1000)) < 0) {
+            throw new PaymentException("El monto mínimo de recarga es $1.000 COP");
+        }
+
+        Usuario proveedor = usuarioRepository.findById(proveedorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado con id: " + proveedorId));
+
+        Pago recarga = Pago.builder()
+                .servicio(null)
+                .cliente(proveedor)
+                .proveedor(proveedor)
+                .montoTotal(monto)
+                .comisionPlataforma(BigDecimal.ZERO)
+                .montoProveedor(monto)
+                .estado(EstadoPago.APROBADO)
+                .estadoRetencion(EstadoRetencion.LIBERADO)
+                .metodoPago(metodo != null ? metodo : "MERCADO_PAGO_RECARGA")
+                .referencia("HC-REC-" + proveedorId + "-" + System.currentTimeMillis())
+                .aprobadoAt(LocalDateTime.now())
+                .fechaLiberacion(LocalDateTime.now())
+                .comisionLiquidada(true)
+                .build();
+
+        pagoRepository.save(recarga);
+        log.info("[WALLET RECARGA] Recarga directa de ${} abonada a la billetera del proveedor {}", monto, proveedorId);
+
+        return obtenerWalletProveedor(proveedorId);
     }
 }

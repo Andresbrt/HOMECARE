@@ -7,13 +7,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   StatusBar, SafeAreaView, useWindowDimensions, ActivityIndicator,
-  Alert, RefreshControl,
+  Alert, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withRepeat, withSequence, withDelay, Easing, FadeInDown, FadeIn,
-  interpolate,
+  useSharedValue, useAnimatedStyle, withTiming,
+  FadeInDown, FadeIn, interpolate,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -21,7 +20,7 @@ import GlassCard from '../../components/shared/GlassCard';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
-import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
+import { computeLevel, getQuarterLabel } from '../../utils/levelUtils';
 
 // ─── Constantes UI ────────────────────────────────────────────────────────────
 const BAR_MAX = 80;
@@ -33,6 +32,7 @@ function mapMetodo(m) {
   if (m.includes('TARJETA_DEBITO'))  return 'Pago con tarjeta débito';
   if (m.includes('EFECTIVO'))        return 'Pago en efectivo';
   if (m.includes('MERCADO_PAGO'))    return 'Pago con Mercado Pago';
+  if (m.includes('RECARGA'))         return 'Recarga de saldo';
   return 'Pago recibido';
 }
 
@@ -46,21 +46,20 @@ function fmtDate(iso) {
   if (diffMin < 60)  return `Hace ${diffMin} min`;
   const diffH = Math.floor(diffMin / 60);
   if (diffH < 24)    return `Hace ${diffH}h`;
-  const diffD = Math.floor(diffH / 24);
+  const diffD = Math.floor(diffMs / 86400000);
   if (diffD === 1)   return 'Ayer';
   if (diffD < 7)     return `Hace ${diffD} días`;
   return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
 }
 
-// ─── Componente: Tab Switcher ────────────────────────────────────────────────
+// ─── Componente: Tab Switcher (Transiciones sutiles) ─────────────────────────
 function TabSwitcher({ activeTab, setActiveTab }) {
   const translateX = useSharedValue(activeTab === 0 ? 0 : 1);
   useEffect(() => {
-    translateX.value = withSpring(activeTab === 0 ? 0 : 1, { damping: 16, stiffness: 200 });
+    translateX.value = withTiming(activeTab === 0 ? 0 : 1, { duration: 180 });
   }, [activeTab]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: interpolate(translateX.value, [0, 1], [4, 4]) }],
     left: `${interpolate(translateX.value, [0, 1], [0, 50])}%`,
   }));
 
@@ -80,7 +79,7 @@ function TabSwitcher({ activeTab, setActiveTab }) {
           onPress={() => handleTab(i)}
           activeOpacity={0.75}
         >
-          <Ionicons name={icon} size={16} color={activeTab === i ? PROF.accent : PROF.textMuted} />
+          <Ionicons name={icon} size={15} color={activeTab === i ? PROF.accent : PROF.textMuted} />
           <Text style={[ts.tabLabel, activeTab === i && ts.tabLabelActive]}>{label}</Text>
         </TouchableOpacity>
       ))}
@@ -99,7 +98,7 @@ const ts = StyleSheet.create({
     position: 'absolute',
     top: 3,
     bottom: 3,
-    width: '46%',
+    width: '48%',
     backgroundColor: PROF.accentDim,
     borderRadius: BORDER_RADIUS.full,
     borderWidth: 1,
@@ -111,7 +110,7 @@ const ts = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 9,
     zIndex: 1,
     borderRadius: BORDER_RADIUS.full,
   },
@@ -125,7 +124,7 @@ function TxItem({ item, index }) {
   const pos = item.amount > 0;
   const bonus = item.type === 'bonus';
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
+    <Animated.View entering={FadeIn.duration(200)}>
       <GlassCard animated={false} style={fp.txCard} padding={SPACING.md}>
         <View style={fp.txRow}>
           <LinearGradient
@@ -148,69 +147,186 @@ function TxItem({ item, index }) {
   );
 }
 
-// ─── Componente: Barra del gráfico ───────────────────────────────────────────
-function BarItem({ data, index, isToday }) {
+// ─── Componente: Barra del gráfico (Minimalista & Sutil) ──────────────────────
+function BarItem({ data, isToday }) {
   const h = useSharedValue(0);
-  const op = useSharedValue(0);
   useEffect(() => {
-    h.value = withDelay(index * 70, withTiming(data.value * BAR_MAX, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    op.value = withDelay(index * 70, withTiming(1, { duration: 250 }));
-  }, []);
-  const barStyle = useAnimatedStyle(() => ({ height: h.value, opacity: op.value }));
+    h.value = withTiming(data.value * BAR_MAX, { duration: 250 });
+  }, [data.value]);
+  const barStyle = useAnimatedStyle(() => ({ height: h.value }));
   return (
     <View style={fp.barWrap}>
-      <Text style={fp.barSvc}>{data.svcs}</Text>
+      <Text style={fp.barSvc}>{data.svcs > 0 ? data.svcs : ''}</Text>
       <Animated.View style={[fp.bar, barStyle]}>
-        <LinearGradient colors={isToday ? PROF.gradAccent : ['rgba(73,192,188,0.5)', 'rgba(14,77,104,0.3)']} start={{x:0,y:0}} end={{x:0,y:1}} style={StyleSheet.absoluteFill} />
+        <LinearGradient
+          colors={isToday ? PROF.gradAccent : ['rgba(73,192,188,0.45)', 'rgba(14,77,104,0.25)']}
+          start={{x:0,y:0}} end={{x:0,y:1}}
+          style={StyleSheet.absoluteFill}
+        />
       </Animated.View>
       <Text style={[fp.barDay, isToday && fp.barDayActive]}>{data.day}</Text>
     </View>
   );
 }
 
-// ─── Componente: Tarjeta de métrica ──────────────────────────────────────────
-function MetricCard({ icon, label, value, sub, color, index }) {
-  const anim = useSharedValue(0);
-  useEffect(() => { anim.value = withDelay(index * 80, withSpring(1, { damping: 16 })); }, []);
-  const style = useAnimatedStyle(() => ({ opacity: anim.value, transform: [{ scale: anim.value }] }));
+// ─── Componente: Tarjeta de métrica (Minimalista & Limpia) ───────────────────
+function MetricCard({ icon, label, value, sub, color }) {
   return (
-    <Animated.View style={[fp.metricWrap, style]}>
-      <GlassCard>
+    <View style={fp.metricWrap}>
+      <GlassCard animated={false}>
         <View style={fp.metricInner}>
-          <LinearGradient colors={[color + '33', color + '15']} style={fp.metricIcon}>
-            <Ionicons name={icon} size={18} color={color} />
+          <LinearGradient colors={[color + '22', color + '0A']} style={fp.metricIcon}>
+            <Ionicons name={icon} size={17} color={color} />
           </LinearGradient>
           <Text style={fp.metricVal}>{value}</Text>
           <Text style={fp.metricLabel}>{label}</Text>
-          {sub && <Text style={fp.metricSub}>{sub}</Text>}
+          {sub ? <Text style={fp.metricSub}>{sub}</Text> : null}
         </View>
       </GlassCard>
-    </Animated.View>
+    </View>
   );
 }
 
-// ─── Componente: Reseña ──────────────────────────────────────────────────────
-function ReviewItem({ review, index }) {
-  const op = useSharedValue(0);
-  useEffect(() => { op.value = withDelay(index * 100, withTiming(1, { duration: 350 })); }, []);
-  const anim = useAnimatedStyle(() => ({ opacity: op.value }));
+// ─── Componente: Reseña (Sutil y Elegante) ───────────────────────────────────
+function ReviewItem({ review }) {
   return (
-    <Animated.View style={anim}>
-      <GlassCard style={fp.reviewCard}>
-        <View style={fp.reviewInner}>
-          <View style={fp.reviewHead}>
-            <View>
-              <Text style={fp.reviewAuthor}>{review.author}</Text>
-              <Text style={fp.reviewTime}>{review.time}</Text>
+    <GlassCard animated={false} style={fp.reviewCard}>
+      <View style={fp.reviewInner}>
+        <View style={fp.reviewHead}>
+          <View>
+            <Text style={fp.reviewAuthor}>{review.author}</Text>
+            <Text style={fp.reviewTime}>{review.time}</Text>
+          </View>
+          <View style={fp.reviewStars}>
+            {[1,2,3,4,5].map(s => (
+              <Ionicons key={s} name={s <= review.rating ? 'star' : 'star-outline'} size={12} color="#F5A623" />
+            ))}
+          </View>
+        </View>
+        {review.text ? <Text style={fp.reviewText}>{review.text}</Text> : null}
+      </View>
+    </GlassCard>
+  );
+}
+
+// ─── Componente: Modal de Recarga de Saldo (Mercado Pago) ─────────────────────
+function RecargaModal({ visible, onClose, onConfirm, loading }) {
+  const PRESETS = [20000, 50000, 100000, 200000];
+  const [selectedPreset, setSelectedPreset] = useState(50000);
+  const [customText, setCustomText] = useState('');
+
+  const currentAmount = customText ? (parseInt(customText.replace(/[^0-9]/g, ''), 10) || 0) : (selectedPreset || 0);
+
+  const handleSelectPreset = (amount) => {
+    Haptics.selectionAsync();
+    setSelectedPreset(amount);
+    setCustomText('');
+  };
+
+  const handleCustomChange = (text) => {
+    const raw = text.replace(/[^0-9]/g, '');
+    setCustomText(raw);
+    if (raw) {
+      setSelectedPreset(null);
+    }
+  };
+
+  const handlePay = () => {
+    if (currentAmount < 5000) {
+      Alert.alert('Monto mínimo', 'El monto mínimo de recarga es $5.000 COP.');
+      return;
+    }
+    onConfirm(currentAmount);
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={fp.modalWrap}>
+        <TouchableOpacity style={fp.modalOverlay} activeOpacity={1} onPress={onClose} />
+        <View style={fp.modalSheet}>
+          <View style={fp.modalHandle} />
+
+          <View style={fp.modalHeaderRow}>
+            <LinearGradient colors={PROF.gradAccent} style={fp.modalIconBox}>
+              <Ionicons name="wallet" size={18} color="#fff" />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={fp.modalTitle}>Recargar Billetera</Text>
+              <Text style={fp.modalSubtitle}>Acredita saldo a tu cuenta profesional</Text>
             </View>
-            <View style={fp.reviewStars}>
-              {[1,2,3,4,5].map(s => <Ionicons key={s} name={s <= review.rating ? 'star' : 'star-outline'} size={12} color={PROF.accent} />)}
+            <TouchableOpacity onPress={onClose} style={fp.modalCloseBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={20} color={PROF.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Selector de montos predefinidos */}
+          <Text style={fp.modalSectionLabel}>Monto a recargar</Text>
+          <View style={fp.presetGrid}>
+            {PRESETS.map((p) => {
+              const active = selectedPreset === p && !customText;
+              return (
+                <TouchableOpacity
+                  key={p}
+                  style={[fp.presetChip, active && fp.presetChipActive]}
+                  onPress={() => handleSelectPreset(p)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[fp.presetChipText, active && fp.presetChipTextActive]}>
+                    ${p.toLocaleString('es-CO')}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* O escribe un monto personalizado */}
+          <Text style={[fp.modalSectionLabel, { marginTop: SPACING.sm }]}>O ingresa otro valor (COP)</Text>
+          <View style={fp.customInputWrap}>
+            <Text style={fp.customInputPrefix}>$</Text>
+            <TextInput
+              style={fp.customInput}
+              placeholder="Ej. 75.000"
+              placeholderTextColor={PROF.textMuted}
+              keyboardType="number-pad"
+              value={customText ? Number(customText).toLocaleString('es-CO') : ''}
+              onChangeText={handleCustomChange}
+            />
+          </View>
+
+          {/* Resumen del cobro */}
+          <View style={fp.modalSummaryBox}>
+            <View style={fp.summaryRow}>
+              <Text style={fp.summaryLabel}>Total a recargar:</Text>
+              <Text style={fp.summaryAmount}>COL$ {currentAmount.toLocaleString('es-CO')}</Text>
+            </View>
+            <View style={fp.methodsRow}>
+              <Ionicons name="shield-checkmark" size={14} color={PROF.accent} />
+              <Text style={fp.methodsText}>Mercado Pago · PSE, Tarjetas Débito/Crédito y Efecty</Text>
             </View>
           </View>
-          <Text style={fp.reviewText}>{review.text}</Text>
+
+          {/* Botón de pago */}
+          <TouchableOpacity
+            style={[fp.modalPayBtn, loading && { opacity: 0.6 }]}
+            onPress={handlePay}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={PROF.gradAccent} style={fp.modalPayGrad}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="lock-closed" size={16} color="#fff" />
+                  <Text style={fp.modalPayText}>Pagar COL$ {currentAmount.toLocaleString('es-CO')}</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-      </GlassCard>
-    </Animated.View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -411,35 +527,54 @@ export default function FinancePerformanceScreen({ navigation }) {
 
   const serviciosCompletados = stats?.serviciosCompletados ?? approvedPayments.length;
 
-  // Animación del balance
-  const balScale = useSharedValue(0.96);
-  useEffect(() => {
-    balScale.value = withSpring(1, { damping: 16, stiffness: 120 });
-  }, []);
-  const balStyle = useAnimatedStyle(() => ({ transform: [{ scale: balScale.value }] }));
-
-  const recargarScale = useSharedValue(1);
-  const recStyle = useAnimatedStyle(() => ({ transform: [{ scale: recargarScale.value }] }));
+  // Modal y procesamiento de recarga
+  const [rechargeModalVisible, setRechargeModalVisible] = useState(false);
+  const [recharging, setRecharging] = useState(false);
 
   const handleRecargar = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    recargarScale.value = withSpring(0.93, { damping: 10 }, () => { recargarScale.value = withSpring(1); });
-    Alert.alert(
-      'Recargar Saldo',
-      'Puedes recargar saldo prepago a tu cuenta con PSE, Tarjeta o Efecty a través de Mercado Pago.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Recargar con Mercado Pago',
-          onPress: () => {
-            navigation.navigate('PaymentBricks', {
-              monto: 50000,
-            });
-          },
-        },
-      ]
-    );
-  }, [navigation]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRechargeModalVisible(true);
+  }, []);
+
+  const handleConfirmRecarga = useCallback(async (monto) => {
+    try {
+      setRecharging(true);
+      const res = await apiFetch('/payments/wallet/recargar', {
+        method: 'POST',
+        body: JSON.stringify({ monto }),
+      });
+
+      if (res?.ok && res.data?.preferenceId) {
+        setRechargeModalVisible(false);
+        navigation.navigate('PaymentBricks', {
+          monto,
+          preferenceId: res.data.preferenceId,
+        });
+      } else {
+        // En ambiente dev/local o fallback directo
+        const directRes = await apiFetch('/payments/wallet/recargar-directo', {
+          method: 'POST',
+          body: JSON.stringify({ monto }),
+        });
+        if (directRes?.ok) {
+          setRechargeModalVisible(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert(
+            '¡Recarga exitosa! ✓',
+            `Se han acreditado COL$ ${Number(monto).toLocaleString('es-CO')} a tu billetera profesional.`,
+            [{ text: 'Entendido', onPress: () => loadAllData() }]
+          );
+          loadAllData();
+        } else {
+          Alert.alert('Error', directRes?.error || 'No se pudo procesar la recarga.');
+        }
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Ocurrió un error al procesar la recarga.');
+    } finally {
+      setRecharging(false);
+    }
+  }, [navigation, loadAllData]);
 
   // ── Checkout de comisiones a Homecare (Carrito de Finanzas) ───────────────
   const handleCheckoutComisiones = useCallback(async () => {
@@ -502,11 +637,11 @@ export default function FinancePerformanceScreen({ navigation }) {
               <Text style={[fp.balBadgeText, { color: finLevel.color }]}>{finLevel.label}</Text>
             </View>
           </View>
-          <Animated.View style={balStyle}>
+          <View>
             <Text style={[fp.balAmount, { fontSize: Math.min(38, width * 0.09) }]}>
               COL$ {Number(balance).toLocaleString('es-CO')}
             </Text>
-          </Animated.View>
+          </View>
           <View style={fp.balDelta}>
             <Ionicons name="checkmark-circle" size={13} color={balance > 0 ? PROF.success : PROF.textMuted} />
             <Text style={[fp.balDeltaText, { color: balance > 0 ? PROF.success : PROF.textMuted }]}>
@@ -514,14 +649,14 @@ export default function FinancePerformanceScreen({ navigation }) {
             </Text>
           </View>
           <View style={fp.balBtns}>
-            <Animated.View style={[fp.balBtnFlex, recStyle]}>
-              <TouchableOpacity onPress={handleRecargar} activeOpacity={0.85} style={fp.balBtnWrap}>
+            <View style={fp.balBtnFlex}>
+              <TouchableOpacity onPress={handleRecargar} activeOpacity={0.8} style={fp.balBtnWrap}>
                 <LinearGradient colors={PROF.gradAccent} style={fp.balBtnGrad}>
-                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  <Ionicons name="add-circle-outline" size={17} color="#fff" />
                   <Text style={fp.balBtnText}>Recargar</Text>
                 </LinearGradient>
               </TouchableOpacity>
-            </Animated.View>
+            </View>
             <TouchableOpacity
               activeOpacity={0.85}
               style={[fp.balBtnFlex, fp.balBtnOutlineWrap]}
@@ -683,7 +818,7 @@ export default function FinancePerformanceScreen({ navigation }) {
     const progressW = useSharedValue(0);
 
     useEffect(() => {
-      progressW.value = withTiming(rndLevel.progress * 100, { duration: 1000, easing: Easing.out(Easing.cubic) });
+      progressW.value = withTiming(rndLevel.progress * 100, { duration: 300 });
     }, [rndLevel.progress]);
 
     const progStyle = useAnimatedStyle(() => ({ width: `${progressW.value}%` }));
@@ -863,6 +998,13 @@ export default function FinancePerformanceScreen({ navigation }) {
           {activeTab === 0 ? <FinanzasTab /> : <RendimientoTab />}
           <View style={{ height: SPACING.xl }} />
         </ScrollView>
+
+        <RecargaModal
+          visible={rechargeModalVisible}
+          onClose={() => setRechargeModalVisible(false)}
+          onConfirm={handleConfirmRecarga}
+          loading={recharging}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -1023,4 +1165,161 @@ const fp = StyleSheet.create({
   cartMethodsFootnote: { fontSize: 10, color: PROF.textMuted, textAlign: 'center', marginTop: 8 },
   cartUpToDateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SPACING.sm, paddingVertical: 4 },
   cartUpToDateText: { fontSize: 12, color: PROF.success, flex: 1, lineHeight: 16 },
+
+  // Recarga Modal
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+  modalSheet: {
+    backgroundColor: PROF.bgElevated,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: SPACING.lg,
+    paddingTop: SPACING.sm,
+    borderWidth: 1,
+    borderColor: PROF.border,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: PROF.border,
+    alignSelf: 'center',
+    marginBottom: SPACING.md,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: SPACING.md,
+  },
+  modalIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: TYPOGRAPHY.bold,
+    color: PROF.textPrimary,
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: PROF.textMuted,
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    padding: 6,
+  },
+  modalSectionLabel: {
+    fontSize: 11,
+    color: PROF.textMuted,
+    fontWeight: TYPOGRAPHY.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  presetGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: SPACING.md,
+  },
+  presetChip: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: PROF.border,
+    alignItems: 'center',
+  },
+  presetChipActive: {
+    backgroundColor: PROF.accentDim,
+    borderColor: PROF.accent,
+  },
+  presetChipText: {
+    fontSize: 12,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: PROF.textSecondary,
+  },
+  presetChipTextActive: {
+    color: PROF.accent,
+    fontWeight: TYPOGRAPHY.bold,
+  },
+  customInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: PROF.border,
+    paddingHorizontal: 14,
+    marginBottom: SPACING.md,
+  },
+  customInputPrefix: {
+    fontSize: 16,
+    fontWeight: TYPOGRAPHY.bold,
+    color: PROF.accent,
+    marginRight: 6,
+  },
+  customInput: {
+    flex: 1,
+    color: PROF.textPrimary,
+    fontSize: 15,
+    paddingVertical: 10,
+    fontWeight: TYPOGRAPHY.semibold,
+  },
+  modalSummaryBox: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: PROF.textSecondary,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  summaryAmount: {
+    fontSize: 16,
+    fontWeight: TYPOGRAPHY.bold,
+    color: PROF.accent,
+  },
+  methodsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  methodsText: {
+    fontSize: 10,
+    color: PROF.textMuted,
+  },
+  modalPayBtn: {
+    borderRadius: BORDER_RADIUS.md,
+    overflow: 'hidden',
+    ...SHADOWS.glow,
+    shadowColor: PROF.accent,
+  },
+  modalPayGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    gap: 8,
+  },
+  modalPayText: {
+    fontSize: 14,
+    fontWeight: TYPOGRAPHY.bold,
+    color: '#fff',
+  },
 });

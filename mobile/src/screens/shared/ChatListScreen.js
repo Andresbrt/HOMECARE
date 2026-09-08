@@ -68,7 +68,7 @@ function ConversationItem({ item, onPress, index }) {
   const unread = item.mensajesNoLeidos ?? 0;
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
+    <Animated.View entering={FadeIn.duration(200)}>
       <TouchableOpacity
         style={styles.item}
         onPress={() => onPress(item)}

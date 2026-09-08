@@ -57,19 +57,15 @@ const SERVICIOS = [
   },
 ];
 
-function ServiceCard({ s, onPress, delay }) {
-  const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
+function ServiceCard({ s, onPress }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(15)} style={anim}>
+    <Animated.View entering={FadeIn.duration(200)}>
       <TouchableOpacity
         onPress={() => {
-          scale.value = withSpring(0.97, { damping: 16 }, () => { scale.value = withSpring(1); });
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           onPress(s);
         }}
-        activeOpacity={1}
+        activeOpacity={0.82}
       >
         <LinearGradient colors={s.gradient} style={styles.card}>
           {/* Badge */}
@@ -136,15 +132,15 @@ export default function QuickActionsScreen({ navigation }) {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.Text entering={FadeInDown.delay(80).springify()} style={styles.subtitle}>
+        <Animated.Text entering={FadeInDown.duration(200)} style={styles.subtitle}>
           Selecciona el tipo de limpieza que necesitas
         </Animated.Text>
 
-        {SERVICIOS.map((s, i) => (
-          <ServiceCard key={s.id} s={s} onPress={handlePress} delay={80 + i * 80} />
+        {SERVICIOS.map((s) => (
+          <ServiceCard key={s.id} s={s} onPress={handlePress} />
         ))}
 
-        <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.infoBox}>
+        <Animated.View entering={FadeIn.duration(200)} style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={16} color={PROF.accent} />
           <Text style={styles.infoText}>
             Profesionales verificados responderán con ofertas en minutos.

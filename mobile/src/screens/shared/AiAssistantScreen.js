@@ -35,7 +35,7 @@ function MessageBubble({ message }) {
   const isUser = message.role === 'user';
   return (
     <Animated.View
-      entering={FadeInDown.duration(300).springify()}
+      entering={FadeInDown.duration(200)}
       style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAI]}
     >
       {!isUser && (

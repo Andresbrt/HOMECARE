@@ -139,15 +139,12 @@ const SERVICES = [
 ];
 
 // ─── Tarjeta de servicio ─────────────────────────────────────────────────────
-function ServiceCard({ service, onRequest, delay }) {
+function ServiceCard({ service, onRequest }) {
   const [expanded, setExpanded] = useState(false);
-  const scale = useSharedValue(1);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(500).springify()} style={styles.cardWrap}>
-      <Animated.View style={scaleStyle}>
-        <GlassCard variant="default" style={styles.card}>
+    <Animated.View entering={FadeIn.duration(200)} style={styles.cardWrap}>
+      <GlassCard variant="default" style={styles.card}>
           {/* Header */}
           <View style={styles.cardHeader}>
             <LinearGradient colors={service.gradient} style={styles.cardIcon}>
@@ -223,7 +220,6 @@ function ServiceCard({ service, onRequest, delay }) {
             </LinearGradient>
           </TouchableOpacity>
         </GlassCard>
-      </Animated.View>
     </Animated.View>
   );
 }
@@ -278,17 +274,16 @@ export default function PremiumServicesScreen({ navigation }) {
         </Animated.View>
 
         {/* Catálogo */}
-        {SERVICES.map((svc, i) => (
+        {SERVICES.map((svc) => (
           <ServiceCard
             key={svc.id}
             service={svc}
             onRequest={handleRequest}
-            delay={i * 70}
           />
         ))}
 
         {/* Info adicional */}
-        <Animated.View entering={FadeInDown.delay(500).springify()}>
+        <Animated.View entering={FadeIn.duration(200)}>
           <GlassCard variant="default" style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Ionicons name="shield-checkmark-outline" size={18} color={PROF.accent} />

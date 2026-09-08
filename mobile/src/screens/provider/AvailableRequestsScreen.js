@@ -42,7 +42,7 @@ function RequestCard({ request, index, onPress }) {
   };
 
   return (
-    <Animated.View entering={FadeInDown.duration(400).delay(index * 50).springify()}>
+    <Animated.View entering={FadeInDown.duration(200)}>
       <TouchableOpacity
         style={styles.card}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(request); }}
@@ -218,7 +218,7 @@ export default function AvailableRequestsScreen({ navigation }) {
           onEndReachedThreshold={0.5}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.emptyState}>
+            <Animated.View entering={FadeInDown.duration(200)} style={styles.emptyState}>
               <View style={styles.emptyIcon}>
                 <Ionicons name="navigate-outline" size={40} color={PROF.accent} />
               </View>

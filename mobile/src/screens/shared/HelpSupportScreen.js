@@ -44,7 +44,7 @@ const FAQS = [
     a: 'Registrate con el rol "Profesional", sube tu documentacion y espera la verificacion del equipo (24-48 h).' },
 ];
 
-function FAQItem({ item, index }) {
+function FAQItem({ item }) {
   const [open, setOpen] = useState(false);
   const rot = useSharedValue(0);
   const chevron = useAnimatedStyle(() => ({
@@ -52,19 +52,19 @@ function FAQItem({ item, index }) {
   }));
   const toggle = () => {
     Haptics.selectionAsync();
-    rot.value = withSpring(open ? 0 : 1, { damping: 16 });
+    rot.value = withTiming(open ? 0 : 1, { duration: 180 });
     setOpen(o => !o);
   };
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).springify().damping(16)}>
-      <TouchableOpacity onPress={toggle} activeOpacity={0.85} style={styles.faqRow}>
+    <Animated.View entering={FadeIn.duration(200)}>
+      <TouchableOpacity onPress={toggle} activeOpacity={0.8} style={styles.faqRow}>
         <Text style={styles.faqQuestion}>{item.q}</Text>
         <Animated.View style={chevron}>
           <Ionicons name="chevron-forward" size={16} color={PROF.textMuted} />
         </Animated.View>
       </TouchableOpacity>
       {open && (
-        <Animated.Text entering={FadeInDown.duration(220)} style={styles.faqAnswer}>
+        <Animated.Text entering={FadeInDown.duration(180)} style={styles.faqAnswer}>
           {item.a}
         </Animated.Text>
       )}
@@ -72,18 +72,15 @@ function FAQItem({ item, index }) {
   );
 }
 
-function SupportCard({ icon, title, subtitle, gradient, onPress, delay = 0 }) {
-  const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+function SupportCard({ icon, title, subtitle, gradient, onPress }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(16)} style={[anim, { flex: 1 }]}>
+    <Animated.View entering={FadeIn.duration(200)} style={{ flex: 1 }}>
       <TouchableOpacity
         onPress={() => {
-          scale.value = withSpring(0.95, { damping: 16 }, () => { scale.value = withSpring(1); });
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           onPress?.();
         }}
-        activeOpacity={1}
+        activeOpacity={0.8}
         style={styles.supportCard}
       >
         <LinearGradient colors={gradient} style={styles.supportGrad}>
@@ -98,10 +95,10 @@ function SupportCard({ icon, title, subtitle, gradient, onPress, delay = 0 }) {
   );
 }
 
-function LinkRow({ icon, label, onPress, delay = 0 }) {
+function LinkRow({ icon, label, onPress }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(16)}>
-      <TouchableOpacity style={styles.linkRow} onPress={onPress} activeOpacity={0.8}>
+    <Animated.View entering={FadeIn.duration(200)}>
+      <TouchableOpacity style={styles.linkRow} onPress={onPress} activeOpacity={0.75}>
         <View style={styles.linkIcon}>
           <Ionicons name={icon} size={18} color={PROF.accent} />
         </View>
@@ -132,7 +129,7 @@ export default function HelpSupportScreen({ navigation }) {
       <LinearGradient colors={[PROF.bgDeep, PROF.bg, PROF.bg]} style={StyleSheet.absoluteFill} locations={[0, 0.35, 1]} />
 
       {/* Header */}
-      <Animated.View entering={FadeInDown.duration(400)} style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+      <Animated.View entering={FadeInDown.duration(200)} style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
           <Ionicons name="chevron-back" size={22} color={PROF.textPrimary} />
         </TouchableOpacity>
@@ -154,7 +151,6 @@ export default function HelpSupportScreen({ navigation }) {
             subtitle="Respuesta inmediata"
             gradient={['#0E4D68', '#49C0BC']}
             onPress={() => navigation.navigate('SupportBot')}
-            delay={40}
           />
           <SupportCard
             icon="chatbubbles-outline"
@@ -162,27 +158,26 @@ export default function HelpSupportScreen({ navigation }) {
             subtitle="Lun–Vie 8am–6pm"
             gradient={['#1a2f4a', '#0E4D68']}
             onPress={() => Alert.alert('Soporte humano', 'Conectando con un agente...\n\nHorario: Lunes a Viernes 8am – 6pm')}
-            delay={100}
           />
         </View>
 
         {/* ── Centro de ayuda ───────────────────────────── */}
         <Text style={styles.section}>Centro de ayuda</Text>
         <GlassCard variant="default">
-          <LinkRow icon="document-text-outline" label="Términos y condiciones" onPress={() => Linking.openURL('https://homecare.works/terminos')} delay={160} />
+          <LinkRow icon="document-text-outline" label="Términos y condiciones" onPress={() => Linking.openURL('https://homecare.works/terminos')} />
           <View style={styles.sep} />
-          <LinkRow icon="shield-outline" label="Política de privacidad" onPress={() => Linking.openURL('https://homecare.works/privacidad')} delay={200} />
+          <LinkRow icon="shield-outline" label="Política de privacidad" onPress={() => Linking.openURL('https://homecare.works/privacidad')} />
           <View style={styles.sep} />
-          <LinkRow icon="play-circle-outline" label="Tutorial de uso" onPress={() => Linking.openURL('https://homecare.works/tutorial')} delay={240} />
+          <LinkRow icon="play-circle-outline" label="Tutorial de uso" onPress={() => Linking.openURL('https://homecare.works/tutorial')} />
           <View style={styles.sep} />
-          <LinkRow icon="star-outline" label="Calificar la app" onPress={() => Linking.openURL('https://play.google.com/store')} delay={280} />
+          <LinkRow icon="star-outline" label="Calificar la app" onPress={() => Linking.openURL('https://play.google.com/store')} />
         </GlassCard>
 
         {/* ── FAQ ───────────────────────────────────────── */}
         <Text style={styles.section}>Preguntas frecuentes</Text>
 
         {/* Buscador */}
-        <Animated.View entering={FadeInDown.delay(120).springify().damping(16)} style={styles.searchWrap}>
+        <Animated.View entering={FadeIn.duration(200)} style={styles.searchWrap}>
           <Ionicons name="search-outline" size={18} color={PROF.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
@@ -206,7 +201,7 @@ export default function HelpSupportScreen({ navigation }) {
             filtered.map((f, i) => (
               <View key={i}>
                 {i > 0 && <View style={styles.sep} />}
-                <FAQItem item={f} index={i} />
+                <FAQItem item={f} />
               </View>
             ))
           )}

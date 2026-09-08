@@ -149,51 +149,45 @@ function WebViewModal({ visible, url, loading, insets, onClose, webViewRef, onLo
 }
 
 // ─── Componente de categoría expandible ─────────────────────────────────────
-function CategoryCard({ category, delay }) {
+function CategoryCard({ category }) {
   const [expanded, setExpanded] = useState(false);
-  const scale = useSharedValue(1);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(500).springify()} style={{ marginBottom: SPACING.sm }}>
-      <Animated.View style={scaleStyle}>
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setExpanded(e => !e);
-          }}
-          onPressIn={() => { scale.value = withSpring(0.98, { damping: 14 }); }}
-          onPressOut={() => { scale.value = withSpring(1,    { damping: 14 }); }}
-          activeOpacity={1}
-        >
-          <GlassCard variant="default" style={styles.catCard}>
-            {/* Header */}
-            <View style={styles.catHeader}>
-              <View style={[styles.catIconWrap, { backgroundColor: `${category.color}20` }]}>
-                <Ionicons name={category.icon} size={20} color={category.color} />
-              </View>
-              <Text style={styles.catTitle}>{category.title}</Text>
-              <Ionicons
-                name={expanded ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={PROF.textMuted}
-              />
+    <Animated.View entering={FadeIn.duration(200)} style={{ marginBottom: SPACING.sm }}>
+      <TouchableOpacity
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setExpanded(e => !e);
+        }}
+        activeOpacity={0.8}
+      >
+        <GlassCard variant="default" style={styles.catCard}>
+          {/* Header */}
+          <View style={styles.catHeader}>
+            <View style={[styles.catIconWrap, { backgroundColor: `${category.color}20` }]}>
+              <Ionicons name={category.icon} size={20} color={category.color} />
             </View>
+            <Text style={styles.catTitle}>{category.title}</Text>
+            <Ionicons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={PROF.textMuted}
+            />
+          </View>
 
-            {/* Tips expandidos */}
-            {expanded && (
-              <Animated.View entering={FadeInDown.duration(300)} style={styles.tipsList}>
-                {category.tips.map((tip, i) => (
-                  <View key={i} style={styles.tipRow}>
-                    <View style={[styles.tipDot, { backgroundColor: category.color }]} />
-                    <Text style={styles.tipText}>{tip}</Text>
-                  </View>
-                ))}
-              </Animated.View>
-            )}
-          </GlassCard>
-        </TouchableOpacity>
-      </Animated.View>
+          {/* Tips expandidos */}
+          {expanded && (
+            <Animated.View entering={FadeInDown.duration(200)} style={styles.tipsList}>
+              {category.tips.map((tip, i) => (
+                <View key={i} style={styles.tipRow}>
+                  <View style={[styles.tipDot, { backgroundColor: category.color }]} />
+                  <Text style={styles.tipText}>{tip}</Text>
+                </View>
+              ))}
+            </Animated.View>
+          )}
+        </GlassCard>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -259,12 +253,12 @@ export default function RecommendationsScreen({ navigation }) {
 
         {/* Categorías */}
         <Text style={styles.sectionLabel}>Categorías</Text>
-        {CATEGORIES.map((cat, i) => (
-          <CategoryCard key={cat.id} category={cat} delay={i * 70} />
+        {CATEGORIES.map((cat) => (
+          <CategoryCard key={cat.id} category={cat} />
         ))}
 
         {/* Recursos externos */}
-        <Animated.View entering={FadeInDown.delay(500).springify()}>
+        <Animated.View entering={FadeIn.duration(200)}>
           <Text style={styles.sectionLabel}>Recursos externos</Text>
           <GlassCard variant="default" style={styles.resourcesCard}>
             {[

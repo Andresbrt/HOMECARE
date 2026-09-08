@@ -132,6 +132,30 @@ public class PaymentController {
         return ResponseEntity.ok(wallet);
     }
 
+    @PostMapping("/wallet/recargar")
+    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
+    @Operation(summary = "Crear preferencia de Mercado Pago para recargar la billetera del profesional")
+    public ResponseEntity<PagoDTO.RecargaWalletResponse> recargarWallet(
+            @Valid @RequestBody PagoDTO.RecargaWalletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        PagoDTO.RecargaWalletResponse response = paymentService.crearPreferenciaRecargaWallet(
+                userDetails.getId(), request.getMonto()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/wallet/recargar-directo")
+    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
+    @Operation(summary = "Recargar directamente la billetera del profesional (dev / simulación / confirmación)")
+    public ResponseEntity<PagoDTO.WalletResponse> recargarWalletDirecto(
+            @Valid @RequestBody PagoDTO.RecargaWalletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        PagoDTO.WalletResponse response = paymentService.recargarWalletDirecto(
+                userDetails.getId(), request.getMonto(), "MERCADO_PAGO"
+        );
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/comisiones/pendientes")
     @PreAuthorize("hasRole('SERVICE_PROVIDER')")
     @Operation(summary = "Obtener carrito de comisiones pendientes que el profesional debe pagar a Homecare")

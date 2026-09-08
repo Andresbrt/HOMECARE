@@ -26,7 +26,7 @@ public class Pago {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "servicio_id", nullable = false)
+    @JoinColumn(name = "servicio_id", nullable = true)
     private ServicioAceptado servicio;
 
     @ManyToOne(fetch = FetchType.LAZY)

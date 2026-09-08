@@ -55,7 +55,7 @@ function RequestCard({ item, onViewOffers, onViewTracking }) {
   const offerCount = item.cantidadOfertas ?? 0;
 
   return (
-    <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.requestCard}>
+    <Animated.View entering={FadeInDown.duration(200)} style={styles.requestCard}>
       {/* Header del card */}
       <View style={styles.requestCardHeader}>
         <View style={[styles.requestIconBox, { backgroundColor: 'rgba(73,192,188,0.12)' }]}>
@@ -219,7 +219,7 @@ export default function HomeScreen({ navigation }) {
         </LinearGradient>
 
         {/* ── CTA Principal ── */}
-        <Animated.View entering={FadeInDown.duration(450).delay(80).springify()} style={styles.ctaWrapper}>
+        <Animated.View entering={FadeInDown.duration(220)} style={styles.ctaWrapper}>
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={() => {
@@ -247,7 +247,7 @@ export default function HomeScreen({ navigation }) {
 
         {/* ── SEGUIMIENTO EN VIVO ESTILO RAPPI (SI HAY SERVICIO ACTIVO) ── */}
         {activeService && (
-          <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.rappiWrap}>
+          <Animated.View entering={FadeInDown.duration(220)} style={styles.rappiWrap}>
             <TouchableOpacity
               activeOpacity={0.9}
               style={styles.rappiCard}
@@ -333,7 +333,7 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {/* ── Acciones rápidas ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(140).springify()} style={styles.quickGrid}>
+        <Animated.View entering={FadeInDown.duration(220)} style={styles.quickGrid}>
           {[
             { icon: 'time-outline', label: 'Historial', color: '#0E4D68', bg: 'rgba(14,77,104,0.1)', route: 'UserHistory' },
             { icon: 'chatbubbles-outline', label: 'Mis chats', color: '#49C0BC', bg: 'rgba(73,192,188,0.1)', route: 'UserChatList' },
@@ -355,7 +355,7 @@ export default function HomeScreen({ navigation }) {
         </Animated.View>
 
         {/* ── Mis solicitudes activas ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(200).springify()} style={styles.section}>
+        <Animated.View entering={FadeInDown.duration(220)} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Mis solicitudes activas</Text>
             <TouchableOpacity onPress={() => navigation.navigate('UserHistory')} activeOpacity={0.7}>

@@ -50,18 +50,15 @@ function getCurrentDeviceOS() {
 }
 
 // ─── Row de acción ────────────────────────────────────────────────────────────
-function ActionRow({ icon, title, subtitle, onPress, rightNode, delay = 0, danger = false }) {
-  const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+function ActionRow({ icon, title, subtitle, onPress, rightNode, danger = false }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(16)} style={anim}>
+    <Animated.View entering={FadeIn.duration(200)}>
       <TouchableOpacity
         onPress={() => {
-          scale.value = withSpring(0.97, { damping: 16 }, () => { scale.value = withSpring(1); });
           Haptics.selectionAsync();
           onPress?.();
         }}
-        activeOpacity={1}
+        activeOpacity={0.7}
         style={styles.actionRow}
       >
         <View style={[styles.actionIcon, danger && styles.actionIconDanger]}>
@@ -128,7 +125,7 @@ function ChangePasswordModal({ visible, onClose }) {
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalWrap}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
-        <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.modalSheet}>
+        <Animated.View entering={FadeInDown.duration(220)} style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>Cambiar contraseña</Text>
           <Field label="Contraseña actual" value={current} onChangeText={setCurrent} show={showA} setShow={setShowA} placeholder="••••••••" />
@@ -179,7 +176,7 @@ export default function SecurityScreen({ navigation }) {
       <LinearGradient colors={[PROF.bgDeep, PROF.bg, PROF.bg]} style={StyleSheet.absoluteFill} locations={[0, 0.35, 1]} />
 
       {/* Header */}
-      <Animated.View entering={FadeInDown.duration(400)} style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+      <Animated.View entering={FadeInDown.duration(200)} style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
           <Ionicons name="chevron-back" size={22} color={PROF.textPrimary} />
         </TouchableOpacity>
@@ -193,22 +190,20 @@ export default function SecurityScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Acceso a la cuenta ─────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(60).springify().damping(16)}>
+        <Animated.View entering={FadeIn.duration(200)}>
           <GlassCard variant="default" style={styles.card}>
             <Text style={styles.cardTitle}>Acceso a la cuenta</Text>
             <ActionRow
               icon="lock-closed-outline"
               title="Cambiar contraseña"
-              subtitle="Última actualización: Hace 3 días"
+              subtitle="Protege el acceso a tu cuenta"
               onPress={() => setShowPwdModal(true)}
-              delay={80}
             />
             <View style={styles.separator} />
             <ActionRow
               icon="shield-outline"
               title="Autenticación en dos factores"
               subtitle={twoFA ? 'Activada — SMS y app' : 'Desactivada'}
-              delay={140}
               rightNode={
                 <Switch
                   value={twoFA}
@@ -232,7 +227,7 @@ export default function SecurityScreen({ navigation }) {
         </Animated.View>
 
         {/* ── Dispositivos conectados ─────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(160).springify().damping(16)}>
+        <Animated.View entering={FadeIn.duration(200)}>
           <GlassCard variant="default" style={styles.card}>
             <Text style={styles.cardTitle}>Dispositivos conectados</Text>
             {[currentDevice].map((dev, i) => (
@@ -259,7 +254,7 @@ export default function SecurityScreen({ navigation }) {
         </Animated.View>
 
         {/* ── Historial de actividad ──────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(240).springify().damping(16)}>
+        <Animated.View entering={FadeIn.duration(200)}>
           <GlassCard variant="default" style={styles.card}>
             <Text style={styles.cardTitle}>Actividad reciente</Text>
             {sessionActivity.map((act, i) => (
@@ -280,7 +275,7 @@ export default function SecurityScreen({ navigation }) {
         </Animated.View>
 
         {/* ── Cerrar sesión en todos ──────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(320).springify().damping(16)}>
+        <Animated.View entering={FadeIn.duration(200)}>
           <TouchableOpacity style={styles.dangerBtn} onPress={handleLogoutAll} activeOpacity={0.85}>
             <Ionicons name="log-out-outline" size={18} color={PROF.error} />
             <Text style={styles.dangerTxt}>Cerrar sesión en todos los dispositivos</Text>
