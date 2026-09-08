@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  SafeAreaView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 let MapView, Marker, PROVIDER_GOOGLE;
 if (Platform.OS !== 'web') {
@@ -214,9 +214,11 @@ export default function MapScreen({ navigation }) {
     setIsAvailable((prev) => !prev);
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor="#000F22" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* MAPA FULL-SCREEN */}
       <MapView
@@ -241,13 +243,13 @@ export default function MapScreen({ navigation }) {
 
       {/* GRADIENTE SUPERIOR  difumina el header sobre el mapa */}
       <LinearGradient
-        colors={['rgba(0,15,34,0.94)', 'rgba(0,15,34,0)']}
-        style={styles.topGradient}
+        colors={['rgba(0,15,34,0.96)', 'rgba(0,15,34,0.7)', 'rgba(0,15,34,0)']}
+        style={[styles.topGradient, { height: insets.top + 90 }]}
         pointerEvents="none"
       />
 
       {/* HEADER */}
-      <SafeAreaView style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <TouchableOpacity onPress={() => navigation.getParent()?.openDrawer?.()} style={styles.menuBtn}>
           <Ionicons name="menu" size={28} color={PROF.textPrimary} />
         </TouchableOpacity>
@@ -266,10 +268,10 @@ export default function MapScreen({ navigation }) {
             <Text style={styles.badgeText}>3</Text>
           </View>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
 
       {/* TOGGLE DISPONIBILIDAD  idéntico al Dashboard */}
-      <Animated.View style={[styles.toggleWrapper, glowStyle]}>
+      <Animated.View style={[styles.toggleWrapper, { top: insets.top + 58 }, glowStyle]}>
         <Animated.View style={[toggleStyle, { borderRadius: BORDER_RADIUS.xl }]}>
           <TouchableOpacity onPress={handleToggle} activeOpacity={0.9} style={styles.toggleOuter}>
             <LinearGradient
@@ -301,7 +303,7 @@ export default function MapScreen({ navigation }) {
 
       {/* Botón recentrar mapa */}
       <TouchableOpacity
-        style={styles.recenterBtn}
+        style={[styles.recenterBtn, { bottom: (isAvailable || activeService) ? 96 : 24 }]}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           if (userLocation && mapRef.current) {
@@ -320,7 +322,7 @@ export default function MapScreen({ navigation }) {
 
       {/* BANNER FLOTANTE DE SERVICIO ACTIVO (si existe) */}
       {activeService && (
-        <View style={styles.activeServiceBanner}>
+        <View style={[styles.activeServiceBanner, { bottom: 16 }]}>
           <TouchableOpacity
             style={styles.activeServiceBtn}
             onPress={() => navigation.navigate('ActiveServiceTracking', { service: activeService })}
@@ -346,13 +348,13 @@ export default function MapScreen({ navigation }) {
       )}
 
       {/* PANEL INFERIOR  estadísticas cuando disponible */}
-      {isAvailable && (
-        <View style={styles.bottomPanel}>
+      {isAvailable && !activeService && (
+        <View style={[styles.bottomPanel, { bottom: 16 }]}>
           <GlassCard variant="elevated" animated={false} padding={SPACING.md}>
             <View style={styles.bottomRow}>
               <View style={styles.bottomStat}>
                 <Ionicons name="flash" size={17} color={PROF.accent} />
-                <Text style={styles.bottomVal}>3</Text>
+                <Text style={styles.bottomVal}>{nearby.length > 0 ? nearby.length : '3'}</Text>
                 <Text style={styles.bottomLabel}>Cercanas</Text>
               </View>
               <View style={styles.bottomDivider} />

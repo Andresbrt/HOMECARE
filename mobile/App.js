@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
@@ -22,6 +22,17 @@ import { LocationProvider } from './src/context/LocationContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import linking from './src/config/linking';
+
+const appDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#000F22',
+    card: '#001B38',
+    text: '#FFFFFF',
+    border: 'rgba(255,255,255,0.08)',
+  },
+};
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -40,12 +51,12 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000F22' }}>
       <SafeAreaProvider>
         <AuthProvider>
           <LocationProvider>
             <NotificationProvider>
-              <NavigationContainer linking={linking}>
+              <NavigationContainer linking={linking} theme={appDarkTheme}>
                 <StatusBar style="light" />
                 <AppNavigator />
               </NavigationContainer>

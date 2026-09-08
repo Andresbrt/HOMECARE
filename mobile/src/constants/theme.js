@@ -28,6 +28,7 @@ export const COLORS = {
 export const PROF = {
   // Fondos
   bg: '#001B38',
+  background: '#000F22',
   bgCard: 'rgba(14, 77, 104, 0.35)',
   bgElevated: 'rgba(14, 77, 104, 0.55)',
   bgDeep: '#000F22',

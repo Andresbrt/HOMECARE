@@ -25,7 +25,7 @@ import { listarSolicitudesAbiertas } from '../../services/solicitudesService';
 import { apiFetch } from '../../config/api';
 import apiClient from '../../services/apiClient';
 import { PROF, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../constants/theme';
-import ScreenLayout from '../../components/shared/ScreenLayout';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { computeLevel, getQuarterLabel, MOTIVATIONAL_TEXT } from '../../utils/levelUtils';
 
 // Umbral del nivel Elite (meta trimestral)
@@ -237,9 +237,10 @@ export default function ProfDashboardScreen({ navigation }) {
   const today = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <ScreenLayout backgroundColor={PROF.background} top={true}>
-      <LinearGradient colors={PROF.gradMain} style={dp.screen}>
-        <StatusBar barStyle="light-content" backgroundColor="#000F22" />
+    <View style={dp.screen}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <LinearGradient colors={['#001B38', '#000F22']} style={StyleSheet.absoluteFill} />
+      <SafeAreaView style={dp.safeArea} edges={['top', 'left', 'right']}>
 
         {/* ═══ HEADER ═══ */}
         <View style={dp.header}>
@@ -526,14 +527,15 @@ export default function ProfDashboardScreen({ navigation }) {
             {unreadTotal > 0 && <View style={dp.fabBadge}><Text style={dp.fabBadgeText}>{unreadTotal > 99 ? '99+' : unreadTotal}</Text></View>}
           </TouchableOpacity>
         </Animated.View>
-      </LinearGradient>
-    </ScreenLayout>
+      </SafeAreaView>
+    </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const dp = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, backgroundColor: '#000F22' },
+  safeArea: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm + 4,

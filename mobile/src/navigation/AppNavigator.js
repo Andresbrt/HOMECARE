@@ -5,7 +5,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Dimensions, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -90,6 +91,7 @@ const screenOptions = {
   headerStyle: { backgroundColor: COLORS.primary, elevation: 0, shadowOpacity: 0 },
   headerTintColor: COLORS.white,
   headerTitleStyle: { fontWeight: '600', fontSize: 18 },
+  cardStyle: { backgroundColor: '#000F22' },
 };
 
 // ─── Transición premium para pantallas de chat ───────────────────────────────
@@ -227,8 +229,29 @@ function UserModeStack() {
 
 // ─── Tabs PROFESIONAL (modo premium oscuro) ───────────────────────────────────
 function ProfessionalTabs() {
+  const insets = useSafeAreaInsets();
+  const bottomBarHeight = Platform.OS === 'ios' ? Math.max(58 + insets.bottom, 78) : 64;
+
   return (
-    <Tab.Navigator screenOptions={profTabOptions}>
+    <Tab.Navigator
+      sceneContainerStyle={{ backgroundColor: '#000F22' }}
+      screenOptions={{
+        ...profTabOptions,
+        tabBarStyle: {
+          backgroundColor: '#00142B',
+          borderTopColor: 'rgba(255,255,255,0.08)',
+          borderTopWidth: 1,
+          height: bottomBarHeight,
+          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 8,
+          paddingTop: 8,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 10,
+        },
+      }}
+    >
       <Tab.Screen
         name="ProfDashboard"
         component={ProfDashboardScreen}
