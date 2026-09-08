@@ -70,7 +70,7 @@ public class PaymentService {
     @Value("${mercadopago.commission-rate:0.10}")
     private BigDecimal commissionRate;
 
-    @Value("${mercadopago.callback-url}")
+    @Value("${mercadopago.callback-url:https://homecare-backend.fly.dev/api}")
     private String callbackUrl;
 
     @Value("${wompi.event.secret:}")
@@ -79,6 +79,28 @@ public class PaymentService {
     /** Secreto para validar notificaciones de Mercado Pago (x-signature header) */
     @Value("${mercadopago.webhook-secret:}")
     private String mpWebhookSecret;
+
+    /**
+     * Reglas de negocio de la plataforma Homecare:
+     * - Monto mínimo de recarga: $35.000 COP (habilita 2 servicios profesionales a $17.500 c/u).
+     * - Cada servicio asignado para el profesional tiene un costo base de $17.500 COP.
+     * - Profesionales nuevos tienen derecho a sus primeros 2 servicios GRATIS de bienvenida.
+     */
+    public static final BigDecimal MONTO_MINIMO_RECARGA = BigDecimal.valueOf(35000);
+    public static final BigDecimal COSTO_SERVICIO_PROFESIONAL = BigDecimal.valueOf(17500);
+    public static final int SERVICIOS_GRATIS_BIENVENIDA = 2;
+
+    private String resolveBaseUrl() {
+        if (callbackUrl != null && !callbackUrl.isBlank()) {
+            return callbackUrl;
+        }
+        return "https://homecare-backend.fly.dev/api";
+    }
+
+    private String resolveNotificationUrl() {
+        String base = resolveBaseUrl();
+        return base.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago";
+    }
 
     /** Inyectar SubscriptionService con @Lazy para evitar dependencia circular */
     @Lazy
@@ -193,7 +215,7 @@ public class PaymentService {
                     .paymentMethodId(request.getPaymentMethodId())
                     .transactionAmount(pago.getMontoTotal())
                     .externalReference(pago.getReferencia())
-                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .notificationUrl(resolveNotificationUrl())
                     .issuerId(request.getIssuerId())
                     .payer(com.mercadopago.client.payment.PaymentPayerRequest.builder()
                         .email(request.getEmail() != null ? request.getEmail() : pago.getCliente().getEmail())
@@ -259,6 +281,16 @@ public class PaymentService {
                 log.info("[MP-WEBHOOK] Enrutando a SubscriptionService — ref: {}, paymentId: {}, estado: {}",
                         referencia, payment.getId(), payment.getStatus());
                 subscriptionService.activarSuscripcionPorWebhook(payment);
+                return;
+            }
+
+            // Recarga de billetera del profesional vía Mercado Pago
+            if (referencia != null && referencia.startsWith("HC-REC-")) {
+                log.info("[MP-WEBHOOK] Enrutando a recarga de billetera — ref: {}, paymentId: {}, estado: {}",
+                        referencia, payment.getId(), payment.getStatus());
+                if ("approved".equals(payment.getStatus())) {
+                    procesarRecargaAprobadaMP(referencia, payment.getTransactionAmount(), String.valueOf(payment.getId()));
+                }
                 return;
             }
 
@@ -351,19 +383,21 @@ public class PaymentService {
     private Preference crearPreferenciaMP(Pago pago) throws Exception {
         PreferenceClient client = new PreferenceClient();
 
+        String titulo = "Servicio HomeCare - " + (pago.getServicio() != null ? pago.getServicio().getId() : pago.getId());
         List<PreferenceItemRequest> items = new ArrayList<>();
         PreferenceItemRequest item = PreferenceItemRequest.builder()
-                .title("Servicio HomeCare - " + pago.getServicio().getId())
+                .title(titulo)
                 .quantity(1)
                 .unitPrice(pago.getMontoTotal())
                 .currencyId("COP")
                 .build();
         items.add(item);
 
+        String baseUrl = resolveBaseUrl();
         PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                .success(callbackUrl + "/payment/success")
-                .pending(callbackUrl + "/payment/pending")
-                .failure(callbackUrl + "/payment/failure")
+                .success(baseUrl + "/payment/success")
+                .pending(baseUrl + "/payment/pending")
+                .failure(baseUrl + "/payment/failure")
                 .build();
 
         PreferenceRequest request = PreferenceRequest.builder()
@@ -371,7 +405,7 @@ public class PaymentService {
                 .backUrls(backUrls)
                 .externalReference(pago.getReferencia())
                 .autoReturn("approved")
-                .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                .notificationUrl(resolveNotificationUrl())
                 .build();
 
         return client.create(request);
@@ -406,10 +440,11 @@ public class PaymentService {
                     .currencyId("COP")
                     .build();
 
+            String baseUrl = resolveBaseUrl();
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success(callbackUrl + "/payments/subscription/success")
-                    .pending(callbackUrl + "/payments/subscription/pending")
-                    .failure(callbackUrl + "/payments/subscription/failure")
+                    .success(baseUrl + "/payments/subscription/success")
+                    .pending(baseUrl + "/payments/subscription/pending")
+                    .failure(baseUrl + "/payments/subscription/failure")
                     .build();
 
             PreferenceRequest request = PreferenceRequest.builder()
@@ -417,7 +452,7 @@ public class PaymentService {
                     .backUrls(backUrls)
                     .externalReference(externalReference)
                     .autoReturn("approved")
-                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .notificationUrl(resolveNotificationUrl())
                     .build();
 
             Preference preference = client.create(request);
@@ -873,10 +908,11 @@ public class PaymentService {
                     .build();
             items.add(item);
 
+            String baseUrl = resolveBaseUrl();
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success(callbackUrl + "/payments/comisiones/success")
-                    .pending(callbackUrl + "/payments/comisiones/pending")
-                    .failure(callbackUrl + "/payments/comisiones/failure")
+                    .success(baseUrl + "/payments/comisiones/success")
+                    .pending(baseUrl + "/payments/comisiones/pending")
+                    .failure(baseUrl + "/payments/comisiones/failure")
                     .build();
 
             PreferenceRequest request = PreferenceRequest.builder()
@@ -884,7 +920,7 @@ public class PaymentService {
                     .backUrls(backUrls)
                     .externalReference(externalReference)
                     .autoReturn("approved")
-                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .notificationUrl(resolveNotificationUrl())
                     .build();
 
             Preference preference = client.create(request);
@@ -955,27 +991,33 @@ public class PaymentService {
 
     /**
      * Genera una preferencia en Mercado Pago para recargar saldo a la billetera del profesional.
+     * Monto mínimo: $35.000 COP (habilita 2 servicios a $17.500 c/u).
      */
     public PagoDTO.RecargaWalletResponse crearPreferenciaRecargaWallet(Long proveedorId, BigDecimal monto) {
-        if (monto == null || monto.compareTo(BigDecimal.valueOf(1000)) < 0) {
-            throw new PaymentException("El monto mínimo de recarga es $1.000 COP");
+        if (proveedorId == null) {
+            throw new PaymentException("Identificador de proveedor requerido");
+        }
+        if (monto == null || monto.compareTo(MONTO_MINIMO_RECARGA) < 0) {
+            throw new PaymentException("El monto mínimo de recarga es $35.000 COP (equivale a 2 servicios profesionales a $17.500 c/u)");
         }
 
         try {
             PreferenceClient client = new PreferenceClient();
             String externalReference = "HC-REC-" + proveedorId + "-" + System.currentTimeMillis();
 
+            int serviciosHabilitados = monto.divide(COSTO_SERVICIO_PROFESIONAL, java.math.RoundingMode.FLOOR).intValue();
+
             List<PreferenceItemRequest> items = new ArrayList<>();
             PreferenceItemRequest item = PreferenceItemRequest.builder()
-                    .title("Homecare - Recarga de Billetera Profesional")
-                    .description("Recarga de saldo para la cuenta profesional Homecare")
+                    .title("Homecare - Recarga Billetera Profesional (" + serviciosHabilitados + " servicios)")
+                    .description("Recarga de saldo para asignación de servicios. $17.500 COP por servicio.")
                     .quantity(1)
                     .unitPrice(monto)
                     .currencyId("COP")
                     .build();
             items.add(item);
 
-            String baseUrl = (callbackUrl != null && !callbackUrl.isBlank()) ? callbackUrl : "https://api.homecare.com";
+            String baseUrl = resolveBaseUrl();
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
                     .success(baseUrl + "/payments/wallet/success")
                     .pending(baseUrl + "/payments/wallet/pending")
@@ -987,40 +1029,45 @@ public class PaymentService {
                     .backUrls(backUrls)
                     .externalReference(externalReference)
                     .autoReturn("approved")
-                    .notificationUrl(baseUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .notificationUrl(resolveNotificationUrl())
                     .build();
 
             Preference preference = client.create(request);
 
-            log.info("[WALLET RECARGA] Preferencia creada para proveedor {}: id={}, monto=${}",
-                    proveedorId, preference.getId(), monto);
+            log.info("[WALLET RECARGA] Preferencia creada para proveedor {}: id={}, monto=${} (servicios: {})",
+                    proveedorId, preference.getId(), monto, serviciosHabilitados);
 
             return new PagoDTO.RecargaWalletResponse(
                     preference.getId(),
                     preference.getInitPoint(),
                     externalReference,
                     monto,
-                    "Preferencia generada exitosamente"
+                    "Preferencia generada exitosamente. Habilita " + serviciosHabilitados + " servicios."
             );
         } catch (Exception e) {
             log.warn("Mercado Pago API no disponible para recarga ({}), habilitando flujo directo", e.getMessage());
+            int serviciosHabilitados = monto.divide(COSTO_SERVICIO_PROFESIONAL, java.math.RoundingMode.FLOOR).intValue();
             return new PagoDTO.RecargaWalletResponse(
                     null,
                     null,
                     "HC-REC-" + proveedorId + "-" + System.currentTimeMillis(),
                     monto,
-                    "Modo directo disponible"
+                    "Modo directo disponible (" + serviciosHabilitados + " servicios)"
             );
         }
     }
 
     /**
      * Recarga directa / inmediata de la billetera del profesional (dev, simulación o confirmación).
+     * Monto mínimo: $35.000 COP (habilita 2 servicios a $17.500 c/u).
      */
     @Transactional
     public PagoDTO.WalletResponse recargarWalletDirecto(Long proveedorId, BigDecimal monto, String metodo) {
-        if (monto == null || monto.compareTo(BigDecimal.valueOf(1000)) < 0) {
-            throw new PaymentException("El monto mínimo de recarga es $1.000 COP");
+        if (proveedorId == null) {
+            throw new PaymentException("Identificador de proveedor requerido");
+        }
+        if (monto == null || monto.compareTo(MONTO_MINIMO_RECARGA) < 0) {
+            throw new PaymentException("El monto mínimo de recarga es $35.000 COP (equivale a 2 servicios profesionales a $17.500 c/u)");
         }
 
         Usuario proveedor = usuarioRepository.findById(proveedorId)
@@ -1045,8 +1092,61 @@ public class PaymentService {
                 .build();
 
         pagoRepository.save(recarga);
-        log.info("[WALLET RECARGA] Recarga directa de ${} abonada a la billetera del proveedor {}", monto, proveedorId);
+        int servicios = monto.divide(COSTO_SERVICIO_PROFESIONAL, java.math.RoundingMode.FLOOR).intValue();
+        log.info("[WALLET RECARGA] Recarga directa de ${} ({} servicios) abonada a la billetera del proveedor {}",
+                monto, servicios, proveedorId);
 
         return obtenerWalletProveedor(proveedorId);
+    }
+
+    /**
+     * Procesa la acreditación de saldo cuando el webhook de Mercado Pago confirma una recarga (HC-REC-).
+     */
+    @Transactional
+    public void procesarRecargaAprobadaMP(String referencia, BigDecimal monto, String transaccionExternaId) {
+        try {
+            // Formato referencia: HC-REC-{proveedorId}-{timestamp}
+            String[] parts = referencia.split("-");
+            if (parts.length >= 3) {
+                Long proveedorId = Long.parseLong(parts[2]);
+                Usuario proveedor = usuarioRepository.findById(proveedorId).orElse(null);
+                if (proveedor == null) {
+                    log.error("[WALLET RECARGA] Proveedor {} no encontrado para referencia {}", proveedorId, referencia);
+                    return;
+                }
+
+                // Evitar duplicados por reintentos de webhook
+                if (pagoRepository.findByReferencia(referencia).isPresent()) {
+                    log.info("[WALLET RECARGA] Recarga con referencia {} ya fue procesada previamente", referencia);
+                    return;
+                }
+
+                LocalDateTime now = LocalDateTime.now();
+                Pago recarga = Pago.builder()
+                        .servicio(null)
+                        .cliente(proveedor)
+                        .proveedor(proveedor)
+                        .montoTotal(monto)
+                        .comisionPlataforma(BigDecimal.ZERO)
+                        .montoProveedor(monto)
+                        .estado(EstadoPago.APROBADO)
+                        .estadoRetencion(EstadoRetencion.LIBERADO)
+                        .metodoPago("MERCADO_PAGO_RECARGA")
+                        .transaccionExternaId(transaccionExternaId)
+                        .referencia(referencia)
+                        .createdAt(now)
+                        .aprobadoAt(now)
+                        .fechaLiberacion(now)
+                        .comisionLiquidada(true)
+                        .build();
+
+                pagoRepository.save(recarga);
+                int servicios = monto.divide(COSTO_SERVICIO_PROFESIONAL, java.math.RoundingMode.FLOOR).intValue();
+                log.info("[WALLET RECARGA] Recarga de ${} ({} servicios) procesada exitosamente vía webhook MP para proveedor {}",
+                        monto, servicios, proveedorId);
+            }
+        } catch (Exception e) {
+            log.error("[WALLET RECARGA] Error al procesar recarga vía webhook con ref {}: {}", referencia, e.getMessage(), e);
+        }
     }
 }

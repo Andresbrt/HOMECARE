@@ -211,11 +211,14 @@ function ReviewItem({ review }) {
 
 // ─── Componente: Modal de Recarga de Saldo (Mercado Pago) ─────────────────────
 function RecargaModal({ visible, onClose, onConfirm, loading }) {
-  const PRESETS = [20000, 50000, 100000, 200000];
-  const [selectedPreset, setSelectedPreset] = useState(50000);
+  const COSTO_POR_SERVICIO = 17500;
+  const MONTO_MINIMO = 35000;
+  const PRESETS = [35000, 70000, 105000, 140000];
+  const [selectedPreset, setSelectedPreset] = useState(35000);
   const [customText, setCustomText] = useState('');
 
   const currentAmount = customText ? (parseInt(customText.replace(/[^0-9]/g, ''), 10) || 0) : (selectedPreset || 0);
+  const serviciosHabilitados = Math.floor(currentAmount / COSTO_POR_SERVICIO);
 
   const handleSelectPreset = (amount) => {
     Haptics.selectionAsync();
@@ -232,8 +235,11 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
   };
 
   const handlePay = () => {
-    if (currentAmount < 5000) {
-      Alert.alert('Monto mínimo', 'El monto mínimo de recarga es $5.000 COP.');
+    if (currentAmount < MONTO_MINIMO) {
+      Alert.alert(
+        'Monto mínimo de recarga',
+        'El monto mínimo de recarga es de $35.000 COP, el cual te habilita 2 servicios profesionales ($17.500 c/u). Nuevos profesionales cuentan con 2 servicios gratis de bienvenida.'
+      );
       return;
     }
     onConfirm(currentAmount);
@@ -251,19 +257,39 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
               <Ionicons name="wallet" size={18} color="#fff" />
             </LinearGradient>
             <View style={{ flex: 1 }}>
-              <Text style={fp.modalTitle}>Recargar Billetera</Text>
-              <Text style={fp.modalSubtitle}>Acredita saldo a tu cuenta profesional</Text>
+              <Text style={fp.modalTitle}>Recargar Billetera Profesional</Text>
+              <Text style={fp.modalSubtitle}>Acredita saldo para recibir asignaciones de servicios</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={fp.modalCloseBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={22} color="#A0B8D2" />
             </TouchableOpacity>
           </View>
 
+          {/* Tarjeta explicativa de la metodología Homecare */}
+          <View style={fp.infoRuleCard}>
+            <View style={fp.infoRuleIcon}>
+              <Ionicons name="shield-checkmark" size={18} color="#49C0BC" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={fp.infoRuleTitle}>Metodología de Servicios Homecare</Text>
+              <Text style={fp.infoRuleText}>
+                • Cada servicio que realizas sale a <Text style={{ color: '#49C0BC', fontWeight: '700' }}>$17.500 COP</Text>.
+              </Text>
+              <Text style={fp.infoRuleText}>
+                • Monto mínimo: <Text style={{ color: '#49C0BC', fontWeight: '700' }}>$35.000 COP</Text> (habilita 2 servicios para trabajar).
+              </Text>
+              <Text style={fp.infoRuleText}>
+                • ¡Profesionales nuevos tienen sus primeros <Text style={{ color: '#2ECC71', fontWeight: '700' }}>2 servicios GRATIS</Text> de bienvenida!
+              </Text>
+            </View>
+          </View>
+
           {/* Selector de montos predefinidos */}
-          <Text style={fp.modalSectionLabel}>Monto a recargar</Text>
+          <Text style={fp.modalSectionLabel}>Paquetes de servicios disponibles</Text>
           <View style={fp.presetGrid}>
             {PRESETS.map((p) => {
               const active = selectedPreset === p && !customText;
+              const numServicios = Math.floor(p / COSTO_POR_SERVICIO);
               return (
                 <TouchableOpacity
                   key={p}
@@ -272,7 +298,10 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
                   activeOpacity={0.8}
                 >
                   <Text style={[fp.presetChipText, active && fp.presetChipTextActive]}>
-                    ${p.toLocaleString('es-CO')}
+                    ${(p / 1000).toFixed(0)}k
+                  </Text>
+                  <Text style={[fp.presetChipSub, active && fp.presetChipSubActive]}>
+                    {numServicios} serv.
                   </Text>
                 </TouchableOpacity>
               );
@@ -280,12 +309,12 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
           </View>
 
           {/* O escribe un monto personalizado */}
-          <Text style={[fp.modalSectionLabel, { marginTop: SPACING.sm }]}>O ingresa otro valor (COP)</Text>
+          <Text style={[fp.modalSectionLabel, { marginTop: SPACING.xs }]}>O ingresa otro valor (Mín. $35.000 COP)</Text>
           <View style={fp.customInputWrap}>
             <Text style={fp.customInputPrefix}>$</Text>
             <TextInput
               style={fp.customInput}
-              placeholder="Ej. 75.000"
+              placeholder="Ej. 70.000"
               placeholderTextColor="#6D8CA8"
               keyboardType="number-pad"
               value={customText ? Number(customText).toLocaleString('es-CO') : ''}
@@ -299,8 +328,14 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
               <Text style={fp.summaryLabel}>Total a recargar:</Text>
               <Text style={fp.summaryAmount}>COL$ {currentAmount.toLocaleString('es-CO')}</Text>
             </View>
+            <View style={fp.summaryRow}>
+              <Text style={fp.summaryLabel}>Servicios habilitados:</Text>
+              <Text style={[fp.summaryAmount, { fontSize: 14, color: '#2ECC71' }]}>
+                {serviciosHabilitados} {serviciosHabilitados === 1 ? 'servicio' : 'servicios'} ($17.500 c/u)
+              </Text>
+            </View>
             <View style={fp.methodsRow}>
-              <Ionicons name="shield-checkmark" size={14} color={PROF.accent} />
+              <Ionicons name="flash" size={14} color={PROF.accent} />
               <Text style={fp.methodsText}>Mercado Pago · PSE, Tarjetas Débito/Crédito y Efecty</Text>
             </View>
           </View>
@@ -537,6 +572,13 @@ export default function FinancePerformanceScreen({ navigation }) {
   }, []);
 
   const handleConfirmRecarga = useCallback(async (monto) => {
+    if (!monto || monto < 35000) {
+      Alert.alert(
+        'Monto mínimo: $35.000 COP',
+        'El monto mínimo de recarga es de $35.000 COP, el cual te habilita para realizar 2 servicios ($17.500 COP c/u).'
+      );
+      return;
+    }
     try {
       setRecharging(true);
       // Realizar la recarga a la billetera profesional
@@ -548,9 +590,10 @@ export default function FinancePerformanceScreen({ navigation }) {
       if (directRes?.ok) {
         setRechargeModalVisible(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const servs = Math.floor(monto / 17500);
         Alert.alert(
           '¡Recarga exitosa! ✓',
-          `Se han acreditado COL$ ${Number(monto).toLocaleString('es-CO')} a tu billetera profesional.`,
+          `Se han acreditado COL$ ${Number(monto).toLocaleString('es-CO')} a tu billetera profesional (${servs} ${servs === 1 ? 'servicio habilitado' : 'servicios habilitados'} para asignación).`,
           [{ text: 'Entendido', onPress: () => loadAllData() }]
         );
         loadAllData();
@@ -1203,6 +1246,37 @@ const fp = StyleSheet.create({
     gap: 12,
     marginBottom: SPACING.md,
   },
+  infoRuleCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#071F38',
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: '#194975',
+    padding: 12,
+    marginBottom: SPACING.md,
+  },
+  infoRuleIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(73,192,188,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  infoRuleTitle: {
+    fontSize: 12,
+    fontWeight: TYPOGRAPHY.bold,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  infoRuleText: {
+    fontSize: 11,
+    color: '#B0C8E0',
+    lineHeight: 16,
+  },
   modalIconBox: {
     width: 38,
     height: 38,
@@ -1255,6 +1329,15 @@ const fp = StyleSheet.create({
     color: '#D2E3F3',
   },
   presetChipTextActive: {
+    color: '#49C0BC',
+    fontWeight: TYPOGRAPHY.bold,
+  },
+  presetChipSub: {
+    fontSize: 10,
+    color: '#8BA5C2',
+    marginTop: 2,
+  },
+  presetChipSubActive: {
     color: '#49C0BC',
     fontWeight: TYPOGRAPHY.bold,
   },

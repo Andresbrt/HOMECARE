@@ -189,7 +189,7 @@ public class PagoDTO {
     @AllArgsConstructor
     public static class RecargaWalletRequest {
         @NotNull(message = "El monto a recargar es requerido")
-        @DecimalMin(value = "1000.00", message = "El monto mínimo de recarga es $1.000 COP")
+        @DecimalMin(value = "35000.00", message = "El monto mínimo de recarga es $35.000 COP (equivale a 2 servicios a $17.500 c/u)")
         private BigDecimal monto;
     }
 
