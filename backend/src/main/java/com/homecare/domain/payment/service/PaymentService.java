@@ -515,7 +515,7 @@ public class PaymentService {
     private PagoDTO.PagoResponse mapToResponse(Pago pago) {
         return new PagoDTO.PagoResponse(
                 pago.getId(),
-                pago.getServicio().getId(),
+                pago.getServicio() != null ? pago.getServicio().getId() : null,
                 pago.getMontoTotal(),
                 pago.getComisionPlataforma(),
                 pago.getMontoProveedor(),
@@ -758,7 +758,11 @@ public class PaymentService {
 
         // Incluye las últimas 50 transacciones para la UI
         List<PagoDTO.PagoResponse> transacciones = pagosAprobados.stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .sorted((a, b) -> {
+                    LocalDateTime t1 = a.getCreatedAt() != null ? a.getCreatedAt() : (a.getAprobadoAt() != null ? a.getAprobadoAt() : LocalDateTime.MIN);
+                    LocalDateTime t2 = b.getCreatedAt() != null ? b.getCreatedAt() : (b.getAprobadoAt() != null ? b.getAprobadoAt() : LocalDateTime.MIN);
+                    return t2.compareTo(t1);
+                })
                 .limit(50)
                 .map(this::mapToResponse)
                 .toList();
@@ -971,10 +975,11 @@ public class PaymentService {
                     .build();
             items.add(item);
 
+            String baseUrl = (callbackUrl != null && !callbackUrl.isBlank()) ? callbackUrl : "https://api.homecare.com";
             PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                    .success(callbackUrl + "/payments/wallet/success")
-                    .pending(callbackUrl + "/payments/wallet/pending")
-                    .failure(callbackUrl + "/payments/wallet/failure")
+                    .success(baseUrl + "/payments/wallet/success")
+                    .pending(baseUrl + "/payments/wallet/pending")
+                    .failure(baseUrl + "/payments/wallet/failure")
                     .build();
 
             PreferenceRequest request = PreferenceRequest.builder()
@@ -982,7 +987,7 @@ public class PaymentService {
                     .backUrls(backUrls)
                     .externalReference(externalReference)
                     .autoReturn("approved")
-                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .notificationUrl(baseUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
                     .build();
 
             Preference preference = client.create(request);
@@ -1021,6 +1026,7 @@ public class PaymentService {
         Usuario proveedor = usuarioRepository.findById(proveedorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado con id: " + proveedorId));
 
+        LocalDateTime now = LocalDateTime.now();
         Pago recarga = Pago.builder()
                 .servicio(null)
                 .cliente(proveedor)
@@ -1032,8 +1038,9 @@ public class PaymentService {
                 .estadoRetencion(EstadoRetencion.LIBERADO)
                 .metodoPago(metodo != null ? metodo : "MERCADO_PAGO_RECARGA")
                 .referencia("HC-REC-" + proveedorId + "-" + System.currentTimeMillis())
-                .aprobadoAt(LocalDateTime.now())
-                .fechaLiberacion(LocalDateTime.now())
+                .createdAt(now)
+                .aprobadoAt(now)
+                .fechaLiberacion(now)
                 .comisionLiquidada(true)
                 .build();
 

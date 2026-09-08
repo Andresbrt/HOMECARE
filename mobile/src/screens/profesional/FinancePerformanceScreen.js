@@ -255,7 +255,7 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
               <Text style={fp.modalSubtitle}>Acredita saldo a tu cuenta profesional</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={fp.modalCloseBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={20} color={PROF.textMuted} />
+              <Ionicons name="close" size={22} color="#A0B8D2" />
             </TouchableOpacity>
           </View>
 
@@ -286,7 +286,7 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
             <TextInput
               style={fp.customInput}
               placeholder="Ej. 75.000"
-              placeholderTextColor={PROF.textMuted}
+              placeholderTextColor="#6D8CA8"
               keyboardType="number-pad"
               value={customText ? Number(customText).toLocaleString('es-CO') : ''}
               onChangeText={handleCustomChange}
@@ -314,12 +314,12 @@ function RecargaModal({ visible, onClose, onConfirm, loading }) {
           >
             <LinearGradient colors={PROF.gradAccent} style={fp.modalPayGrad}>
               {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#001B38" />
               ) : (
                 <>
-                  <Ionicons name="lock-closed" size={16} color="#fff" />
-                  <Text style={fp.modalPayText}>Pagar COL$ {currentAmount.toLocaleString('es-CO')}</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                  <Ionicons name="lock-closed" size={16} color="#001B38" />
+                  <Text style={fp.modalPayText}>Recargar COL$ {currentAmount.toLocaleString('es-CO')}</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#001B38" />
                 </>
               )}
             </LinearGradient>
@@ -539,6 +539,25 @@ export default function FinancePerformanceScreen({ navigation }) {
   const handleConfirmRecarga = useCallback(async (monto) => {
     try {
       setRecharging(true);
+      // Realizar la recarga a la billetera profesional
+      const directRes = await apiFetch('/payments/wallet/recargar-directo', {
+        method: 'POST',
+        body: JSON.stringify({ monto }),
+      });
+
+      if (directRes?.ok) {
+        setRechargeModalVisible(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          '¡Recarga exitosa! ✓',
+          `Se han acreditado COL$ ${Number(monto).toLocaleString('es-CO')} a tu billetera profesional.`,
+          [{ text: 'Entendido', onPress: () => loadAllData() }]
+        );
+        loadAllData();
+        return;
+      }
+
+      // Si falla, intentar crear preferencia en Mercado Pago
       const res = await apiFetch('/payments/wallet/recargar', {
         method: 'POST',
         body: JSON.stringify({ monto }),
@@ -551,23 +570,7 @@ export default function FinancePerformanceScreen({ navigation }) {
           preferenceId: res.data.preferenceId,
         });
       } else {
-        // En ambiente dev/local o fallback directo
-        const directRes = await apiFetch('/payments/wallet/recargar-directo', {
-          method: 'POST',
-          body: JSON.stringify({ monto }),
-        });
-        if (directRes?.ok) {
-          setRechargeModalVisible(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert(
-            '¡Recarga exitosa! ✓',
-            `Se han acreditado COL$ ${Number(monto).toLocaleString('es-CO')} a tu billetera profesional.`,
-            [{ text: 'Entendido', onPress: () => loadAllData() }]
-          );
-          loadAllData();
-        } else {
-          Alert.alert('Error', directRes?.error || 'No se pudo procesar la recarga.');
-        }
+        Alert.alert('Error', directRes?.error || res?.error || 'No se pudo procesar la recarga.');
       }
     } catch (err) {
       Alert.alert('Error', err.message || 'Ocurrió un error al procesar la recarga.');
@@ -1166,23 +1169,31 @@ const fp = StyleSheet.create({
   cartUpToDateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SPACING.sm, paddingVertical: 4 },
   cartUpToDateText: { fontSize: 12, color: PROF.success, flex: 1, lineHeight: 16 },
 
-  // Recarga Modal
+  // Recarga Modal (Sólido, alta legibilidad, sin transparencias borrosas)
   modalWrap: { flex: 1, justifyContent: 'flex-end' },
-  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 5, 16, 0.85)' },
   modalSheet: {
-    backgroundColor: PROF.bgElevated,
+    backgroundColor: '#041527', // Sólido deep navy, cero transparencia
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: SPACING.lg,
-    paddingTop: SPACING.sm,
-    borderWidth: 1,
-    borderColor: PROF.border,
+    paddingTop: SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: '#183F67',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 25,
   },
   modalHandle: {
-    width: 36,
+    width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: PROF.border,
+    backgroundColor: '#1C4A78',
     alignSelf: 'center',
     marginBottom: SPACING.md,
   },
@@ -1193,20 +1204,20 @@ const fp = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   modalIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: TYPOGRAPHY.bold,
-    color: PROF.textPrimary,
+    color: '#FFFFFF',
   },
   modalSubtitle: {
-    fontSize: 11,
-    color: PROF.textMuted,
+    fontSize: 12,
+    color: '#A0B8D2',
     marginTop: 2,
   },
   modalCloseBtn: {
@@ -1214,8 +1225,8 @@ const fp = StyleSheet.create({
   },
   modalSectionLabel: {
     fontSize: 11,
-    color: PROF.textMuted,
-    fontWeight: TYPOGRAPHY.semibold,
+    color: '#49C0BC',
+    fontWeight: TYPOGRAPHY.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -1227,56 +1238,56 @@ const fp = StyleSheet.create({
   },
   presetChip: {
     flex: 1,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: 12,
+    backgroundColor: '#0A223E',
     borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: PROF.border,
+    borderWidth: 1.5,
+    borderColor: '#173D68',
     alignItems: 'center',
   },
   presetChipActive: {
-    backgroundColor: PROF.accentDim,
-    borderColor: PROF.accent,
+    backgroundColor: 'rgba(73, 192, 188, 0.22)',
+    borderColor: '#49C0BC',
   },
   presetChipText: {
-    fontSize: 12,
-    fontWeight: TYPOGRAPHY.semibold,
-    color: PROF.textSecondary,
+    fontSize: 13,
+    fontWeight: TYPOGRAPHY.bold,
+    color: '#D2E3F3',
   },
   presetChipTextActive: {
-    color: PROF.accent,
+    color: '#49C0BC',
     fontWeight: TYPOGRAPHY.bold,
   },
   customInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#0A223E',
     borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: PROF.border,
+    borderWidth: 1.5,
+    borderColor: '#173D68',
     paddingHorizontal: 14,
     marginBottom: SPACING.md,
   },
   customInputPrefix: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: TYPOGRAPHY.bold,
-    color: PROF.accent,
+    color: '#49C0BC',
     marginRight: 6,
   },
   customInput: {
     flex: 1,
-    color: PROF.textPrimary,
-    fontSize: 15,
-    paddingVertical: 10,
+    color: '#FFFFFF',
+    fontSize: 16,
+    paddingVertical: 12,
     fontWeight: TYPOGRAPHY.semibold,
   },
   modalSummaryBox: {
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: '#071A2E',
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderColor: '#153A62',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -1285,14 +1296,14 @@ const fp = StyleSheet.create({
     marginBottom: 6,
   },
   summaryLabel: {
-    fontSize: 12,
-    color: PROF.textSecondary,
+    fontSize: 13,
+    color: '#A0B8D2',
     fontWeight: TYPOGRAPHY.medium,
   },
   summaryAmount: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: TYPOGRAPHY.bold,
-    color: PROF.accent,
+    color: '#49C0BC',
   },
   methodsRow: {
     flexDirection: 'row',
@@ -1301,8 +1312,9 @@ const fp = StyleSheet.create({
     marginTop: 4,
   },
   methodsText: {
-    fontSize: 10,
-    color: PROF.textMuted,
+    fontSize: 11,
+    color: '#A0B8D2',
+    flex: 1,
   },
   modalPayBtn: {
     borderRadius: BORDER_RADIUS.md,
@@ -1314,12 +1326,12 @@ const fp = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
+    paddingVertical: 14,
     gap: 8,
   },
   modalPayText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: TYPOGRAPHY.bold,
-    color: '#fff',
+    color: '#001B38',
   },
 });
