@@ -73,6 +73,8 @@ function buildBricksHtml(publicKey, amount, preferenceId) {
           paymentMethods: {
             creditCard: 'all',
             debitCard: 'all',
+            ticket: 'all',        // Efecty en Colombia (efectivo)
+            bankTransfer: 'all',  // PSE en Colombia (transferencia bancaria/Nequi/Bancolombia)
           },
           visual: {
             style: { theme: 'dark' },
@@ -148,11 +150,18 @@ export default function PaymentBricksScreen({ route, navigation }) {
         setProcessing(true);
 
         const fd = msg.formData || {};
+        let metodo = 'CARD';
+        if (fd.payment_method_id === 'pse' || fd.payment_type_id === 'bank_transfer') {
+          metodo = 'PSE';
+        } else if (fd.payment_method_id === 'efecty' || fd.payment_type_id === 'ticket') {
+          metodo = 'MERCADO_PAGO';
+        }
+
         try {
           const res = await apiClient.post('/payments/create', {
             servicioId,
             monto,
-            metodoPago: 'CARD',
+            metodoPago: metodo,
             cardToken: fd.token,
             paymentMethodId: fd.payment_method_id,
             installments: fd.installments ?? 1,
@@ -164,19 +173,23 @@ export default function PaymentBricksScreen({ route, navigation }) {
           if (pago.estado === 'APROBADO') {
             Alert.alert(
               '¡Pago aprobado! ✓',
-              `Tu pago de $${parseFloat(monto).toLocaleString('es-CO')} fue procesado exitosamente.`,
+              `Tu pago de $${parseFloat(monto).toLocaleString('es-CO')} fue procesado exitosamente mediante ${metodo === 'PSE' ? 'PSE' : metodo === 'MERCADO_PAGO' ? 'Efecty' : 'Tarjeta'}.`,
               [{ text: 'Continuar', onPress: () => navigation.popToTop() }]
             );
-          } else if (pago.estado === 'PROCESANDO') {
+          } else if (pago.estado === 'PROCESANDO' || pago.paymentLink) {
             Alert.alert(
-              'Pago en proceso',
-              'Tu pago está siendo procesado. Te notificaremos cuando sea confirmado.',
+              'Pago registrado',
+              metodo === 'PSE'
+                ? 'Tu transferencia por PSE está siendo validada por la entidad financiera.'
+                : metodo === 'MERCADO_PAGO'
+                  ? 'Presenta tu comprobante en cualquier punto Efecty para completar el pago.'
+                  : 'Tu pago está siendo procesado. Te notificaremos cuando sea confirmado.',
               [{ text: 'Entendido', onPress: () => navigation.goBack() }]
             );
           } else {
             Alert.alert(
-              'Pago no aprobado',
-              'Tu pago no pudo ser procesado. Verifica los datos de tu tarjeta e intenta de nuevo.'
+              'Pago no completado',
+              'Tu pago no pudo ser completado. Por favor verifica los datos o intenta con otro método de pago.'
             );
           }
         } catch (err) {

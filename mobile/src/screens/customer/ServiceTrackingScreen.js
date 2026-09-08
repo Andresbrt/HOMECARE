@@ -17,6 +17,7 @@ import {
   Linking,
   Dimensions,
   StatusBar,
+  Modal,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +46,9 @@ export default function ServiceTrackingScreen({ route, navigation }) {
   const [tracking, setTracking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
   const mapRef = useRef(null);
 
   // 1. Cargar datos del servicio con resiliencia offline (AsyncStorage)
@@ -112,11 +116,49 @@ export default function ServiceTrackingScreen({ route, navigation }) {
     fetchData();
   };
 
-  const handlePagar = () => {
+  const handlePagarMercadoPago = () => {
+    setShowPaymentModal(false);
     navigation.navigate('PaymentBricks', {
       servicioId: service.id,
       monto: service.precioAcordado,
     });
+  };
+
+  const handlePagarEfectivo = () => {
+    const formattedPrice = Number(service?.precioAcordado || 0).toLocaleString('es-CO');
+    Alert.alert(
+      'Pago en Efectivo',
+      `¿Deseas pagar en efectivo directamente al profesional al terminar el servicio?\n\nMonto a entregar: COL$ ${formattedPrice}`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar pago en efectivo',
+          onPress: async () => {
+            try {
+              setProcessingPayment(true);
+              await apiClient.post('/payments/create', {
+                servicioId: service.id,
+                monto: service.precioAcordado,
+                metodoPago: 'EFECTIVO',
+              });
+              setShowPaymentModal(false);
+              setPaymentCompleted(true);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                '¡Pago Registrado! ✓',
+                `Se ha confirmado tu pago en efectivo de COL$ ${formattedPrice} entregado al profesional.`,
+                [{ text: 'Aceptar', onPress: () => fetchData() }]
+              );
+            } catch (err) {
+              const msg = err.response?.data?.message || err.response?.data?.error || 'No se pudo registrar el pago en efectivo.';
+              Alert.alert('Error', msg);
+            } finally {
+              setProcessingPayment(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Coordenadas del domicilio del cliente (Medellín)
@@ -277,10 +319,20 @@ export default function ServiceTrackingScreen({ route, navigation }) {
 
         {/* ── BOTÓN DE PAGO (si está COMPLETADO) ── */}
         {service.estado === 'COMPLETADO' && (
-          <TouchableOpacity style={styles.payBtn} onPress={handlePagar} activeOpacity={0.88}>
-            <Ionicons name="card" size={20} color={COLORS.white} />
-            <Text style={styles.payBtnText}>Pagar con Mercado Pago</Text>
-          </TouchableOpacity>
+          paymentCompleted || service.pagoAprobado ? (
+            <View style={styles.paidSuccessCard}>
+              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.paidSuccessTitle}>Servicio pagado exitosamente ✓</Text>
+                <Text style={styles.paidSuccessSub}>El pago de COL$ {Number(service?.precioAcordado || 0).toLocaleString('es-CO')} fue procesado correctamente.</Text>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.payBtn} onPress={() => setShowPaymentModal(true)} activeOpacity={0.88}>
+              <Ionicons name="wallet-outline" size={20} color={COLORS.white} />
+              <Text style={styles.payBtnText}>Pagar Servicio (Mercado Pago o Efectivo)</Text>
+            </TouchableOpacity>
+          )
         )}
 
         {/* ── TARJETA DEL PROFESIONAL ── */}
@@ -397,6 +449,88 @@ export default function ServiceTrackingScreen({ route, navigation }) {
           )}
         </View>
       </ScrollView>
+
+      {/* ── MODAL SELECCIÓN DE MÉTODO DE PAGO ── */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !processingPayment && setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Método de Pago</Text>
+              <TouchableOpacity
+                onPress={() => setShowPaymentModal(false)}
+                disabled={processingPayment}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Selecciona cómo deseas abonar tu servicio completado
+            </Text>
+
+            <View style={styles.modalAmountBox}>
+              <Text style={styles.modalAmountLabel}>Monto total acordado</Text>
+              <Text style={styles.modalAmountVal}>
+                COL$ {Number(service?.precioAcordado || 0).toLocaleString('es-CO')}
+              </Text>
+            </View>
+
+            {/* Opción 1: Mercado Pago (PSE, Tarjetas, Efecty) */}
+            <TouchableOpacity
+              style={[styles.payOptionCard, styles.payOptionActive]}
+              onPress={handlePagarMercadoPago}
+              activeOpacity={0.85}
+              disabled={processingPayment}
+            >
+              <View style={styles.payOptionIconWrap}>
+                <Ionicons name="card" size={24} color="#0E4D68" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payOptionTitle}>Mercado Pago</Text>
+                <Text style={styles.payOptionSub}>
+                  PSE (Bancos y Nequi), Tarjetas Débito / Crédito y Efecty
+                </Text>
+                <View style={styles.payOptionBadge}>
+                  <Text style={styles.payOptionBadgeText}>Online · PSE · Tarjetas · Efecty</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#0E4D68" />
+            </TouchableOpacity>
+
+            {/* Opción 2: Efectivo directo */}
+            <TouchableOpacity
+              style={styles.payOptionCard}
+              onPress={handlePagarEfectivo}
+              activeOpacity={0.85}
+              disabled={processingPayment}
+            >
+              <View style={[styles.payOptionIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                {processingPayment ? (
+                  <ActivityIndicator size="small" color="#10B981" />
+                ) : (
+                  <Ionicons name="cash-outline" size={24} color="#10B981" />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payOptionTitle}>Efectivo al Profesional</Text>
+                <Text style={styles.payOptionSub}>
+                  Paga directamente en efectivo al profesional al terminar el servicio
+                </Text>
+                <View style={[styles.payOptionBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Text style={[styles.payOptionBadgeText, { color: '#166534' }]}>Pago presencial</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#10B981" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -551,4 +685,87 @@ const styles = StyleSheet.create({
   timelineLabel: { fontSize: 13, color: COLORS.textDisabled },
   cancelledBox: { alignItems: 'center', gap: 6, padding: SPACING.md },
   cancelledText: { fontSize: 14, fontWeight: '700', color: COLORS.error },
+  paidSuccessCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.md,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+  },
+  paidSuccessTitle: { fontSize: 14, fontWeight: '800', color: '#065F46' },
+  paidSuccessSub: { fontSize: 12, color: '#047857', marginTop: 2 },
+
+  // Modal de Métodos de Pago
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
+  modalCloseBtn: { padding: 4 },
+  modalSub: { fontSize: 13, color: COLORS.textSecondary, marginBottom: SPACING.lg },
+  modalAmountBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalAmountLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600' },
+  modalAmountVal: { fontSize: 26, fontWeight: '900', color: COLORS.textPrimary, marginTop: 2 },
+  payOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#fff',
+    marginBottom: SPACING.md,
+  },
+  payOptionActive: {
+    borderColor: '#0E4D68',
+    backgroundColor: 'rgba(14,77,104,0.03)',
+  },
+  payOptionIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(14,77,104,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payOptionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
+  payOptionSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 3, lineHeight: 16 },
+  payOptionBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 6,
+  },
+  payOptionBadgeText: { fontSize: 10, fontWeight: '700', color: '#0369A1' },
 });

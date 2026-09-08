@@ -50,6 +50,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     List<Pago> findByEstadoRetencion(Pago.EstadoRetencion estadoRetencion);
 
+    // Comisiones pendientes de liquidar por el proveedor (ej. pagos en efectivo)
+    List<Pago> findByProveedorIdAndComisionLiquidadaFalseAndEstado(Long proveedorId, Pago.EstadoPago estado);
+
     // Pagos por rango de fechas
     List<Pago> findByCreatedAtBetween(java.time.LocalDateTime inicio, java.time.LocalDateTime fin);
 

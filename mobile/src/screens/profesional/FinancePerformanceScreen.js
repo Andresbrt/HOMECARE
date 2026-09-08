@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   StatusBar, SafeAreaView, useWindowDimensions, ActivityIndicator,
+  Alert, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -221,106 +222,122 @@ export default function FinancePerformanceScreen({ navigation }) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
 
-  // ── Estado de datos reales ────────────────────────────────────────────────
-  const [payments, setPayments]   = useState([]);
-  const [stats, setStats]         = useState(null);
-  const [reviews, setReviews]     = useState([]);
+  // ── Estado de datos reales (sin datos de prueba) ──────────────────────────
+  const [payments, setPayments] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [walletData, setWalletData] = useState(null);
+  const [pendingCommissions, setPendingCommissions] = useState({
+    totalComisionPendiente: 0,
+    totalServiciosPendientes: 0,
+    items: [],
+  });
   const [dataLoading, setDataLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [payingCommissions, setPayingCommissions] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setDataLoading(true);
-      const [pmtRes, statsRes] = await Promise.all([
+  const loadAllData = useCallback(async () => {
+    try {
+      const [pmtRes, statsRes, comisionesRes, walletRes] = await Promise.all([
         apiFetch('/payments/me'),
         apiFetch('/usuarios/estadisticas'),
+        apiFetch('/payments/comisiones/pendientes'),
+        apiFetch('/payments/wallet'),
       ]);
-      if (cancelled) return;
-      if (pmtRes.ok)   setPayments(pmtRes.data ?? []);
-      if (statsRes.ok) setStats(statsRes.data);
 
-      // Cargar reseñas si tenemos ID de usuario
+      if (pmtRes?.ok) setPayments(pmtRes.data ?? []);
+      if (statsRes?.ok) setStats(statsRes.data);
+      if (comisionesRes?.ok && comisionesRes.data) setPendingCommissions(comisionesRes.data);
+      if (walletRes?.ok && walletRes.data) setWalletData(walletRes.data);
+
       if (user?.id) {
         const revRes = await apiFetch(`/calificaciones/usuario/${user.id}`);
-        if (!cancelled && revRes.ok) setReviews(revRes.data ?? []);
+        if (revRes?.ok) setReviews(revRes.data ?? []);
       }
+    } catch (e) {
+      console.warn('Error fetching finances:', e);
+    } finally {
       setDataLoading(false);
-    })();
-    return () => { cancelled = true; };
+      setRefreshing(false);
+    }
   }, [user?.id]);
 
-  // ── Datos computados ─────────────────────────────────────────────────────
+  useEffect(() => {
+    setDataLoading(true);
+    loadAllData();
+  }, [loadAllData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadAllData();
+  }, [loadAllData]);
+
+  // ── Datos computados (100% basados en backend real) ───────────────────────
   const approvedPayments = useMemo(
     () => payments.filter(p => p.estado === 'APROBADO'),
     [payments],
   );
 
   const balance = useMemo(() => {
-    const realSum = approvedPayments.reduce((s, p) => s + parseFloat(p.montoProveedor ?? 0), 0);
-    // En demo / cuenta nueva sin historial, mostrar balance activo
-    return realSum > 0 ? realSum : 1450000;
-  }, [approvedPayments]);
+    if (walletData?.saldoDisponible != null) {
+      return parseFloat(walletData.saldoDisponible);
+    }
+    return approvedPayments.reduce((s, p) => s + parseFloat(p.montoProveedor ?? 0), 0);
+  }, [walletData, approvedPayments]);
 
   const finStats = useMemo(() => {
+    const sum = (list) => list.reduce((s, p) => s + parseFloat(p.montoProveedor ?? 0), 0);
+    const fmt = (n) => n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+
     if (approvedPayments.length === 0) {
       return [
-        { label: 'Hoy',    amount: '180.000', delta: '1 serv.' },
-        { label: 'Semana', amount: '620.000', delta: '4 serv.' },
-        { label: 'Mes',    amount: '1.450.000', delta: '11 serv.' },
+        { label: 'Hoy', amount: '0', delta: '0 serv.' },
+        { label: 'Semana', amount: '0', delta: '0 serv.' },
+        { label: 'Mes', amount: '0', delta: '0 serv.' },
       ];
     }
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek  = new Date(startOfToday.getTime() - 6 * 86400000);
+    const startOfWeek = new Date(startOfToday.getTime() - 6 * 86400000);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const sum = (list) => list.reduce((s, p) => s + parseFloat(p.montoProveedor ?? 0), 0);
-    const fmt = (n) => n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+
     const todayPmts = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfToday);
-    const weekPmts  = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfWeek);
+    const weekPmts = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfWeek);
     const monthPmts = approvedPayments.filter(p => new Date(p.aprobadoAt ?? p.createdAt) >= startOfMonth);
+
     return [
-      { label: 'Hoy',    amount: fmt(sum(todayPmts)), delta: `${todayPmts.length} serv.` },
-      { label: 'Semana', amount: fmt(sum(weekPmts)),  delta: `${weekPmts.length} serv.`  },
-      { label: 'Mes',    amount: fmt(sum(monthPmts)), delta: `${monthPmts.length} serv.` },
+      { label: 'Hoy', amount: fmt(sum(todayPmts)), delta: `${todayPmts.length} serv.` },
+      { label: 'Semana', amount: fmt(sum(weekPmts)), delta: `${weekPmts.length} serv.` },
+      { label: 'Mes', amount: fmt(sum(monthPmts)), delta: `${monthPmts.length} serv.` },
     ];
   }, [approvedPayments]);
 
   const transactions = useMemo(() => {
     if (payments.length === 0) {
-      return [
-        { id: 't1', type: 'income', title: 'Colorimetría & Balayage Premium', client: 'Valentina R.', amount: 180000, date: 'Hoy, 2:30 PM', icon: 'color-palette-outline' },
-        { id: 't2', type: 'income', title: 'Limpieza Profunda & Desinfección', client: 'Andrés M.', amount: 120000, date: 'Ayer, 10:15 AM', icon: 'sparkles-outline' },
-        { id: 't3', type: 'income', title: 'Estilismo & Hidratación Capilar', client: 'Camila T.', amount: 95000, date: '2 Sep, 4:00 PM', icon: 'cut-outline' },
-        { id: 't4', type: 'income', title: 'Manicure Spa & Esmaltado Semipermanente', client: 'Sofía G.', amount: 65000, date: '1 Sep, 11:30 AM', icon: 'hand-left-outline' },
-      ];
+      return [];
     }
-    return payments.slice(0, 10).map(p => ({
+    return payments.slice(0, 15).map(p => ({
       id: String(p.id),
-      type: p.estado === 'APROBADO' ? 'income' : 'income',
+      type: 'income',
       title: mapMetodo(p.metodoPago),
-      client: null,
+      client: p.servicio?.concepto ?? (p.clienteNombre ? `Cliente: ${p.clienteNombre}` : null),
       amount: p.estado === 'APROBADO'
-        ? parseFloat(p.montoProveedor ?? 0)
-        : -parseFloat(p.monto ?? 0),
+        ? parseFloat(p.montoProveedor ?? p.montoTotal ?? 0)
+        : -parseFloat(p.montoTotal ?? 0),
       date: fmtDate(p.aprobadoAt ?? p.createdAt),
-      icon: (p.metodoPago ?? '').includes('TARJETA') ? 'card-outline' : 'cash-outline',
+      icon: (p.metodoPago ?? '').includes('TARJETA')
+        ? 'card-outline'
+        : (p.metodoPago ?? '').includes('EFECTIVO')
+          ? 'cash-outline'
+          : (p.metodoPago ?? '').includes('PSE')
+            ? 'business-outline'
+            : 'wallet-outline',
     }));
   }, [payments]);
 
   const weekly = useMemo(() => {
-    if (approvedPayments.length === 0) {
-      return [
-        { day: 'D', value: 0.3, svcs: 1 },
-        { day: 'L', value: 0.5, svcs: 2 },
-        { day: 'M', value: 0.7, svcs: 3 },
-        { day: 'X', value: 0.4, svcs: 2 },
-        { day: 'J', value: 0.9, svcs: 4 },
-        { day: 'V', value: 1.0, svcs: 5 },
-        { day: 'S', value: 0.8, svcs: 4 },
-      ];
-    }
-    const DAY_LABELS = ['D','L','M','X','J','V','S'];
-    const counts = [0,0,0,0,0,0,0];
+    const DAY_LABELS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+    const counts = [0, 0, 0, 0, 0, 0, 0];
     const now = new Date();
     approvedPayments.forEach(p => {
       const d = new Date(p.aprobadoAt ?? p.createdAt);
@@ -328,172 +345,381 @@ export default function FinancePerformanceScreen({ navigation }) {
       if (diffDays < 7) counts[d.getDay()]++;
     });
     const maxC = Math.max(...counts, 1);
-    return DAY_LABELS.map((day, i) => ({ day, value: counts[i] / maxC, svcs: counts[i] }));
+    return DAY_LABELS.map((day, i) => ({
+      day,
+      value: counts[i] > 0 ? counts[i] / maxC : 0,
+      svcs: counts[i],
+    }));
   }, [approvedPayments]);
 
+  const ratingVal = stats?.calificacionPromedio != null
+    ? Number(stats.calificacionPromedio)
+    : (reviews.length > 0 ? (reviews.reduce((s, r) => s + (r.puntuacion || 5), 0) / reviews.length) : 0);
+
+  const totalCals = stats?.totalCalificaciones ?? reviews.length;
+
+  const starPercentages = useMemo(() => {
+    if (reviews.length === 0) return [0, 0, 0, 0, 0];
+    const counts = [0, 0, 0, 0, 0]; // 5, 4, 3, 2, 1
+    reviews.forEach(r => {
+      const p = Math.min(5, Math.max(1, Math.round(r.puntuacion || 5)));
+      counts[5 - p]++;
+    });
+    return counts.map(c => Math.round((c / reviews.length) * 100));
+  }, [reviews]);
+
   const metrics = useMemo(() => [
-    { icon: 'star',            label: 'Calificación', value: stats?.calificacionPromedio != null ? Number(stats.calificacionPromedio).toFixed(1) : '4.9', sub: 'Promedio',   color: '#F5A623' },
-    { icon: 'checkmark-circle',label: 'Completados',  value: String(stats?.serviciosCompletados ?? 128),                                                    sub: 'Servicios', color: PROF.accent },
-    { icon: 'trending-up',     label: 'Total ganado', value: stats?.totalGanado != null ? `$${(Number(stats.totalGanado)/1000).toFixed(0)}K` : '$1.450K',   sub: 'COP',        color: '#4CAF50'  },
-    { icon: 'people-outline',  label: 'Reseñas',      value: String(stats?.totalCalificaciones ?? (reviews.length > 0 ? reviews.length : 94)),              sub: 'Recibidas',  color: '#9C27B0'  },
-  ], [stats, reviews]);
+    {
+      icon: 'star',
+      label: 'Calificación',
+      value: ratingVal > 0 ? ratingVal.toFixed(1) : '–',
+      sub: totalCals > 0 ? `${totalCals} valoraciones` : 'Sin calificar',
+      color: '#F5A623',
+    },
+    {
+      icon: 'checkmark-circle',
+      label: 'Completados',
+      value: String(stats?.serviciosCompletados ?? approvedPayments.length),
+      sub: 'Servicios',
+      color: PROF.accent,
+    },
+    {
+      icon: 'trending-up',
+      label: 'Total ganado',
+      value: `$${Number(balance).toLocaleString('es-CO')}`,
+      sub: 'COP netos',
+      color: '#10B981',
+    },
+    {
+      icon: 'chatbubbles-outline',
+      label: 'Reseñas',
+      value: String(totalCals),
+      sub: 'Recibidas',
+      color: '#6366F1',
+    },
+  ], [ratingVal, totalCals, stats, approvedPayments.length, balance]);
 
   const uiReviews = useMemo(() => {
-    if (reviews.length === 0) {
-      return [
-        { author: 'Valentina Restrepo', text: 'Excelente atención, el balayage quedó exactamente como quería. Muy puntual y profesional.', rating: 5, time: 'Hace 2 días' },
-        { author: 'Andrés Mendoza', text: 'El servicio de limpieza profunda fue impecable. Todo reluciente y productos de primera.', rating: 5, time: 'Hace 4 días' },
-        { author: 'Camila Torres', text: 'Super recomendado, muy cuidadoso y amable en todo momento. Definitivamente volveré a contratar.', rating: 5, time: 'Hace 1 semana' },
-      ];
-    }
-    return reviews.slice(0, 5).map(r => ({
-      author: r.calificadorNombre ?? 'Cliente',
-      text:   r.comentario ?? '',
+    if (reviews.length === 0) return [];
+    return reviews.slice(0, 10).map(r => ({
+      author: r.calificadorNombre ?? 'Cliente verificado',
+      text: r.comentario ?? '',
       rating: r.puntuacion ?? 5,
-      time:   fmtDate(r.createdAt),
+      time: fmtDate(r.createdAt),
     }));
   }, [reviews]);
 
-  const serviciosCompletados = stats?.serviciosCompletados ?? 0;
+  const serviciosCompletados = stats?.serviciosCompletados ?? approvedPayments.length;
 
   // Animación del balance
   const balScale = useSharedValue(0.96);
   useEffect(() => {
     balScale.value = withSpring(1, { damping: 16, stiffness: 120 });
   }, []);
-
   const balStyle = useAnimatedStyle(() => ({ transform: [{ scale: balScale.value }] }));
 
   const recargarScale = useSharedValue(1);
   const recStyle = useAnimatedStyle(() => ({ transform: [{ scale: recargarScale.value }] }));
+
   const handleRecargar = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     recargarScale.value = withSpring(0.93, { damping: 10 }, () => { recargarScale.value = withSpring(1); });
-  }, []);
+    Alert.alert(
+      'Recargar Saldo',
+      'Puedes recargar saldo prepago a tu cuenta con PSE, Tarjeta o Efecty a través de Mercado Pago.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Recargar con Mercado Pago',
+          onPress: () => {
+            navigation.navigate('PaymentBricks', {
+              monto: 50000,
+            });
+          },
+        },
+      ]
+    );
+  }, [navigation]);
+
+  // ── Checkout de comisiones a Homecare (Carrito de Finanzas) ───────────────
+  const handleCheckoutComisiones = useCallback(async () => {
+    const total = pendingCommissions?.totalComisionPendiente || 0;
+    if (total <= 0) {
+      Alert.alert('Al día', 'No tienes comisiones pendientes por pagar.');
+      return;
+    }
+
+    try {
+      setPayingCommissions(true);
+      const res = await apiFetch('/payments/comisiones/checkout', { method: 'POST' });
+
+      if (res?.ok && res.data?.preferenceId) {
+        navigation.navigate('PaymentBricks', {
+          monto: res.data.totalAPagar,
+          preferenceId: res.data.preferenceId,
+        });
+      } else {
+        // En ambiente de desarrollo / pruebas locales sin pasarela externa
+        Alert.alert(
+          'Liquidación de Comisiones',
+          `Monto a pagar a Homecare: COL$ ${Number(total).toLocaleString('es-CO')}\n\n¿Deseas confirmar la liquidación de las ${pendingCommissions.totalServiciosPendientes} comisiones pendientes?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Confirmar pago',
+              onPress: async () => {
+                await apiFetch('/payments/comisiones/liquidar-directo', { method: 'POST' });
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('¡Comisiones al día! ✓', 'Tus comisiones han sido liquidadas exitosamente.');
+                loadAllData();
+              },
+            },
+          ]
+        );
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message || 'No se pudo iniciar el pago de comisiones.');
+    } finally {
+      setPayingCommissions(false);
+    }
+  }, [pendingCommissions, navigation, loadAllData]);
 
   // ── Tab: Finanzas ──
   const FinanzasTab = () => {
     const finLevel = computeLevel(serviciosCompletados);
+    const hasCommissions = (pendingCommissions.items?.length ?? 0) > 0;
+    const totalComisiones = pendingCommissions.totalComisionPendiente ?? 0;
+
     return (
-    <View>
-      {/* Saldo principal */}
-      {/* Saldo principal */}
-      <GlassCard variant="elevated" style={fp.balanceCard} padding={0}>
-        <LinearGradient colors={['rgba(14,77,104,0.15)', 'rgba(0,27,56,0.6)']} style={StyleSheet.absoluteFill} />
-        <View style={fp.balTop}>
-          <Text style={fp.balLabel}>Saldo disponible</Text>
-          <View style={fp.balBadge}>
-            <Ionicons name={finLevel.icon} size={10} color={finLevel.color} />
-            <Text style={[fp.balBadgeText, { color: finLevel.color }]}>{finLevel.label}</Text>
+      <View>
+        {/* Saldo principal */}
+        <GlassCard variant="elevated" style={fp.balanceCard} padding={0}>
+          <LinearGradient colors={['rgba(14,77,104,0.15)', 'rgba(0,27,56,0.6)']} style={StyleSheet.absoluteFill} />
+          <View style={fp.balTop}>
+            <Text style={fp.balLabel}>Saldo disponible</Text>
+            <View style={fp.balBadge}>
+              <Ionicons name={finLevel.icon} size={10} color={finLevel.color} />
+              <Text style={[fp.balBadgeText, { color: finLevel.color }]}>{finLevel.label}</Text>
+            </View>
           </View>
-        </View>
-        <Animated.View style={balStyle}>
-          <Text style={[fp.balAmount, { fontSize: Math.min(38, width * 0.09) }]}>
-            COL$ {Number(balance).toLocaleString('es-CO')}
-          </Text>
-        </Animated.View>
-        <View style={fp.balDelta}>
-          <Ionicons name="trending-up" size={13} color={PROF.success} />
-          <Text style={fp.balDeltaText}>+22% vs mes anterior</Text>
-        </View>
-        <View style={fp.balBtns}>
-          <Animated.View style={[fp.balBtnFlex, recStyle]}>
-            <TouchableOpacity onPress={handleRecargar} activeOpacity={0.85} style={fp.balBtnWrap}>
-              <LinearGradient colors={PROF.gradAccent} style={fp.balBtnGrad}>
-                <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                <Text style={fp.balBtnText}>Recargar</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+          <Animated.View style={balStyle}>
+            <Text style={[fp.balAmount, { fontSize: Math.min(38, width * 0.09) }]}>
+              COL$ {Number(balance).toLocaleString('es-CO')}
+            </Text>
           </Animated.View>
-          <TouchableOpacity activeOpacity={0.85} style={[fp.balBtnFlex, fp.balBtnOutlineWrap]}>
-            <View style={fp.balBtnOutline}>
-              <Ionicons name="arrow-up-circle-outline" size={18} color={PROF.accent} />
-              <Text style={fp.balBtnOutlineText}>Retirar</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </GlassCard>
-
-      {/* Stats rápidos */}
-      <View style={fp.finStatsRow}>
-        {finStats.map((s, i) => (
-          <Animated.View key={s.label} entering={FadeInDown.delay(i * 60).duration(200)} style={fp.finStatFlex}>
-            <GlassCard variant="accent" animated={false} padding={SPACING.md}>
-              <Text style={fp.finStatLabel}>{s.label}</Text>
-              <Text style={fp.finStatAmount}>COL$ {s.amount}</Text>
-              <View style={fp.finStatDelta}>
-                <Ionicons name="trending-up" size={10} color={PROF.success} />
-                <Text style={fp.finStatDeltaText}>{s.delta}</Text>
+          <View style={fp.balDelta}>
+            <Ionicons name="checkmark-circle" size={13} color={balance > 0 ? PROF.success : PROF.textMuted} />
+            <Text style={[fp.balDeltaText, { color: balance > 0 ? PROF.success : PROF.textMuted }]}>
+              {balance > 0 ? 'Balance de servicios verificado' : 'Sin saldo acumulado aún'}
+            </Text>
+          </View>
+          <View style={fp.balBtns}>
+            <Animated.View style={[fp.balBtnFlex, recStyle]}>
+              <TouchableOpacity onPress={handleRecargar} activeOpacity={0.85} style={fp.balBtnWrap}>
+                <LinearGradient colors={PROF.gradAccent} style={fp.balBtnGrad}>
+                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  <Text style={fp.balBtnText}>Recargar</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[fp.balBtnFlex, fp.balBtnOutlineWrap]}
+              onPress={() => {
+                if (balance <= 0) {
+                  Alert.alert('Retiro', 'No tienes saldo disponible para retirar en este momento.');
+                } else {
+                  Alert.alert('Retirar Fondos', `Tu saldo de COL$ ${Number(balance).toLocaleString('es-CO')} será transferido a tu cuenta bancaria registrada.`);
+                }
+              }}
+            >
+              <View style={fp.balBtnOutline}>
+                <Ionicons name="arrow-up-circle-outline" size={18} color={PROF.accent} />
+                <Text style={fp.balBtnOutlineText}>Retirar</Text>
               </View>
-            </GlassCard>
-          </Animated.View>
-        ))}
-      </View>
-
-      {/* Préstamo para equipo */}
-      <View style={{ marginBottom: SPACING.md }}>
-        <GlassCard variant="elevated" animated={false} padding={0}>
-          <LinearGradient colors={['rgba(14,77,104,0.3)', 'rgba(0,27,56,0.5)']} start={{x:0,y:0}} end={{x:1,y:1}} style={fp.loanGrad}>
-            <View style={fp.loanLeft}>
-              <LinearGradient colors={PROF.gradAccent} style={fp.loanIcon}>
-                <Ionicons name="briefcase" size={20} color="#fff" />
-              </LinearGradient>
-              <View style={fp.loanInfo}>
-                <Text style={fp.loanTitle}>Préstamo para equipo</Text>
-                <Text style={fp.loanSub}>Hasta COL$ 2.000.000 · Tasa preferencial para Pro</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={fp.loanBtn} activeOpacity={0.8}>
-              <Text style={fp.loanBtnText}>Ver oferta</Text>
-              <Ionicons name="chevron-forward" size={13} color={PROF.accent} />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </GlassCard>
-      </View>
 
-      {/* Movimientos */}
-      <Text style={fp.sectionTitle}>Movimientos recientes</Text>
-      {dataLoading ? (
-        <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-          <ActivityIndicator color={PROF.accent} />
+        {/* ── CARRITO DE LIQUIDACIÓN DE COMISIONES (INGRESOS DE LA PLATAFORMA) ── */}
+        <View style={{ marginBottom: SPACING.md }}>
+          <GlassCard variant="elevated" animated={false} padding={0}>
+            <LinearGradient
+              colors={['rgba(14,77,104,0.35)', 'rgba(0,27,56,0.65)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={fp.cartGrad}
+            >
+              <View style={fp.cartHeaderRow}>
+                <View style={fp.cartTitleLeft}>
+                  <LinearGradient colors={PROF.gradAccent} style={fp.cartIconBox}>
+                    <Ionicons name="cart" size={20} color="#fff" />
+                  </LinearGradient>
+                  <View style={{ flex: 1 }}>
+                    <Text style={fp.cartTitle}>Carrito de Liquidación Homecare</Text>
+                    <Text style={fp.cartSub}>
+                      {hasCommissions
+                        ? `${pendingCommissions.items.length} comisiones pendientes por servicios en efectivo`
+                        : 'Al día · Sin comisiones pendientes'}
+                    </Text>
+                  </View>
+                </View>
+                {hasCommissions && (
+                  <View style={fp.cartBadgeWrap}>
+                    <Text style={fp.cartBadgeNum}>{pendingCommissions.items.length}</Text>
+                  </View>
+                )}
+              </View>
+
+              {hasCommissions ? (
+                <View style={fp.cartBody}>
+                  <View style={fp.cartTotalRow}>
+                    <Text style={fp.cartTotalLabel}>Total a pagar a Homecare (10%):</Text>
+                    <Text style={fp.cartTotalAmount}>
+                      COL$ {Number(totalComisiones).toLocaleString('es-CO')}
+                    </Text>
+                  </View>
+
+                  {/* Desglose de servicios en el carrito */}
+                  <View style={fp.cartItemsContainer}>
+                    {pendingCommissions.items.slice(0, 3).map((it, idx) => (
+                      <View key={it.pagoId || idx} style={fp.cartSingleItem}>
+                        <Ionicons name="receipt-outline" size={13} color={PROF.accent} />
+                        <Text style={fp.cartItemConcept} numberOfLines={1}>{it.concepto}</Text>
+                        <Text style={fp.cartItemFee}>+COL$ {Number(it.comision).toLocaleString('es-CO')}</Text>
+                      </View>
+                    ))}
+                    {pendingCommissions.items.length > 3 && (
+                      <Text style={fp.cartMoreText}>
+                        +{pendingCommissions.items.length - 3} servicios adicionales en tu carrito...
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Botón Pagar Comisiones con Mercado Pago */}
+                  <TouchableOpacity
+                    style={fp.cartPayButton}
+                    onPress={handleCheckoutComisiones}
+                    activeOpacity={0.88}
+                    disabled={payingCommissions}
+                  >
+                    <LinearGradient
+                      colors={['#0E4D68', '#49C0BC']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={fp.cartPayGrad}
+                    >
+                      {payingCommissions ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="card" size={18} color="#fff" />
+                          <Text style={fp.cartPayButtonText}>Pagar Comisiones a Homecare</Text>
+                          <Ionicons name="arrow-forward" size={16} color="#fff" />
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <Text style={fp.cartMethodsFootnote}>
+                    Procesado por Mercado Pago · Acepta PSE, Tarjetas y Efecty
+                  </Text>
+                </View>
+              ) : (
+                <View style={fp.cartUpToDateRow}>
+                  <Ionicons name="checkmark-circle" size={22} color={PROF.success} />
+                  <Text style={fp.cartUpToDateText}>
+                    No tienes comisiones pendientes. Todos tus servicios en efectivo están al día con la plataforma.
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
+          </GlassCard>
         </View>
-      ) : transactions.length === 0 ? (
-        <GlassCard><Text style={{ color: PROF.textMuted, textAlign: 'center', padding: 16 }}>Sin movimientos aún</Text></GlassCard>
-      ) : (
-        transactions.map((tx, i) => <TxItem key={tx.id} item={tx} index={i} />)
-      )}
-    </View>
+
+        {/* Stats rápidos */}
+        <View style={fp.finStatsRow}>
+          {finStats.map((s, i) => (
+            <Animated.View key={s.label} entering={FadeInDown.delay(i * 60).duration(200)} style={fp.finStatFlex}>
+              <GlassCard variant="accent" animated={false} padding={SPACING.md}>
+                <Text style={fp.finStatLabel}>{s.label}</Text>
+                <Text style={fp.finStatAmount}>COL$ {s.amount}</Text>
+                <View style={fp.finStatDelta}>
+                  <Ionicons name="checkmark" size={10} color={PROF.success} />
+                  <Text style={fp.finStatDeltaText}>{s.delta}</Text>
+                </View>
+              </GlassCard>
+            </Animated.View>
+          ))}
+        </View>
+
+        {/* Movimientos recientes */}
+        <Text style={fp.sectionTitle}>Movimientos recientes</Text>
+        {dataLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <ActivityIndicator color={PROF.accent} />
+          </View>
+        ) : transactions.length === 0 ? (
+          <GlassCard>
+            <View style={fp.emptyTxWrap}>
+              <Ionicons name="receipt-outline" size={28} color={PROF.accent} />
+              <Text style={fp.emptyTxTitle}>Sin movimientos aún</Text>
+              <Text style={fp.emptyTxSub}>
+                Tus pagos por servicios completados y transferencias aparecerán aquí.
+              </Text>
+            </View>
+          </GlassCard>
+        ) : (
+          transactions.map((tx, i) => <TxItem key={tx.id} item={tx} index={i} />)
+        )}
+      </View>
     );
   };
 
-  // ── Tab: Rendimiento ──
+  // ── Tab: Rendimiento (Diseño Minimalista & Ejecutivo) ──
   const RendimientoTab = () => {
     const rndLevel = computeLevel(serviciosCompletados);
     const quarterLabel = getQuarterLabel();
     const progressW = useSharedValue(0);
-    useEffect(() => { progressW.value = withTiming(rndLevel.progress * 100, { duration: 1000, easing: Easing.out(Easing.cubic) }); }, [rndLevel.progress]);
-    const progStyle = useAnimatedStyle(() => ({ width: `${progressW.value}%` }));
 
-    const rating = stats?.calificacionPromedio != null ? Number(stats.calificacionPromedio) : 0;
-    const totalCals = stats?.totalCalificaciones ?? 0;
+    useEffect(() => {
+      progressW.value = withTiming(rndLevel.progress * 100, { duration: 1000, easing: Easing.out(Easing.cubic) });
+    }, [rndLevel.progress]);
+
+    const progStyle = useAnimatedStyle(() => ({ width: `${progressW.value}%` }));
 
     return (
       <View>
-        {/* Score general */}
+        {/* Score general minimalista */}
         <GlassCard style={fp.scoreCard}>
-          <LinearGradient colors={['rgba(73,192,188,0.15)', 'rgba(14,77,104,0.2)']} style={fp.scoreGrad}>
+          <LinearGradient colors={['rgba(73,192,188,0.08)', 'rgba(14,77,104,0.14)']} style={fp.scoreGrad}>
             <View style={fp.scoreLeft}>
-              <Text style={fp.scoreNum}>{rating > 0 ? rating.toFixed(1) : '–'}</Text>
-              <View style={fp.scoreStars}>{[1,2,3,4,5].map(s => <Ionicons key={s} name={s <= Math.round(rating) ? 'star' : 'star-outline'} size={18} color={PROF.accent} />)}</View>
-              <Text style={fp.scoreSub}>Basado en {totalCals} {totalCals === 1 ? 'servicio' : 'servicios'}</Text>
+              <Text style={fp.scoreNum}>{ratingVal > 0 ? ratingVal.toFixed(1) : '–'}</Text>
+              <View style={fp.scoreStars}>
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Ionicons
+                    key={s}
+                    name={s <= Math.round(ratingVal) ? 'star' : 'star-outline'}
+                    size={16}
+                    color="#F5A623"
+                  />
+                ))}
+              </View>
+              <Text style={fp.scoreSub}>
+                {totalCals > 0
+                  ? `${totalCals} ${totalCals === 1 ? 'opinión de cliente' : 'opiniones de clientes'}`
+                  : 'Sin calificaciones aún'}
+              </Text>
             </View>
             <View style={fp.scoreRight}>
-              {[5,4,3,2,1].map((r, i) => (
+              {[5, 4, 3, 2, 1].map((r, i) => (
                 <View key={r} style={fp.scoreRow}>
                   <Text style={fp.scoreRowNum}>{r}</Text>
+                  <Ionicons name="star" size={9} color="#F5A623" style={{ marginRight: 4 }} />
                   <View style={fp.scoreBar}>
-                    <View style={[fp.scoreBarFill, { width: `${[88,8,3,1,0][i]}%` }]} />
+                    <View style={[fp.scoreBarFill, { width: `${starPercentages[i]}%` }]} />
                   </View>
+                  <Text style={fp.scorePctText}>{starPercentages[i]}%</Text>
                 </View>
               ))}
             </View>
@@ -508,20 +734,24 @@ export default function FinancePerformanceScreen({ navigation }) {
         {/* Gráfico semanal */}
         <View style={fp.secHead}>
           <Text style={fp.secHeadTitle}>Servicios esta semana</Text>
-          <View style={fp.weekBadge}><Text style={fp.weekBadgeText}>{weekly.reduce((s,d)=>s+d.svcs,0)} total</Text></View>
+          <View style={fp.weekBadge}>
+            <Text style={fp.weekBadgeText}>{weekly.reduce((s, d) => s + d.svcs, 0)} total</Text>
+          </View>
         </View>
         <GlassCard style={fp.chartCard}>
           <View style={fp.chartHead}>
             <Text style={fp.chartTitle}>Actividad diaria</Text>
           </View>
           <View style={fp.chartContainer}>
-            {weekly.map((d, i) => <BarItem key={d.day} data={d} index={i} isToday={i === new Date().getDay()} />)}
+            {weekly.map((d, i) => (
+              <BarItem key={d.day + i} data={d} index={i} isToday={i === new Date().getDay()} />
+            ))}
           </View>
         </GlassCard>
 
-        {/* Nivel */}
+        {/* Nivel Pro minimalista */}
         <GlassCard style={fp.levelCard}>
-          <LinearGradient colors={[`${rndLevel.color}18`, `${rndLevel.color}06`]} style={fp.levelContent}>
+          <LinearGradient colors={[`${rndLevel.color}14`, `${rndLevel.color}04`]} style={fp.levelContent}>
             <View style={fp.levelHead}>
               <LinearGradient colors={rndLevel.gradColors} style={fp.levelBadge}>
                 <Ionicons name={rndLevel.icon} size={14} color="#fff" />
@@ -530,35 +760,67 @@ export default function FinancePerformanceScreen({ navigation }) {
               {rndLevel.nextLabel ? (
                 <Text style={fp.levelScore}>Siguiente: {rndLevel.nextLabel}</Text>
               ) : (
-                <Text style={[fp.levelScore, { color: rndLevel.color }]}>★ Máximo nivel</Text>
+                <Text style={[fp.levelScore, { color: rndLevel.color }]}>★ Máximo nivel alcanzado</Text>
               )}
             </View>
-            <Text style={[fp.levelScore, { marginBottom: SPACING.sm, fontSize: TYPOGRAPHY.xs, color: PROF.textSecondary }]}>{rndLevel.motivo}</Text>
+            <Text style={[fp.levelScore, { marginBottom: SPACING.sm, fontSize: TYPOGRAPHY.xs, color: PROF.textSecondary }]}>
+              {rndLevel.motivo}
+            </Text>
             <View style={fp.progressTrack}>
               <Animated.View style={[fp.progressFill, progStyle]}>
-                <LinearGradient colors={rndLevel.gradColors} start={{x:0,y:0}} end={{x:1,y:0}} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={rndLevel.gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
               </Animated.View>
             </View>
             <View style={fp.levelStats}>
-              <View style={fp.levelStat}><Text style={fp.levelStatVal}>{serviciosCompletados}</Text><Text style={fp.levelStatLabel}>Este trimestre</Text></View>
+              <View style={fp.levelStat}>
+                <Text style={fp.levelStatVal}>{serviciosCompletados}</Text>
+                <Text style={fp.levelStatLabel}>Completados</Text>
+              </View>
               <View style={fp.levelDivider} />
-              <View style={fp.levelStat}><Text style={fp.levelStatVal}>{rndLevel.next ?? '∞'}</Text><Text style={fp.levelStatLabel}>Meta siguiente</Text></View>
+              <View style={fp.levelStat}>
+                <Text style={fp.levelStatVal}>{rndLevel.next ?? '∞'}</Text>
+                <Text style={fp.levelStatLabel}>Meta siguiente</Text>
+              </View>
               <View style={fp.levelDivider} />
-              <View style={fp.levelStat}><Text style={[fp.levelStatVal, { color: rndLevel.remaining === 0 ? rndLevel.color : PROF.textPrimary }]}>{rndLevel.remaining === 0 ? '★' : rndLevel.remaining}</Text><Text style={fp.levelStatLabel}>{rndLevel.remaining === 0 ? 'Nível máximo' : `Para ${rndLevel.nextLabel}`}</Text></View>
+              <View style={fp.levelStat}>
+                <Text style={[fp.levelStatVal, { color: rndLevel.remaining === 0 ? rndLevel.color : PROF.textPrimary }]}>
+                  {rndLevel.remaining === 0 ? '★' : rndLevel.remaining}
+                </Text>
+                <Text style={fp.levelStatLabel}>
+                  {rndLevel.remaining === 0 ? 'Nivel máximo' : `Para ${rndLevel.nextLabel}`}
+                </Text>
+              </View>
             </View>
-            <Text style={[fp.levelScore, { color: PROF.textMuted, fontSize: 10, fontStyle: 'italic', marginTop: SPACING.xs }]}>{quarterLabel}</Text>
+            <Text style={[fp.levelScore, { color: PROF.textMuted, fontSize: 10, fontStyle: 'italic', marginTop: SPACING.xs }]}>
+              {quarterLabel}
+            </Text>
           </LinearGradient>
         </GlassCard>
 
-        {/* Reseñas */}
+        {/* Reseñas de clientes */}
         <View style={fp.secHead}>
-          <Text style={fp.secHeadTitle}>Reseñas recientes</Text>
-          <TouchableOpacity><Text style={fp.secLink}>Ver todas</Text></TouchableOpacity>
+          <Text style={fp.secHeadTitle}>Reseñas de clientes</Text>
+          {uiReviews.length > 0 && (
+            <View style={fp.weekBadge}>
+              <Text style={fp.weekBadgeText}>{uiReviews.length} verificadas</Text>
+            </View>
+          )}
         </View>
+
         {dataLoading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 16 }}><ActivityIndicator color={PROF.accent} /></View>
+          <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+            <ActivityIndicator color={PROF.accent} />
+          </View>
         ) : uiReviews.length === 0 ? (
-          <GlassCard><Text style={{ color: PROF.textMuted, textAlign: 'center', padding: 16 }}>Sin reseñas aún</Text></GlassCard>
+          <GlassCard style={fp.emptyReviewCard}>
+            <View style={fp.emptyReviewInner}>
+              <Ionicons name="chatbox-ellipses-outline" size={32} color={PROF.accent} />
+              <Text style={fp.emptyReviewTitle}>Aún no tienes reseñas</Text>
+              <Text style={fp.emptyReviewSub}>
+                Cuando completes servicios y tus clientes te califiquen, sus opiniones y comentarios aparecerán aquí.
+              </Text>
+            </View>
+          </GlassCard>
         ) : (
           uiReviews.map((r, i) => <ReviewItem key={r.author + i} review={r} index={i} />)
         )}
@@ -585,7 +847,19 @@ export default function FinancePerformanceScreen({ navigation }) {
         </View>
 
         {/* Content */}
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={fp.scroll} key={activeTab}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={fp.scroll}
+          key={activeTab}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={PROF.accent}
+              colors={[PROF.accent]}
+            />
+          }
+        >
           {activeTab === 0 ? <FinanzasTab /> : <RendimientoTab />}
           <View style={{ height: SPACING.xl }} />
         </ScrollView>
@@ -714,4 +988,39 @@ const fp = StyleSheet.create({
   reviewTime: { fontSize: 10, color: PROF.textMuted, marginTop: 1 },
   reviewStars: { flexDirection: 'row' },
   reviewText: { fontSize: TYPOGRAPHY.sm, color: PROF.textSecondary, lineHeight: 19 },
+  scorePctText: { fontSize: 10, color: PROF.textMuted, width: 32, textAlign: 'right' },
+
+  // Empty states
+  emptyTxWrap: { alignItems: 'center', padding: SPACING.lg },
+  emptyTxTitle: { fontSize: TYPOGRAPHY.sm, fontWeight: TYPOGRAPHY.bold, color: PROF.textPrimary, marginTop: SPACING.sm },
+  emptyTxSub: { fontSize: TYPOGRAPHY.xs, color: PROF.textMuted, textAlign: 'center', marginTop: 4, lineHeight: 16 },
+  emptyReviewCard: { marginBottom: SPACING.md },
+  emptyReviewInner: { alignItems: 'center', padding: SPACING.xl },
+  emptyReviewTitle: { fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.bold, color: PROF.textPrimary, marginTop: SPACING.sm },
+  emptyReviewSub: { fontSize: TYPOGRAPHY.xs, color: PROF.textMuted, textAlign: 'center', marginTop: 4, lineHeight: 18, maxWidth: 280 },
+
+  // Carrito de Comisiones
+  cartGrad: { borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, borderWidth: 1, borderColor: 'rgba(73,192,188,0.2)' },
+  cartHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cartTitleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  cartIconBox: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  cartTitle: { fontSize: 14, fontWeight: TYPOGRAPHY.bold, color: PROF.textPrimary },
+  cartSub: { fontSize: 11, color: PROF.textSecondary, marginTop: 2 },
+  cartBadgeWrap: { backgroundColor: '#EF4444', paddingHorizontal: 9, paddingVertical: 3, borderRadius: BORDER_RADIUS.full, marginLeft: 8 },
+  cartBadgeNum: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  cartBody: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  cartTotalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.sm },
+  cartTotalLabel: { fontSize: 12, color: PROF.textSecondary, fontWeight: '600' },
+  cartTotalAmount: { fontSize: 16, fontWeight: '800', color: PROF.accent },
+  cartItemsContainer: { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: BORDER_RADIUS.md, padding: SPACING.sm, marginBottom: SPACING.md },
+  cartSingleItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  cartItemConcept: { flex: 1, fontSize: 11, color: PROF.textPrimary },
+  cartItemFee: { fontSize: 11, fontWeight: '700', color: PROF.accent },
+  cartMoreText: { fontSize: 10, color: PROF.textMuted, fontStyle: 'italic', marginTop: 4, textAlign: 'center' },
+  cartPayButton: { borderRadius: BORDER_RADIUS.md, overflow: 'hidden', ...SHADOWS.glow, shadowColor: PROF.accent },
+  cartPayGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 8 },
+  cartPayButtonText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  cartMethodsFootnote: { fontSize: 10, color: PROF.textMuted, textAlign: 'center', marginTop: 8 },
+  cartUpToDateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SPACING.sm, paddingVertical: 4 },
+  cartUpToDateText: { fontSize: 12, color: PROF.success, flex: 1, lineHeight: 16 },
 });

@@ -140,6 +140,20 @@ public class PaymentService {
 
         pago = pagoRepository.save(pago);
 
+        // Si es pago en EFECTIVO directo al profesional
+        if (request.getMetodoPago() == Pago.MetodoPago.EFECTIVO) {
+            pago.setEstado(EstadoPago.APROBADO);
+            pago.setEstadoRetencion(EstadoRetencion.LIBERADO);
+            pago.setAprobadoAt(LocalDateTime.now());
+            pago.setMetodoPagoDetalle("Pago en efectivo contra entrega");
+            pago.setComisionLiquidada(false); // Pendiente de liquidar por el proveedor en el carrito de finanzas
+            pago = pagoRepository.save(pago);
+            notificarPagoExitoso(pago);
+            log.info("Pago en EFECTIVO completado para servicio {}: total ${}, comisión Homecare pendiente ${}",
+                    servicio.getId(), montoReal, comision);
+            return mapToResponse(pago);
+        }
+
         // Si viene con token (Checkout Bricks), procesar inmediatamente
         if (request.getCardToken() != null && !request.getCardToken().isEmpty()) {
             return procesarPagoConToken(pago, request);
@@ -195,6 +209,7 @@ public class PaymentService {
                 pago.setEstado(EstadoPago.APROBADO);
                 pago.setEstadoRetencion(EstadoRetencion.RETENIDO);
                 pago.setAprobadoAt(LocalDateTime.now());
+                pago.setComisionLiquidada(true); // Retenida automáticamente en pago online
                 notificarPagoExitoso(pago);
                 intentarLiberarPago(pago);
             } else if ("in_process".equals(response.getStatus())) {
@@ -229,6 +244,16 @@ public class PaymentService {
 
             String referencia = payment.getExternalReference();
 
+            // Liquidación de comisiones de Homecare (Carrito de Finanzas del profesional)
+            if (referencia != null && referencia.startsWith("HC-COM-")) {
+                log.info("[MP-WEBHOOK] Enrutando a liquidación de comisiones — ref: {}, paymentId: {}, estado: {}",
+                        referencia, payment.getId(), payment.getStatus());
+                if ("approved".equals(payment.getStatus())) {
+                    liquidarComisionesPorReferencia(referencia, String.valueOf(payment.getId()));
+                }
+                return;
+            }
+
             // Suscripciones tienen el prefijo HC-SUB-; enrutar a SubscriptionService
             if (referencia != null && referencia.startsWith("HC-SUB-")) {
                 log.info("[MP-WEBHOOK] Enrutando a SubscriptionService — ref: {}, paymentId: {}, estado: {}",
@@ -253,6 +278,7 @@ public class PaymentService {
                         pago.setTransaccionExternaId(String.valueOf(payment.getId()));
                         pago.setAprobadoAt(LocalDateTime.now());
                         pago.setMetodoPagoDetalle(payment.getPaymentMethodId());
+                        pago.setComisionLiquidada(true); // En pago online la comisión se retiene automáticamente
                         
                         notificarPagoExitoso(pago);
                         log.info("Pago {} aprobado por Mercado Pago", pago.getId());
@@ -502,7 +528,8 @@ public class PaymentService {
                 pago.getReferencia(),
                 pago.getCreatedAt(),
                 pago.getAprobadoAt(),
-                pago.getFechaLiberacion()
+                pago.getFechaLiberacion(),
+                pago.getComisionLiquidada()
         );
     }
 
@@ -784,5 +811,141 @@ public class PaymentService {
                 pagosReembolsados,
                 BigDecimal.valueOf(tasaExito).setScale(2, RoundingMode.HALF_UP).doubleValue()
         );
+    }
+
+    /**
+     * Consulta las comisiones de plataforma pendientes que el profesional debe pagar
+     * (Carrito de comisiones en Finanzas del Profesional).
+     */
+    public PagoDTO.ComisionesPendientesResponse obtenerComisionesPendientes(Long proveedorId) {
+        List<Pago> pendientes = pagoRepository.findByProveedorIdAndComisionLiquidadaFalseAndEstado(
+                proveedorId, EstadoPago.APROBADO
+        );
+
+        List<PagoDTO.ComisionCarritoItem> items = pendientes.stream()
+                .filter(p -> p.getComisionPlataforma() != null && p.getComisionPlataforma().compareTo(BigDecimal.ZERO) > 0)
+                .map(p -> new PagoDTO.ComisionCarritoItem(
+                        p.getId(),
+                        p.getServicio().getId(),
+                        p.getCliente() != null ? (p.getCliente().getNombre() + " " + (p.getCliente().getApellido() != null ? p.getCliente().getApellido() : "")) : "Cliente",
+                        p.getServicio().getConcepto() != null ? p.getServicio().getConcepto() : "Servicio #" + p.getServicio().getId(),
+                        p.getMontoTotal(),
+                        BigDecimal.valueOf(10.0), // 10% estándar de comisión
+                        p.getComisionPlataforma(),
+                        p.getCreatedAt()
+                ))
+                .toList();
+
+        BigDecimal total = items.stream()
+                .map(PagoDTO.ComisionCarritoItem::getComision)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new PagoDTO.ComisionesPendientesResponse(total, items.size(), items);
+    }
+
+    /**
+     * Crea una preferencia en Mercado Pago (Checkout Pro / Bricks) para que el profesional
+     * liquide su carrito de comisiones adeudadas a la plataforma Homecare (PSE, Tarjetas, Efecty).
+     */
+    public PagoDTO.CheckoutComisionesResponse crearPreferenciaComisiones(Long proveedorId) {
+        PagoDTO.ComisionesPendientesResponse pendientes = obtenerComisionesPendientes(proveedorId);
+
+        if (pendientes.getItems() == null || pendientes.getItems().isEmpty() ||
+                pendientes.getTotalComisionPendiente().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentException("No tienes comisiones pendientes por liquidar en tu carrito.");
+        }
+
+        try {
+            PreferenceClient client = new PreferenceClient();
+            String externalReference = "HC-COM-" + proveedorId + "-" + System.currentTimeMillis();
+
+            List<PreferenceItemRequest> items = new ArrayList<>();
+            PreferenceItemRequest item = PreferenceItemRequest.builder()
+                    .title("Homecare - Liquidación de comisiones de plataforma (" + pendientes.getTotalServiciosPendientes() + " servicios)")
+                    .description("Pago de comisiones de servicio para la plataforma Homecare")
+                    .quantity(1)
+                    .unitPrice(pendientes.getTotalComisionPendiente())
+                    .currencyId("COP")
+                    .build();
+            items.add(item);
+
+            PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+                    .success(callbackUrl + "/payments/comisiones/success")
+                    .pending(callbackUrl + "/payments/comisiones/pending")
+                    .failure(callbackUrl + "/payments/comisiones/failure")
+                    .build();
+
+            PreferenceRequest request = PreferenceRequest.builder()
+                    .items(items)
+                    .backUrls(backUrls)
+                    .externalReference(externalReference)
+                    .autoReturn("approved")
+                    .notificationUrl(callbackUrl.replaceAll("/api$", "") + "/api/payments/webhook/mercadopago")
+                    .build();
+
+            Preference preference = client.create(request);
+
+            log.info("[COMISIONES] Preferencia creada para proveedor {}: id={}, monto=${}",
+                    proveedorId, preference.getId(), pendientes.getTotalComisionPendiente());
+
+            return new PagoDTO.CheckoutComisionesResponse(
+                    preference.getId(),
+                    preference.getInitPoint(),
+                    externalReference,
+                    pendientes.getTotalComisionPendiente(),
+                    pendientes.getTotalServiciosPendientes()
+            );
+
+        } catch (Exception e) {
+            log.error("Error al crear preferencia MP para comisiones: {}", e.getMessage(), e);
+            throw new PaymentException("Error al generar checkout de comisiones: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Liquida las comisiones de un proveedor cuando el webhook de Mercado Pago confirma el pago.
+     */
+    @Transactional
+    public void liquidarComisionesPorReferencia(String referencia, String transaccionExternaId) {
+        try {
+            // referencia formato: HC-COM-{proveedorId}-{timestamp}
+            String[] parts = referencia.split("-");
+            if (parts.length >= 3) {
+                Long proveedorId = Long.parseLong(parts[2]);
+                List<Pago> pendientes = pagoRepository.findByProveedorIdAndComisionLiquidadaFalseAndEstado(
+                        proveedorId, EstadoPago.APROBADO
+                );
+
+                for (Pago p : pendientes) {
+                    p.setComisionLiquidada(true);
+                }
+                pagoRepository.saveAll(pendientes);
+
+                log.info("[COMISIONES] {} comisiones liquidadas exitosamente para proveedor {} con ref MP {}",
+                        pendientes.size(), proveedorId, transaccionExternaId);
+            }
+        } catch (Exception e) {
+            log.error("[COMISIONES] Error al liquidar comisiones para referencia {}: {}", referencia, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Liquidación manual / inmediata (para simulador en ambiente dev o pago directo).
+     */
+    @Transactional
+    public PagoDTO.ComisionesPendientesResponse liquidarComisionesManual(Long proveedorId) {
+        List<Pago> pendientes = pagoRepository.findByProveedorIdAndComisionLiquidadaFalseAndEstado(
+                proveedorId, EstadoPago.APROBADO
+        );
+
+        for (Pago p : pendientes) {
+            p.setComisionLiquidada(true);
+        }
+        pagoRepository.saveAll(pendientes);
+
+        log.info("[COMISIONES] Liquidación manual completada para proveedor {}: {} pagos actualizados",
+                proveedorId, pendientes.size());
+
+        return obtenerComisionesPendientes(proveedorId);
     }
 }

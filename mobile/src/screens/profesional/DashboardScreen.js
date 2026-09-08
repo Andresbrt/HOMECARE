@@ -111,8 +111,8 @@ export default function ProfDashboardScreen({ navigation }) {
   const [recentActivity, setRecentActivity] = useState([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  // Para cuentas demo o nuevas, mostrar métricas estimadas si aún no hay historial en BD
-  const weeklyServices = user?.serviciosCompletados ?? (user?.email?.includes('demo') || user?.email === 'profesional@test.com' ? 24 : 0);
+  // Servicios completados reales del usuario
+  const weeklyServices = user?.serviciosCompletados ?? 0;
   const level = computeLevel(weeklyServices);
   const quarterLabel = getQuarterLabel();
   // Progreso dentro del nivel actual (barra de la tarjeta)
@@ -145,14 +145,6 @@ export default function ProfDashboardScreen({ navigation }) {
       let list = [];
       if (res && res.ok) {
         list = Array.isArray(res.data) ? res.data : (res.data?.content ?? []);
-      }
-      if (list.length === 0) {
-        // Datos de respaldo para enriquecer la experiencia en demos
-        list = [
-          { concepto: 'Colorimetría y Balayage Premium', direccion: 'Calle 93 #14-20, Chicó', monto: 180000 },
-          { concepto: 'Limpieza Profunda y Desinfección', direccion: 'Cra 11 #82-45, El Retiro', monto: 120000 },
-          { concepto: 'Estilismo e Hidratación Capilar', direccion: 'Calle 109 #18-12, Sta Bárbara', monto: 95000 },
-        ];
       }
       const mapped = list.slice(0, 3).map((p) => ({
         type: p.concepto ?? p.descripcion ?? 'Servicio',

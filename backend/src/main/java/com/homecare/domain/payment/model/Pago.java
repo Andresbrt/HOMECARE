@@ -80,6 +80,10 @@ public class Pago {
     @Column(name = "reembolsado_at")
     private LocalDateTime reembolsadoAt;
 
+    @Column(name = "comision_liquidada")
+    @Builder.Default
+    private Boolean comisionLiquidada = false;
+
     // Estado
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -130,7 +134,9 @@ public class Pago {
         TARJETA_CREDITO,
         TARJETA_DEBITO,
         NEQUI,
-        CARD // Agregado para MP Bricks
+        CARD, // Agregado para MP Bricks
+        EFECTIVO, // Pago presencial al profesional
+        MERCADO_PAGO // Checkout Mercado Pago
     }
 
     // Metodos de utilidad

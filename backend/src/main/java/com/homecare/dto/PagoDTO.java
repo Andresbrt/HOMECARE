@@ -54,6 +54,7 @@ public class PagoDTO {
         private LocalDateTime createdAt;
         private LocalDateTime aprobadoAt;
         private LocalDateTime fechaLiberacion;
+        private Boolean comisionLiquidada;
     }
 
     @Data
@@ -135,5 +136,48 @@ public class PagoDTO {
         private Long totalServicios;
         /** Últimas transacciones para mostrar en la UI */
         private java.util.List<PagoResponse> transacciones;
+    }
+
+    /**
+     * Ítem de comisión pendiente para el Carrito de Pago del profesional.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ComisionCarritoItem {
+        private Long pagoId;
+        private Long servicioId;
+        private String clienteNombre;
+        private String concepto;
+        private BigDecimal montoServicio;
+        private BigDecimal porcentajeComision;
+        private BigDecimal comision;
+        private LocalDateTime fecha;
+    }
+
+    /**
+     * Respuesta con el carrito de comisiones pendientes que el profesional debe pagar a la plataforma.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ComisionesPendientesResponse {
+        private BigDecimal totalComisionPendiente;
+        private Integer totalServiciosPendientes;
+        private java.util.List<ComisionCarritoItem> items;
+    }
+
+    /**
+     * Respuesta de checkout para liquidar comisiones con Mercado Pago.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CheckoutComisionesResponse {
+        private String preferenceId;
+        private String initPoint;
+        private String externalReference;
+        private BigDecimal totalAPagar;
+        private Integer itemsCount;
     }
 }

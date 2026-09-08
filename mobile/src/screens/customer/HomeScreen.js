@@ -146,7 +146,8 @@ export default function HomeScreen({ navigation }) {
     }
   }, []);
 
-  useFocusEffect(
+  const focusEffect = typeof useFocusEffect === 'function' ? useFocusEffect : useEffect;
+  focusEffect(
     useCallback(() => {
       fetchRequests();
     }, [fetchRequests])

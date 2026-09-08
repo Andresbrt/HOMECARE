@@ -132,6 +132,33 @@ public class PaymentController {
         return ResponseEntity.ok(wallet);
     }
 
+    @GetMapping("/comisiones/pendientes")
+    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
+    @Operation(summary = "Obtener carrito de comisiones pendientes que el profesional debe pagar a Homecare")
+    public ResponseEntity<PagoDTO.ComisionesPendientesResponse> getPendingCommissions(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        PagoDTO.ComisionesPendientesResponse response = paymentService.obtenerComisionesPendientes(userDetails.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/comisiones/checkout")
+    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
+    @Operation(summary = "Generar checkout de Mercado Pago para liquidar comisiones adeudadas a la plataforma")
+    public ResponseEntity<PagoDTO.CheckoutComisionesResponse> checkoutCommissions(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        PagoDTO.CheckoutComisionesResponse response = paymentService.crearPreferenciaComisiones(userDetails.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/comisiones/liquidar-directo")
+    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
+    @Operation(summary = "Liquidar comisiones pendientes directamente")
+    public ResponseEntity<PagoDTO.ComisionesPendientesResponse> liquidarComisionesDirecto(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        PagoDTO.ComisionesPendientesResponse response = paymentService.liquidarComisionesManual(userDetails.getId());
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Obtener estadisticas de pagos")
