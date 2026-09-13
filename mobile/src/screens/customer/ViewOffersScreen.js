@@ -167,19 +167,26 @@ export default function ViewOffersScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [accepting, setAccepting] = useState(false);
 
-  const fetchOffers = useCallback(async () => {
+  const fetchOffers = useCallback(async (isSilent = false) => {
     try {
       const { data } = await apiClient.get(`/ofertas/solicitud/${solicitudId}`);
       setOffers(Array.isArray(data) ? data : data?.content ?? []);
     } catch {
-      if (!refreshing) Alert.alert('Error', 'No se pudieron cargar las ofertas.');
+      if (!refreshing && !isSilent) Alert.alert('Error', 'No se pudieron cargar las ofertas.');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
       setRefreshing(false);
     }
   }, [solicitudId, refreshing]);
 
-  useEffect(() => { fetchOffers(); }, [fetchOffers]);
+  useEffect(() => {
+    fetchOffers();
+    // Auto-polling en vivo para demo (cada 3.5s actualiza ofertas sin requerir pull-to-refresh)
+    const timer = setInterval(() => {
+      fetchOffers(true);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [fetchOffers]);
 
   const pendingCount = offers.filter((o) => o.estado === 'PENDIENTE').length;
 

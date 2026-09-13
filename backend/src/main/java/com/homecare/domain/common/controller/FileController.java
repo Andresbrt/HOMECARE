@@ -81,21 +81,23 @@ public class FileController {
 
     @GetMapping("/solicitud/{solicitudId}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
-    @Operation(summary = "Obtener archivos de una solicitud")
+    @Operation(summary = "Obtener archivos de una solicitud (con validación de permisos)")
     public ResponseEntity<List<FileUploadDTO.Response>> getFilesBySolicitud(
-            @PathVariable Long solicitudId) {
+            @PathVariable Long solicitudId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        List<FileUploadDTO.Response> files = fileStorageService.getFilesBySolicitud(solicitudId);
+        List<FileUploadDTO.Response> files = fileStorageService.getFilesBySolicitud(solicitudId, userDetails.getId());
         return ResponseEntity.ok(files);
     }
 
     @GetMapping("/servicio/{servicioId}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
-    @Operation(summary = "Obtener archivos de un servicio")
+    @Operation(summary = "Obtener archivos de un servicio (con validación de permisos)")
     public ResponseEntity<List<FileUploadDTO.Response>> getFilesByServicio(
-            @PathVariable Long servicioId) {
+            @PathVariable Long servicioId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        List<FileUploadDTO.Response> files = fileStorageService.getFilesByServicio(servicioId);
+        List<FileUploadDTO.Response> files = fileStorageService.getFilesByServicio(servicioId, userDetails.getId());
         return ResponseEntity.ok(files);
     }
 

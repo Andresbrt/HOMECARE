@@ -93,10 +93,28 @@ public class UsuarioService {
         );
     }
 
-    public UsuarioDTO.Response obtenerPerfilPublico(Long usuarioId) {
+    public UsuarioDTO.PerfilPublicoResponse obtenerPerfilPublico(Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
-        return mapToResponse(usuario);
+        return mapToPerfilPublicoResponse(usuario);
+    }
+
+    private UsuarioDTO.PerfilPublicoResponse mapToPerfilPublicoResponse(Usuario usuario) {
+        int servicios = usuario.getServiciosCompletados() != null ? usuario.getServiciosCompletados() : 0;
+        return new UsuarioDTO.PerfilPublicoResponse(
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getFotoPerfil(),
+                usuario.getDisponible(),
+                usuario.getVerificado(),
+                usuario.getCalificacionPromedio(),
+                servicios,
+                calcularNivelRanking(servicios),
+                calcularBonusVisibilidad(servicios),
+                usuario.getRoles().stream()
+                        .map(r -> r.getNombre().replace("ROLE_", ""))
+                        .toList()
+        );
     }
 
     public List<UsuarioDTO.Response> listarProveedoresPendientesVerificacion() {

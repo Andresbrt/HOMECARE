@@ -26,6 +26,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     List<Pago> findByProveedorIdOrderByCreatedAtDesc(Long proveedorId);
 
     // Pagos del proveedor por estado (incluyendo servicios y recargas de wallet)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"servicio", "cliente", "proveedor"})
     List<Pago> findByProveedorIdAndEstado(Long proveedorId, Pago.EstadoPago estado);
 
     // Pago por transacción de Wompi
@@ -40,15 +41,19 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     List<Pago> findByEstadoAndCreatedAtBefore(Pago.EstadoPago estado, java.time.LocalDateTime fecha);
 
     // Pagos del cliente por estado
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"servicio", "cliente", "proveedor"})
     List<Pago> findByServicioClienteIdAndEstado(Long clienteId, Pago.EstadoPago estado);
     
     // Pagos del proveedor por estado
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"servicio", "cliente", "proveedor"})
     List<Pago> findByServicioProveedorIdAndEstado(Long proveedorId, Pago.EstadoPago estado);
 
     // Pagos del cliente (todos)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"servicio", "cliente", "proveedor"})
     List<Pago> findByServicioClienteId(Long clienteId);
     
     // Pagos del proveedor (todos)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"servicio", "cliente", "proveedor"})
     List<Pago> findByServicioProveedorId(Long proveedorId);
 
     List<Pago> findByEstadoRetencion(Pago.EstadoRetencion estadoRetencion);

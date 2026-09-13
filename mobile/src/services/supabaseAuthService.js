@@ -48,7 +48,29 @@ export async function signIn({ email, password }) {
   return data;
 }
 
+import { NativeModules, TurboModuleRegistry, Platform } from 'react-native';
+import Constants from 'expo-constants';
+import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+
+/**
+ * Detecta de forma segura si el binario nativo tiene registrado RNGoogleSignin.
+ * En Expo Go o builds sin el módulo compilado nativamente, retorna false para evitar
+ * el error fatal 'TurboModuleRegistry.getEnforcing(...): RNGoogleSignin could not be found'.
+ */
+function isNativeGoogleSigninAvailable() {
+  try {
+    if (Platform.OS === 'web') return false;
+    const isExpoGo = Constants?.appOwnership === 'expo' || Constants?.executionEnvironment === 'storeClient';
+    if (isExpoGo) return false;
+
+    const turboModule = TurboModuleRegistry?.get ? TurboModuleRegistry.get('RNGoogleSignin') : null;
+    const legacyModule = NativeModules?.RNGoogleSignin;
+    return Boolean(turboModule || legacyModule);
+  } catch (_) {
+    return false;
+  }
+}
 
 /**
  * Login y Registro universal con Google.
@@ -56,33 +78,43 @@ import * as WebBrowser from 'expo-web-browser';
  * 2. Fallback a WebBrowser.openAuthSessionAsync contra Supabase OAuth con captura de tokens/PKCE
  */
 export async function signInWithGoogle() {
-  // 1. Intentar Google Sign-In nativo si está disponible
-  try {
-    const GoogleSigninModule = require('@react-native-google-signin/google-signin');
-    const GoogleSignin = GoogleSigninModule?.GoogleSignin;
-    if (GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const signInResult = await GoogleSignin.signIn();
-      const idToken = signInResult?.data?.idToken || signInResult?.idToken;
-      if (idToken) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        });
-        if (error) throw error;
-        if (data?.session) return data.session;
+  // 1. Intentar Google Sign-In nativo solo si el binario nativo lo tiene registrado
+  if (isNativeGoogleSigninAvailable()) {
+    try {
+      const GoogleSigninModule = require('@react-native-google-signin/google-signin');
+      const GoogleSignin = GoogleSigninModule?.GoogleSignin;
+      if (GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const signInResult = await GoogleSignin.signIn();
+        const idToken = signInResult?.data?.idToken || signInResult?.idToken;
+        if (idToken) {
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: idToken,
+          });
+          if (error) throw error;
+          if (data?.session) return data.session;
+        }
       }
+    } catch (nativeErr) {
+      if (nativeErr.code === 'SIGN_IN_CANCELLED' || nativeErr.code === '12501') {
+        return null; // Usuario canceló explícitamente
+      }
+      // Fallback silencioso a WebBrowser
     }
-  } catch (nativeErr) {
-    if (nativeErr.code === 'SIGN_IN_CANCELLED' || nativeErr.code === '12501') {
-      return null; // Usuario canceló explícitamente
-    }
-    // Fallback a WebBrowser
   }
 
   // 2. Fallback universal vía WebBrowser (Expo WebBrowser + Supabase OAuth)
   try {
-    const redirectTo = 'homecare://auth/callback';
+    let redirectTo = 'homecare://auth/callback';
+    try {
+      if (AuthSession?.makeRedirectUri) {
+        redirectTo = AuthSession.makeRedirectUri({
+          scheme: 'homecare',
+          path: 'auth/callback',
+        });
+      }
+    } catch (_) {}
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

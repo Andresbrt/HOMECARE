@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface CalificacionRepository extends JpaRepository<Calificacion, Long> {
 
     // Calificaciones recibidas por un usuario
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"servicio", "calificador", "calificado"})
     List<Calificacion> findByCalificadoIdOrderByCreatedAtDesc(Long calificadoId);
 
     // Calificaciones hechas por un usuario

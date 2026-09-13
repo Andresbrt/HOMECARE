@@ -607,8 +607,8 @@ public class PaymentService {
      */
     public boolean validarFirmaWebhookMP(String xSignature, String requestId, String dataId) {
         if (mpWebhookSecret == null || mpWebhookSecret.isBlank()) {
-            log.warn("⚠️  MP webhook secret no configurado (sandbox) — validación de firma OMITIDA. Configura mercadopago.webhook-secret en producción.");
-            return true; // sin secreto configurado, se acepta (modo sandbox)
+            log.error("SECURITY ALERT | MP webhook secret no configurado — rechazando webhook bajo principio fail-closed. Configura mercadopago.webhook-secret.");
+            return false; // Principio Fail-Closed: nunca aceptar pagos sin secreto criptográfico configurado
         }
         if (xSignature == null || xSignature.isBlank()) {
             log.warn("Webhook MP sin header x-signature");
@@ -744,10 +744,15 @@ public class PaymentService {
         return mapToResponse(pago);
     }
 
+    @Transactional(readOnly = true)
     public List<PagoDTO.PagoResponse> obtenerPagosPorEstadoRetencion(EstadoRetencion estadoRetencion) {
         return pagoRepository.findByEstadoRetencion(estadoRetencion).stream()
                 .map(this::mapToResponse)
-                .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
+                .sorted((p1, p2) -> {
+                    LocalDateTime t1 = p1.getCreatedAt() != null ? p1.getCreatedAt() : LocalDateTime.MIN;
+                    LocalDateTime t2 = p2.getCreatedAt() != null ? p2.getCreatedAt() : LocalDateTime.MIN;
+                    return t2.compareTo(t1);
+                })
                 .toList();
     }
 
@@ -768,6 +773,7 @@ public class PaymentService {
         }
     }
 
+    @Transactional(readOnly = true)
     public PagoDTO.PagoResponse obtenerPago(Long pagoId, Long usuarioId) {
         Pago pago = pagoRepository.findById(pagoId)
                 .orElseThrow(() -> new NotFoundException("Pago no encontrado"));
@@ -789,19 +795,24 @@ public class PaymentService {
         return mapToResponse(pago);
     }
 
+    @Transactional(readOnly = true)
     public List<PagoDTO.PagoResponse> obtenerPagosPorUsuario(Long usuarioId, EstadoPago estado) {
-        List<Pago> pagos;
+        List<Pago> pagos = new java.util.ArrayList<>();
         if (estado != null) {
-            pagos = pagoRepository.findByServicioClienteIdAndEstado(usuarioId, estado);
+            pagos.addAll(pagoRepository.findByServicioClienteIdAndEstado(usuarioId, estado));
             pagos.addAll(pagoRepository.findByServicioProveedorIdAndEstado(usuarioId, estado));
         } else {
-            pagos = pagoRepository.findByServicioClienteId(usuarioId);
+            pagos.addAll(pagoRepository.findByServicioClienteId(usuarioId));
             pagos.addAll(pagoRepository.findByServicioProveedorId(usuarioId));
         }
 
         return pagos.stream()
                 .map(this::mapToResponse)
-                .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
+                .sorted((p1, p2) -> {
+                    LocalDateTime t1 = p1.getCreatedAt() != null ? p1.getCreatedAt() : LocalDateTime.MIN;
+                    LocalDateTime t2 = p2.getCreatedAt() != null ? p2.getCreatedAt() : LocalDateTime.MIN;
+                    return t2.compareTo(t1);
+                })
                 .toList();
     }
 
@@ -813,6 +824,7 @@ public class PaymentService {
      * - saldoRetenido:    suma de montoProveedor de pagos APROBADOS + RETENIDOS
      * - totalGanado:      saldoDisponible + saldoRetenido
      */
+    @Transactional(readOnly = true)
     public PagoDTO.WalletResponse obtenerWalletProveedor(Long proveedorId) {
         List<Pago> pagosAprobados = pagoRepository.findByProveedorIdAndEstado(proveedorId, EstadoPago.APROBADO);
 
@@ -895,6 +907,7 @@ public class PaymentService {
      * Consulta las comisiones de plataforma pendientes que el profesional debe pagar
      * (Carrito de comisiones en Finanzas del Profesional).
      */
+    @Transactional(readOnly = true)
     public PagoDTO.ComisionesPendientesResponse obtenerComisionesPendientes(Long proveedorId) {
         List<Pago> pendientes = pagoRepository.findByProveedorIdAndComisionLiquidadaFalseAndEstado(
                 proveedorId, EstadoPago.APROBADO

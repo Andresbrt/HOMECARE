@@ -323,7 +323,7 @@ public class OfertaService {
                 .materialesIncluidos(oferta.getMaterialesIncluidos())
                 .estado(oferta.getEstado().name())
                 .vistaPorCliente(oferta.getVistaPorCliente())
-                .createdAt(oferta.getCreatedAt().toString())
+                .createdAt(oferta.getCreatedAt() != null ? oferta.getCreatedAt().toString() : java.time.LocalDateTime.now().toString())
                 .distanciaKm(null)
                 .build();
     }

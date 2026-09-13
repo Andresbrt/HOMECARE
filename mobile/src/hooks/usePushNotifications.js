@@ -101,6 +101,13 @@ export function usePushNotifications() {
   const registerDevice = useCallback(async () => {
     if (!Device.isDevice) return null;
 
+    // En Expo Go para Android, Google/Expo removieron el soporte de FCM remoto
+    const isExpoGo = Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
+    if (Platform.OS === 'android' && isExpoGo) {
+      __DEV_LOG__('[Push] Expo Go en Android: se omiten notificaciones push remotas (usando WebSockets).');
+      return null;
+    }
+
     // Pedir / verificar permisos
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;

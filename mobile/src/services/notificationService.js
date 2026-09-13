@@ -26,6 +26,12 @@ export const notificationService = {
       return;
     }
 
+    const isExpoGo = Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
+    if (Platform.OS === 'android' && isExpoGo) {
+      __DEV_LOG__('[NotifService] Push remoto omitido en Android Expo Go.');
+      return;
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 

@@ -145,13 +145,13 @@ public class PaymentController {
     }
 
     @PostMapping("/wallet/recargar-directo")
-    @PreAuthorize("hasRole('SERVICE_PROVIDER')")
-    @Operation(summary = "Recargar directamente la billetera del profesional (dev / simulación / confirmación)")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Recargar directamente la billetera del profesional (Restringido estrictamente a Administradores para soporte o ajustes)")
     public ResponseEntity<PagoDTO.WalletResponse> recargarWalletDirecto(
             @Valid @RequestBody PagoDTO.RecargaWalletRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         PagoDTO.WalletResponse response = paymentService.recargarWalletDirecto(
-                userDetails.getId(), request.getMonto(), "MERCADO_PAGO"
+                userDetails.getId(), request.getMonto(), "AJUSTE_ADMINISTRATIVO"
         );
         return ResponseEntity.ok(response);
     }

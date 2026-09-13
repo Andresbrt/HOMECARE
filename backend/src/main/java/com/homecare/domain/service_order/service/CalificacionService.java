@@ -88,11 +88,13 @@ public class CalificacionService {
         return mapToResponse(calificacion);
     }
 
+    @Transactional(readOnly = true)
     public List<CalificacionDTO.Response> obtenerCalificacionesUsuario(Long usuarioId) {
         List<Calificacion> calificaciones = calificacionRepository.findByCalificadoIdOrderByCreatedAtDesc(usuarioId);
         return calificaciones.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CalificacionDTO.EstadisticasDistribucion obtenerEstadisticasDistribucion(Long usuarioId) {
         List<Calificacion> calificaciones = calificacionRepository.findByCalificadoIdOrderByCreatedAtDesc(usuarioId);
 

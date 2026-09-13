@@ -12,6 +12,7 @@ import java.util.List;
 public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
 
     // Mensajes de una solicitud (chat completo)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"remitente", "destinatario"})
     List<Mensaje> findBySolicitudIdOrderByCreatedAtAsc(Long solicitudId);
 
     // Mensajes entre dos usuarios en una solicitud

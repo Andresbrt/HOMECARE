@@ -85,9 +85,9 @@ public class UsuarioController {
 
     @GetMapping("/{usuarioId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Obtener perfil público de usuario")
-    public ResponseEntity<UsuarioDTO.Response> obtenerPerfilPublico(@PathVariable Long usuarioId) {
-        UsuarioDTO.Response perfil = usuarioService.obtenerPerfilPublico(usuarioId);
+    @Operation(summary = "Obtener perfil público de usuario (sanitizado)")
+    public ResponseEntity<UsuarioDTO.PerfilPublicoResponse> obtenerPerfilPublico(@PathVariable Long usuarioId) {
+        UsuarioDTO.PerfilPublicoResponse perfil = usuarioService.obtenerPerfilPublico(usuarioId);
         return ResponseEntity.ok(perfil);
     }
 

@@ -270,21 +270,31 @@ public class MensajeService {
     }
 
     private MensajeDTO.Response mapToResponse(Mensaje mensaje) {
+        Long remitenteId = mensaje.getRemitente() != null ? mensaje.getRemitente().getId() : null;
+        String remitenteNombre = mensaje.getRemitente() != null ? mensaje.getRemitente().getNombre() : "Usuario";
+        String remitenteFoto = mensaje.getRemitente() != null ? mensaje.getRemitente().getFotoPerfil() : null;
+
+        Long destinatarioId = mensaje.getDestinatario() != null ? mensaje.getDestinatario().getId() : null;
+        String destinatarioNombre = mensaje.getDestinatario() != null ? mensaje.getDestinatario().getNombre() : "Usuario";
+        String destinatarioFoto = mensaje.getDestinatario() != null ? mensaje.getDestinatario().getFotoPerfil() : null;
+
+        Long solId = mensaje.getSolicitud() != null ? mensaje.getSolicitud().getId() : null;
+
         return new MensajeDTO.Response(
                 mensaje.getId(),
-                mensaje.getSolicitud().getId(),
-                mensaje.getRemitente().getId(),
-                mensaje.getRemitente().getNombre(),
-                mensaje.getRemitente().getFotoPerfil(),
-                mensaje.getDestinatario().getId(),
-                mensaje.getDestinatario().getNombre(),
-                mensaje.getDestinatario().getFotoPerfil(),
+                solId,
+                remitenteId,
+                remitenteNombre,
+                remitenteFoto,
+                destinatarioId,
+                destinatarioNombre,
+                destinatarioFoto,
                 mensaje.getContenido(),
-                mensaje.getTipo().name(),
+                mensaje.getTipo() != null ? mensaje.getTipo().name() : "TEXTO",
                 mensaje.getArchivoUrl(),
                 mensaje.getLeido(),
                 mensaje.getLeidoAt() != null ? mensaje.getLeidoAt().toString() : null,
-                mensaje.getCreatedAt().toString()
+                mensaje.getCreatedAt() != null ? mensaje.getCreatedAt().toString() : java.time.LocalDateTime.now().toString()
         );
     }
 }

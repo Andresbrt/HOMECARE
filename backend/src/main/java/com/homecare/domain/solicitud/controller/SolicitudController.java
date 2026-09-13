@@ -68,17 +68,16 @@ public class SolicitudController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{solicitudId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
-    @Operation(summary = "Obtener detalle de solicitud")
-    public ResponseEntity<SolicitudDTO.DetailResponse> obtenerSolicitud(
-            @PathVariable Long solicitudId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        SolicitudDTO.DetailResponse response = solicitudService.obtenerSolicitud(
-                solicitudId, userDetails.getId()
+    @GetMapping("/categorias")
+    @Operation(summary = "Obtener categorías disponibles de servicios de limpieza")
+    public ResponseEntity<List<java.util.Map<String, String>>> obtenerCategorias() {
+        List<java.util.Map<String, String>> categorias = List.of(
+            java.util.Map.of("id", "BASICA", "nombre", "Limpieza Básica", "icono", "sparkles-outline", "descripcion", "Mantenimiento general del hogar"),
+            java.util.Map.of("id", "PROFUNDA", "nombre", "Limpieza Profunda", "icono", "shield-checkmark-outline", "descripcion", "Desinfección y limpieza detallada"),
+            java.util.Map.of("id", "OFICINA", "nombre", "Limpieza de Oficina", "icono", "business-outline", "descripcion", "Espacios comerciales y oficinas"),
+            java.util.Map.of("id", "POST_CONSTRUCCION", "nombre", "Post Construcción", "icono", "construct-outline", "descripcion", "Limpieza especializada tras obra o remodelación")
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(categorias);
     }
 
     @GetMapping("/mis-solicitudes")
@@ -123,6 +122,19 @@ public class SolicitudController {
                 tipo, estado, fechaDesde, fechaHasta
         );
         return ResponseEntity.ok(solicitudes);
+    }
+
+    @GetMapping("/{solicitudId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SERVICE_PROVIDER', 'ADMIN')")
+    @Operation(summary = "Obtener detalle de solicitud")
+    public ResponseEntity<SolicitudDTO.DetailResponse> obtenerSolicitud(
+            @PathVariable Long solicitudId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        SolicitudDTO.DetailResponse response = solicitudService.obtenerSolicitud(
+                solicitudId, userDetails.getId()
+        );
+        return ResponseEntity.ok(response);
     }
 }
 

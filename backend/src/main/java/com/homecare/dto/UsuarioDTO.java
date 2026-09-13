@@ -83,6 +83,27 @@ public class UsuarioDTO {
         private List<String> roles;
     }
 
+    /**
+     * DTO de perfil público sanitizado (sin email, teléfono, dirección ni coordenadas GPS).
+     * Cumple con OWASP API3:2023 y Ley 1581 de Habeas Data Colombia.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PerfilPublicoResponse {
+        private Long id;
+        private String nombre;
+        private String fotoPerfil;
+        private Boolean disponible;
+        private Boolean verificado;
+        private BigDecimal calificacionPromedio;
+        private Integer serviciosCompletados;
+        private String nivelRanking; // BASIC, PRO, ELITE
+        private Integer bonusVisibilidad; // 0, 5, 10
+        private List<String> roles;
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

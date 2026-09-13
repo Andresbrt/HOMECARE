@@ -236,6 +236,7 @@ public class SolicitudService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<SolicitudDTO.Response> buscarSolicitudes(TipoLimpieza tipo,
                                                          EstadoSolicitud estado,
                                                          LocalDateTime fechaDesde,
@@ -279,14 +280,18 @@ public class SolicitudService {
     }
 
     private SolicitudDTO.Response mapToResponse(Solicitud solicitud) {
+        Long clienteId = solicitud.getCliente() != null ? solicitud.getCliente().getId() : null;
+        String clienteNombre = solicitud.getCliente() != null ? solicitud.getCliente().getNombre() : "Cliente";
+        String clienteFoto = solicitud.getCliente() != null ? solicitud.getCliente().getFotoPerfil() : null;
+
         return new SolicitudDTO.Response(
                 solicitud.getId(),
-                solicitud.getCliente().getId(),
-                solicitud.getCliente().getNombre(),
-                solicitud.getCliente().getFotoPerfil(),
+                clienteId,
+                clienteNombre,
+                clienteFoto,
                 solicitud.getTitulo(),
                 solicitud.getDescripcion(),
-                solicitud.getTipoLimpieza().name(),
+                solicitud.getTipoLimpieza() != null ? solicitud.getTipoLimpieza().name() : "BASICA",
                 solicitud.getDireccion(),
                 solicitud.getLatitud(),
                 solicitud.getLongitud(),
@@ -299,10 +304,10 @@ public class SolicitudService {
                 solicitud.getFechaServicio(),
                 solicitud.getHoraInicio(),
                 solicitud.getDuracionEstimada(),
-                solicitud.getEstado().name(),
+                solicitud.getEstado() != null ? solicitud.getEstado().name() : "ABIERTA",
                 solicitud.getCantidadOfertas(),
                 solicitud.getOfertaAceptadaId(),
-                solicitud.getCreatedAt().toString(),
+                solicitud.getCreatedAt() != null ? solicitud.getCreatedAt().toString() : java.time.LocalDateTime.now().toString(),
                 solicitud.getExpiraEn() != null ? solicitud.getExpiraEn().toString() : null,
                 null // distanciaKm - se calcula en consultas específicas
         );

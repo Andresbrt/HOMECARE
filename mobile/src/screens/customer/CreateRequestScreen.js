@@ -59,22 +59,22 @@ export default function CreateRequestScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     servicioId: 'general',
-    titulo: '',
-    descripcion: '',
+    titulo: 'Limpieza General Apartamento',
+    descripcion: 'Limpieza general de apartamento',
     tipoLimpieza: 'BASICA',
-    ciudad: 'Medellín',
-    barrio: '',
-    direccion: '',
+    ciudad: 'Bogotá',
+    barrio: 'Zona T',
+    direccion: 'Calle 93 #14-20',
     tipoPropiedad: 'APARTAMENTO',
     metrosCuadrados: '60',
     cantidadHabitaciones: '2',
     cantidadBanos: '1',
     tieneMascotas: false,
-    precioMaximo: '',
+    precioMaximo: '65000',
     cantidadHoras: '2',
-    precioPorHora: '',
+    precioPorHora: '32500',
     fechaServicio: new Date().toISOString().split('T')[0],
-    horaInicio: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    horaInicio: '10:00',
     duracionEstimada: '60',
     instruccionesEspeciales: '',
   });
@@ -101,7 +101,7 @@ export default function CreateRequestScreen({ navigation, route }) {
   }, [selectedService]);
 
   const [isConfirmingLocation, setIsConfirmingLocation] = useState(false);
-  const [geocodedCoords, setGeocodedCoords] = useState(null);
+  const [geocodedCoords, setGeocodedCoords] = useState({ latitude: 4.6768, longitude: -74.0483 });
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -336,14 +336,14 @@ export default function CreateRequestScreen({ navigation, route }) {
         return;
       }
       const total = parseInt(form.cantidadHoras || 0) * parseInt(form.precioPorHora || 0);
-      if (total < 80000) {
-        Alert.alert('Precio mínimo', 'El total del servicio debe ser de mínimo COL$ 80.000.');
+      if (total < 30000) {
+        Alert.alert('Precio mínimo', 'El total del servicio debe ser de mínimo COL$ 30.000.');
         return;
       }
     } else {
       const precio = form.precioMaximo ? parseFloat(form.precioMaximo) : 0;
-      if (precio < 80000) {
-        Alert.alert('Precio mínimo', 'El presupuesto mínimo para una solicitud es de COL$ 80.000.');
+      if (precio < 30000) {
+        Alert.alert('Precio mínimo', 'El presupuesto mínimo para una solicitud es de COL$ 30.000.');
         return;
       }
     }

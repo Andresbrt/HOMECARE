@@ -72,7 +72,7 @@ public class SecurityConfig {
                         })
                         .requestMatchers("/api/pagos/webhook/**").permitAll()
                         .requestMatchers("/api/payments/webhook/**").permitAll()
-                        .requestMatchers("/api/test/**").permitAll()
+                        .requestMatchers("/api/test/**").hasRole("ADMIN")
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/actuator/prometheus").permitAll()

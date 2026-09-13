@@ -7,8 +7,13 @@ import com.homecare.model.Archivo;
 import com.homecare.model.Archivo.EstadoArchivo;
 import com.homecare.model.Archivo.TipoArchivo;
 import com.homecare.domain.user.model.Usuario;
+import com.homecare.common.exception.NotFoundException;
 import com.homecare.domain.common.repository.ArchivoRepository;
 import com.homecare.domain.user.repository.UsuarioRepository;
+import com.homecare.domain.solicitud.model.Solicitud;
+import com.homecare.domain.solicitud.repository.SolicitudRepository;
+import com.homecare.model.ServicioAceptado;
+import com.homecare.domain.service_order.repository.ServicioAceptadoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +37,8 @@ public class FileStorageService {
 
     private final ArchivoRepository archivoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final SolicitudRepository solicitudRepository;
+    private final ServicioAceptadoRepository servicioAceptadoRepository;
     private final S3Client s3Client;
 
     @Value("${aws.s3.bucket}")
@@ -144,18 +151,55 @@ public class FileStorageService {
                 .collect(Collectors.toList());
     }
 
-    public List<FileUploadDTO.Response> getFilesBySolicitud(Long solicitudId) {
+    public List<FileUploadDTO.Response> getFilesBySolicitud(Long solicitudId, Long usuarioId) {
+        validarAccesoSolicitud(solicitudId, usuarioId);
         return archivoRepository.findBySolicitudIdAndEstado(solicitudId, EstadoArchivo.ACTIVO)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    public List<FileUploadDTO.Response> getFilesByServicio(Long servicioId) {
+    public List<FileUploadDTO.Response> getFilesByServicio(Long servicioId, Long usuarioId) {
+        validarAccesoServicio(servicioId, usuarioId);
         return archivoRepository.findByServicioIdAndEstado(servicioId, EstadoArchivo.ACTIVO)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    private void validarAccesoSolicitud(Long solicitudId, Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UnauthorizedException("Usuario no encontrado"));
+        boolean esAdmin = usuario.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equals(r.getNombre()));
+        if (esAdmin) return;
+
+        Solicitud solicitud = solicitudRepository.findById(solicitudId)
+                .orElseThrow(() -> new NotFoundException("Solicitud no encontrada con ID: " + solicitudId));
+
+        boolean esCliente = solicitud.getCliente().getId().equals(usuarioId);
+        boolean esProveedorConOferta = solicitud.getOfertas() != null && solicitud.getOfertas().stream()
+                .anyMatch(o -> o.getProveedor().getId().equals(usuarioId));
+
+        if (!esCliente && !esProveedorConOferta) {
+            throw new UnauthorizedException("No tiene permisos para consultar los archivos de esta solicitud");
+        }
+    }
+
+    private void validarAccesoServicio(Long servicioId, Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UnauthorizedException("Usuario no encontrado"));
+        boolean esAdmin = usuario.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equals(r.getNombre()));
+        if (esAdmin) return;
+
+        ServicioAceptado servicio = servicioAceptadoRepository.findById(servicioId)
+                .orElseThrow(() -> new NotFoundException("Servicio no encontrado con ID: " + servicioId));
+
+        boolean esCliente = servicio.getCliente().getId().equals(usuarioId);
+        boolean esProveedor = servicio.getProveedor().getId().equals(usuarioId);
+
+        if (!esCliente && !esProveedor) {
+            throw new UnauthorizedException("No tiene permisos para consultar los archivos de este servicio");
+        }
     }
 
     public String getPresignedUrl(Long archivoId, Long usuarioId) {
