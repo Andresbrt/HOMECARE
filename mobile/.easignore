@@ -1,0 +1,17 @@
+# Ignore dependencies - EAS Build installs them natively for the worker OS (Linux/macOS)
+node_modules/
+
+# Expo and local caches
+.expo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Android build artifacts
+android/app/build/
+android/build/
+android/.gradle/
+
+# iOS build artifacts
+ios/build/
+ios/Pods/
