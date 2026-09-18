@@ -5,8 +5,8 @@
   "scripts": {
     "postinstall": "node scripts/patch-expo-notifications.js",
     "start": "expo start",
-    "build:apk": "npx -y eas-cli build --profile preview --platform android",
-    "build:ios": "npx -y eas-cli build --profile preview --platform ios",
+    "build:apk": "EAS_NO_VCS=1 npx -y eas-cli build --profile preview --platform android",
+    "build:ios": "EAS_NO_VCS=1 npx -y eas-cli build --profile preview --platform ios",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
