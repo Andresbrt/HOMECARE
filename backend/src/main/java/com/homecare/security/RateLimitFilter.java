@@ -42,6 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final int authCapacity;
     private final int biddingCapacity;
+    private final int paymentCapacity;
     private final int generalCapacity;
     private final boolean trustedProxy;
     private final StringRedisTemplate redisTemplate;
@@ -50,11 +51,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public RateLimitFilter(
             @Value("${security.rate-limit.auth-requests-per-minute:5}") int authCapacity,
             @Value("${security.rate-limit.bidding-requests-per-minute:20}") int biddingCapacity,
+            @Value("${security.rate-limit.payment-requests-per-minute:10}") int paymentCapacity,
             @Value("${security.rate-limit.general-requests-per-minute:100}") int generalCapacity,
             @Value("${security.trusted-proxy:true}") boolean trustedProxy,
             StringRedisTemplate redisTemplate) {
         this.authCapacity = authCapacity;
         this.biddingCapacity = biddingCapacity;
+        this.paymentCapacity = paymentCapacity;
         this.generalCapacity = generalCapacity;
         this.trustedProxy = trustedProxy;
         this.redisTemplate = redisTemplate;
@@ -67,6 +70,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ip = IpBlockingFilter.resolveClientIp(request, trustedProxy);
         String path = request.getRequestURI();
         boolean isAuthPath = path.startsWith("/api/auth/");
+        boolean isPaymentPath = path.startsWith("/api/payments/") || path.startsWith("/api/pagos/");
         boolean isBiddingPath = path.startsWith("/api/ofertas") || path.startsWith("/api/solicitudes");
 
         String bucketKey;
@@ -75,6 +79,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (isAuthPath) {
             bucketKey = "auth:" + ip;
             capacity = authCapacity;
+        } else if (isPaymentPath) {
+            bucketKey = "payment:" + ip;
+            capacity = paymentCapacity;
         } else if (isBiddingPath) {
             bucketKey = "bidding:" + ip;
             capacity = biddingCapacity;

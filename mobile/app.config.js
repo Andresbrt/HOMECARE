@@ -32,6 +32,7 @@ export default ({ config }) => {
         config.extra?.wsUrl ||
         'wss://homecare-backend.fly.dev/ws',
       mpSandbox: isSandbox,
+      sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || config.extra?.sentryDsn || '',
     },
   };
 };

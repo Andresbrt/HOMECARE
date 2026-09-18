@@ -99,7 +99,7 @@ class UsuarioServiceTest {
 
             when(usuarioRepository.findById(42L)).thenReturn(Optional.of(proveedorElite));
 
-            UsuarioDTO.Response resp = usuarioService.obtenerPerfilPublico(42L);
+            UsuarioDTO.PerfilPublicoResponse resp = usuarioService.obtenerPerfilPublico(42L);
 
             assertThat(resp.getServiciosCompletados()).isEqualTo(40);
             assertThat(resp.getNivelRanking()).isEqualTo("ELITE");

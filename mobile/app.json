@@ -30,7 +30,10 @@
         "NSPhotoLibraryUsageDescription": "Necesitamos acceso a tus fotos para subir evidencias del servicio.",
         "NSPhotoLibraryAddUsageDescription": "Necesitamos guardar fotos del servicio en tu galería.",
         "NSMicrophoneUsageDescription": "Necesitamos acceso al micrófono para mensajes de voz en el chat.",
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -63,12 +66,22 @@
               "pathPrefix": "/api/payments/subscription"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
-          "data": [{ "scheme": "homecare" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "homecare"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -111,8 +124,11 @@
       "mpSandbox": true,
       "googleClientId": "630129948671-plv7lfm8e13lr8df1pec2fs9r5ppkf7i.apps.googleusercontent.com",
       "supabaseUrl": "https://mowqzkjbggfqfrnxgobn.supabase.co",
-      "supabaseAnonKey": "sb_publishable_hMkwDI_JwDQBy8MdNuA2ow_BJAs9pT_"
+      "supabaseAnonKey": "sb_publishable_hMkwDI_JwDQBy8MdNuA2ow_BJAs9pT_",
+      "sentryDsn": "",
+      "eas": {
+        "projectId": "a32c54c8-2c87-4db2-a0b6-f428d11eceef"
+      }
     }
   }
 }
-

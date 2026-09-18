@@ -34,8 +34,8 @@ class RateLimitFilterTest {
 
     @BeforeEach
     void setUp() {
-        // 5 auth req/min, 20 bidding req/min, 100 general req/min, no trusted proxy
-        filter = new RateLimitFilter(5, 20, 100, false, redisTemplate);
+        // 5 auth req/min, 20 bidding req/min, 10 payment req/min, 100 general req/min, no trusted proxy
+        filter = new RateLimitFilter(5, 20, 10, 100, false, redisTemplate);
     }
 
     private void mockRequestIp(String ip) {
@@ -89,6 +89,24 @@ class RateLimitFilterTest {
         verify(filterChain, never()).doFilter(any(), any());
         verify(response).setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         verify(response).addHeader("Retry-After", "60");
+        assertThat(body.toString()).contains("Too many requests");
+    }
+
+    @Test
+    @DisplayName("blocks payment request exceeding payment capacity (11th)")
+    void blocks_paymentExceeded() throws Exception {
+        mockRequestIp("10.0.0.1");
+        when(request.getRequestURI()).thenReturn("/api/payments/create");
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(11L); // > 10
+
+        StringWriter body = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, never()).doFilter(any(), any());
+        verify(response).setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         assertThat(body.toString()).contains("Too many requests");
     }
 

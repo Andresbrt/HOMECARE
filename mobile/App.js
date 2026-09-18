@@ -22,6 +22,10 @@ import { LocationProvider } from './src/context/LocationContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import linking from './src/config/linking';
+import { initSentry, Sentry } from './src/config/sentry';
+
+// Inicializar monitoreo Sentry
+initSentry();
 
 const appDarkTheme = {
   ...DarkTheme,
@@ -34,7 +38,7 @@ const appDarkTheme = {
   },
 };
 
-export default function App() {
+function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -67,4 +71,6 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(App);
 
