@@ -18,6 +18,18 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview-device": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_MP_SANDBOX": "true"
+      },
+      "ios": {
+        "simulator": false
       }
     },
     "production": {
